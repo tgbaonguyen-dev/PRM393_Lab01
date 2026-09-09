@@ -2,8 +2,6 @@
 
 Runnable Flutter Web and Dart backend base. No attendance, login, import, or database features are implemented yet.
 
-For team onboarding, follow the [local setup and run guide](docs/getting-started.md).
-
 ## Structure
 
 ```text
@@ -44,7 +42,7 @@ flutter pub get
 flutter run -d chrome --web-port=3000 --dart-define-from-file=.env
 ```
 
-The welcome screen also runs without Supabase configuration: omit `--dart-define-from-file=.env` if the file is not available yet. The frontend can call the sample backend API; it does not initialize Supabase yet.
+The blank app also runs without Supabase configuration: omit `--dart-define-from-file=.env` if the file is not available yet. The frontend is blank and does not call the backend or initialize Supabase yet.
 
 ## Local configuration
 
@@ -100,11 +98,3 @@ The release build produces `frontend/build/web/`. CI builds the placeholder with
 ## Team documentation
 
 Read `AGENTS.md`, `ai/CONTEXT.md`, `ai/DESIGN.md`, and `docs/architecture.md` before feature work. The SRS and visual design still require team agreement. Follow Database First: agree on business rules, design the schema, then implement features.
-
-## Sample API
-
-Start both applications using the commands above and click **Check connection** on the Flutter welcome page. A successful request displays **Connected** and the message returned by `GET /api/demo`. Stop the backend and click again to see the retryable error state (10-second timeout).
-
-The example follows `frontend/lib/demo_api.dart` -> `backend/lib/controllers/demo_controller.dart` -> `backend/lib/services/demo_service.dart`. The service returns a sample message and UTC timestamp; it does not use Supabase or need a repository. Add repositories when real data access is implemented.
-
-`API_BASE_URL` defaults to `http://localhost:8080` in Flutter. Backend `FRONTEND_ORIGIN` defaults to `http://localhost:3000` for CORS. If you change ports or deploy, configure these values accordingly and restart both applications. CORS is browser access configuration, not authentication.

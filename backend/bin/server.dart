@@ -1,7 +1,7 @@
 import 'dart:io';
 
 import 'package:dotenv/dotenv.dart';
-import 'package:prm393_backend/app.dart';
+import 'package:prm393_backend/controllers/health_controller.dart';
 import 'package:shelf/shelf_io.dart' as shelf_io;
 
 Future<void> main() async {
@@ -18,9 +18,7 @@ Future<void> main() async {
   }
 
   final server = await shelf_io.serve(
-    createApp(
-      frontendOrigin: setting('FRONTEND_ORIGIN') ?? 'http://localhost:3000',
-    ),
+    HealthController().handle,
     setting('HOST') ?? '127.0.0.1',
     port,
   );
