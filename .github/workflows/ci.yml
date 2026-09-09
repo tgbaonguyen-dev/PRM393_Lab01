@@ -41,14 +41,9 @@ jobs:
           fi
           if [[ -f "$COMPONENT/pubspec.yaml" ]]; then
             echo "ready=true" >> "$GITHUB_OUTPUT"
-          elif [[ -n "$(find "$COMPONENT" -type f -name '*.dart' -print -quit)" ]]; then
-            echo "::error::Dart source exists but $COMPONENT/pubspec.yaml is missing."
-            exit 1
           else
-            echo "ready=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::$COMPONENT is a skeleton; SDK checks are not run."
-            echo "### $COMPONENT: not initialized" >> "$GITHUB_STEP_SUMMARY"
-            echo "No pubspec.yaml or Dart source. Format, analyze, tests and build were not run." >> "$GITHUB_STEP_SUMMARY"
+            echo "::error::Missing $COMPONENT/pubspec.yaml."
+            exit 1
           fi
 
       - name: Set up Flutter
@@ -56,13 +51,14 @@ jobs:
         uses: subosito/flutter-action@v2
         with:
           channel: stable
+          flutter-version: '3.44.4'
           cache: true
 
       - name: Set up Dart
         if: steps.package.outputs.ready == 'true' && matrix.component == 'backend'
         uses: dart-lang/setup-dart@v1
         with:
-          sdk: stable
+          sdk: '3.12.2'
 
       - name: Install dependencies
         if: steps.package.outputs.ready == 'true'
