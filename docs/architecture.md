@@ -1,11 +1,11 @@
-# Kiến trúc 3 lớp
+# Three-Layer Architecture
 
-- controllers: nhận HTTP request, gọi service, trả response.
-- services (BLL): kiểm tra và xử lý nghiệp vụ.
-- repositories (DAL): đọc/ghi database và thực hiện giao dịch.
+- controllers: receive HTTP requests, call services, and return responses.
+- services (BLL): validate and execute business logic.
+- repositories (DAL): read and write database data and execute transactions.
 
-Flutter trong frontend/lib gọi API backend. Controller không gọi database trực tiếp; service không chứa giao diện; repository không trả HTTP response.
+Flutter in `frontend/lib` calls the backend API. Controllers do not access the database directly; services do not contain UI code; repositories do not return HTTP responses.
 
-DB First: thống nhất nghiệp vụ → thiết kế database/SQL → triển khai ba lớp. SRS còn cần nhóm review.
+Database First: agree on business rules → design the database and SQL → implement the three layers. The SRS still requires team review.
 
-File Dart dùng snake_case, ví dụ attendance_controller.dart. Hiện chỉ có bộ khung thư mục, chưa có mã nguồn hoặc cấu hình chạy.
+Dart filenames use snake_case, for example `attendance_controller.dart`. The repository currently contains only a directory scaffold, without application source code or runtime configuration.

@@ -1,32 +1,32 @@
 # PRM393 Lab01
 
+Flutter Web and Dart backend scaffold using a three-layer architecture and Database First development. No application code or dependencies have been added yet.
+
+```text
+frontend/lib/                  # Flutter UI
+backend/lib/controllers/       # Receive requests and return responses
+backend/lib/services/          # BLL: business logic
+backend/lib/repositories/      # DAL: database access
+database/                      # SQL for database design
+docs/architecture.md           # Architecture guide
+```
+
+Flow: Flutter → Controller → Service → Repository → Database.
+
+The backend has only three layer directories. `.gitkeep` files preserve empty directories in Git. Add `pubspec.yaml` and the required files when implementation begins.
+
 ## CI
 
-GitHub Actions đã được cấu hình trong `.github/workflows/ci.yml` cho frontend và backend. Khi chưa có package Dart/Flutter, workflow báo chưa khởi tạo; khi có package, tự chạy format, analyze, test nếu có và build Flutter Web. Xem `docs/ci.md` để bật required checks trên GitHub.
+GitHub Actions is configured in `.github/workflows/ci.yml` for the frontend and backend. Before Dart/Flutter packages exist, it reports that they are not initialized. Once packages exist, it runs formatting checks, analysis, tests when present, and a Flutter Web build. See `docs/ci.md` for enabling required checks.
 
-Bộ khung Flutter Web và backend Dart theo kiến trúc 3 lớp, hướng Database First. Chưa có code hoặc dependency.
-
-```text
-frontend/lib/                  # Giao diện Flutter
-backend/lib/controllers/       # Nhận request và trả response
-backend/lib/services/          # BLL: xử lý nghiệp vụ
-backend/lib/repositories/      # DAL: truy cập database
-database/                      # SQL khi thiết kế database
-docs/architecture.md           # Hướng dẫn ngắn
-```
-
-Luồng: Flutter → Controller → Service → Repository → Database.
-
-Chỉ ba thư mục nghiệp vụ backend. File .gitkeep giữ thư mục trống trong Git. Khi triển khai mới thêm pubspec.yaml và các file cần thiết.
-
-## Tài liệu dùng với AI
+## AI documentation
 
 ```text
-AGENTS.md          # Hướng dẫn và đường dẫn tài liệu cho AI
+AGENTS.md          # AI instructions and documentation pointers
 ai/
-├── CONTEXT.md     # Ngữ cảnh và các yêu cầu chưa chốt
-├── DESIGN.md      # Quyết định giao diện
-└── PROMPTS.md     # Mẫu giao task và review
+├── CONTEXT.md     # Project context and unresolved requirements
+├── DESIGN.md      # UI design decisions
+└── PROMPTS.md     # Task and review prompt templates
 ```
 
-Khi dùng AI, gửi task cụ thể và yêu cầu đọc AGENTS.md. Dùng tên AGENTS.md thay cho AGENT.md; các công cụ không tự nhận file này vẫn có thể đọc khi được chỉ định.
+Provide a specific task and ask the AI to read `AGENTS.md`. Use this filename rather than `AGENT.md`; tools that do not load it automatically can read it when explicitly directed.

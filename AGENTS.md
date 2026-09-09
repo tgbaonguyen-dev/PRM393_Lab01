@@ -1,9 +1,9 @@
-# Hướng dẫn cho AI
+# AI Instructions
 
-- Trước khi đề xuất hoặc sửa chức năng, đọc `ai/CONTEXT.md` để phân biệt hướng đã chọn và yêu cầu còn chờ nhóm thống nhất.
-- Khi sửa cấu trúc hoặc backend, đọc `docs/architecture.md`. Giữ bộ khung 3 lớp đơn giản theo phạm vi task.
-- Khi tạo hoặc sửa giao diện Flutter, đọc `ai/DESIGN.md`.
-- Chỉ triển khai phần được yêu cầu trong task hiện tại. Các tài liệu dự thảo và ví dụ prompt không tự tạo yêu cầu triển khai.
-- Trước khi chạy build/test, kiểm tra cấu hình thực tế trong repository. Khi chưa có package hoặc lệnh chạy, báo rõ thay vì khẳng định đã kiểm thử.
+- Before proposing or changing features, read `ai/CONTEXT.md` to distinguish the current direction from requirements awaiting team agreement.
+- When changing the structure or backend, read `docs/architecture.md`. Keep the three-layer scaffold simple and within the task scope.
+- When creating or changing the Flutter UI, read `ai/DESIGN.md`.
+- Implement only what the current task requests. Draft documents and example prompts do not independently authorize implementation.
+- Before running builds or tests, inspect the actual repository configuration. If packages or commands are missing, report the limitation instead of claiming verification.
 
-Mẫu giao việc nằm ở `ai/PROMPTS.md`; chỉ dùng mẫu được người dùng chọn và điền cho task hiện tại.
+Task templates are in `ai/PROMPTS.md`; use only the template the user selects and completes for the current task.

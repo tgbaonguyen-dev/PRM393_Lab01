@@ -1,22 +1,22 @@
-# Ngữ cảnh dự án
+# Project Context
 
-## Hướng hiện tại
+## Current direction
 
-- Đồ án PRM393, nhóm 5 thành viên, thời gian dự kiến 3 tuần; môn học Flutter.
-- Sản phẩm web điểm danh Dynamic QR, frontend Flutter Web và backend Dart, triển khai qua HTTPS.
-- Phát triển theo Database First. Phân chia trách nhiệm backend xem `../docs/architecture.md`.
-- MVP dự kiến triển khai cho một GV, dữ liệu chuẩn bị cho nhiều GV với lớp và lịch riêng.
-- Giảng viên import Excel, mở QR, theo dõi/sửa kết quả và export. Sinh viên đăng nhập Google để check-in.
-- Hướng dịch vụ đề xuất: Supabase cho database/Auth/Realtime; Render cho web/backend.
+- PRM393 course project: five team members, an expected three-week schedule, and Flutter coursework.
+- Dynamic QR attendance web application with Flutter Web and a Dart backend, deployed over HTTPS.
+- Database First development. See `../docs/architecture.md` for backend responsibilities.
+- The proposed MVP initially serves one teacher, with data designed for multiple teachers with separate classes and teaching schedules.
+- Teachers import Excel files, open QR attendance, monitor or edit results, and export results. Students sign in with Google to check in.
+- Proposed services: Supabase for the database, Auth, and Realtime; Render for the web application and backend.
 
-## Trạng thái yêu cầu
+## Requirements status
 
-SRS là bản đề xuất của người khởi xướng, chưa được cả nhóm duyệt. Các quyết định trong task mới nhất của người dùng là nguồn cập nhật; không coi mọi ý trong SRS là đã chốt.
+The SRS is the project initiator's proposal and has not been approved by the whole team. Decisions in the user's latest task provide updates; do not treat every SRS statement as finalized.
 
-Những điểm cần xác minh trước khi làm phần liên quan:
-- File Excel thực tế và ánh xạ cột.
-- Phân biệt buổi học và số slot.
-- Sửa danh sách nhập thiếu, import lại lịch và đổi email.
-- Thứ tự ưu tiên sửa thủ công/check-in, lượt quét sát lúc đóng và điều kiện export.
+Verify these points before implementing the relevant functionality:
+- The actual Excel format and column mapping.
+- The distinction between a lesson and a slot number.
+- Correcting incomplete student lists, reimporting schedules, and changing email addresses.
+- Manual-edit precedence over check-in, requests near session closure, and export conditions.
 
-Khi nhóm duyệt SRS, đặt bản được duyệt trong `docs/` và cập nhật đường dẫn tại đây. Không tự suy diễn nội dung còn thiếu thành requirement chính thức.
+Once the team approves the SRS, place the approved version in `docs/` and update its path here. Do not turn missing information into official requirements by assumption.

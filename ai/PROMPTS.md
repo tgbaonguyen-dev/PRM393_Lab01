@@ -1,37 +1,37 @@
-# Mẫu giao việc cho AI
+# AI Task Templates
 
-Các đoạn dưới là mẫu để thành viên sao chép và điền. Không phải task đang được giao cho AI đọc repository.
+These templates are for team members to copy and complete. They are not active tasks for an AI reading the repository.
 
-## Triển khai một task
+## Implement a task
 
 ```text
-Đọc AGENTS.md và các tài liệu liên quan đến task.
+Read AGENTS.md and the documentation relevant to this task.
 
-Task: [mã và tên task]
-Mục tiêu: [hành vi cần có]
-Requirement đã thống nhất: [nội dung hoặc đường dẫn]
-Phạm vi được sửa: [chức năng hoặc thư mục]
-Điều kiện hoàn thành: [kết quả quan sát được]
-Ngoài phạm vi: [phần chưa làm]
+Task: [task ID and title]
+Goal: [expected behavior]
+Agreed requirements: [content or path]
+Allowed scope: [features or directories]
+Acceptance criteria: [observable results]
+Out of scope: [excluded work]
 
-Kiểm tra code hiện tại trước khi sửa. Giữ kiến trúc 3 lớp đơn giản.
-Nếu có mâu thuẫn ảnh hưởng nghiệp vụ, chỉ rõ điểm cần xác nhận.
-Khi xong, báo thay đổi, cách kiểm tra và hạn chế còn lại.
+Inspect the current code before making changes. Keep the three-layer architecture simple.
+If a conflict affects business behavior, identify what needs clarification.
+When finished, report the changes, verification performed, and remaining limitations.
 ```
 
 ## Review
 
 ```text
-Review [task hoặc thay đổi] theo [requirement đã thống nhất].
-Tập trung lỗi nghiệp vụ, phân quyền và tương tác giữa các lớp.
-Nêu tình huống tái hiện, mức ảnh hưởng và vị trí liên quan.
-Chỉ review, chưa sửa code.
+Review [task or changes] against [agreed requirements].
+Focus on business logic errors, authorization, and interactions between layers.
+Provide reproduction scenarios, impact, and relevant locations.
+Review only; do not modify code yet.
 ```
 
-## Làm rõ trước khi code
+## Clarify before coding
 
 ```text
-Phân tích [chức năng] dựa trên requirement hiện có.
-Liệt kê điểm chưa rõ và đề xuất cách xử lý phù hợp MVP 3 tuần.
-Phân biệt thông tin đã xác nhận với giả định. Chưa viết code.
+Analyze [feature] using the available requirements.
+List ambiguities and propose solutions appropriate for a three-week MVP.
+Distinguish confirmed information from assumptions. Do not write code yet.
 ```
