@@ -13,6 +13,7 @@ import 'features/schedule/models/lesson_schedule.dart';
 import 'features/attendance/models/attendance_state.dart';
 import 'features/attendance/services/attendance_storage_service.dart';
 import 'features/export/services/export_service.dart';
+import 'core/network/api_client.dart';
 
 void main() {
   runApp(const LecturerAttendanceApp());
@@ -111,17 +112,71 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
   final MarkbookParser _parser = MarkbookParser();
   final ExportService _exportService = ExportService();
   final AttendanceStorageService _storageService = AttendanceStorageService();
+  final ApiClient _apiClient = ApiClient(baseUrl: 'http://localhost:8080');
+  bool _isSyncing = false;
+  String? _currentWindowId;
+  String? _googleSheetUrl;
+
+  Future<void> _openGoogleSheetInBrowser() async {
+    if (_googleSheetUrl == null || _googleSheetUrl!.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('⚠️ Bạn chưa đồng bộ lên Google Sheet! Hãy bấm "Mở FA26_Markbook.ods" hoặc "Đồng bộ đám mây" rồi chọn "Xác nhận & Đồng bộ" trước nhé.'),
+            backgroundColor: Color(0xFFD97706),
+            duration: Duration(seconds: 4),
+          ),
+        );
+      }
+      return;
+    }
+    final url = _googleSheetUrl!;
+    try {
+      await Process.run('cmd', ['/c', 'start', '', url]);
+    } catch (_) {
+      try {
+        await Process.run('explorer', [url]);
+      } catch (_) {}
+    }
+  }
 
   @override
   void initState() {
     super.initState();
     _loadPersistedData();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final sampleFile = File('../../sample_data/FA26_Markbook.ods');
-      if (sampleFile.existsSync() && _parsedSheets.isEmpty) {
-        _processFilePath(sampleFile.path);
+      final sampleFile = _findSampleFile();
+      if (sampleFile != null && _parsedSheets.isEmpty) {
+        _processFilePath(sampleFile.path, autoSync: false);
       }
     });
+  }
+
+  File? _findSampleFile() {
+    var dir = Directory.current;
+    for (int i = 0; i < 6; i++) {
+      final target = File('${dir.path}/sample_data/FA26_Markbook.ods');
+      if (target.existsSync()) return target;
+      final targetBackslash = File('${dir.path}\\sample_data\\FA26_Markbook.ods');
+      if (targetBackslash.existsSync()) return targetBackslash;
+      final parent = dir.parent;
+      if (parent.path == dir.path) break;
+      dir = parent;
+    }
+    const candidates = [
+      'sample_data/FA26_Markbook.ods',
+      '../sample_data/FA26_Markbook.ods',
+      '../../sample_data/FA26_Markbook.ods',
+      '../../../sample_data/FA26_Markbook.ods',
+      '../../../../sample_data/FA26_Markbook.ods',
+      '../../../../../sample_data/FA26_Markbook.ods',
+      r'D:\Github\Repositories\PRM393\PRM393_Lab01\sample_data\FA26_Markbook.ods',
+    ];
+    for (final c in candidates) {
+      final f = File(c);
+      if (f.existsSync()) return f;
+    }
+    return null;
   }
 
   Future<void> _loadPersistedData() async {
@@ -198,14 +253,14 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
     );
 
     if (result != null && result.files.single.path != null) {
-      await _processFilePath(result.files.single.path!);
+      await _promptStartDateAndProcess(result.files.single.path!);
     }
   }
 
   Future<void> _loadSampleFile() async {
-    final sampleFile = File('../../sample_data/FA26_Markbook.ods');
-    if (sampleFile.existsSync()) {
-      await _processFilePath(sampleFile.path);
+    final sampleFile = _findSampleFile();
+    if (sampleFile != null && sampleFile.existsSync()) {
+      await _promptStartDateAndProcess(sampleFile.path);
     } else {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -214,7 +269,136 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
     }
   }
 
-  Future<void> _processFilePath(String path) async {
+  /// Popup cho Giảng viên chọn ngày bắt đầu của lịch trước khi Import
+  Future<void> _promptStartDateAndProcess(String filePath) async {
+    DateTime chosenDate = _firstLessonDate;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            final dateStr = DateFormat('EEEE, dd/MM/yyyy').format(chosenDate);
+            return AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              title: const Row(
+                children: [
+                  Icon(Icons.calendar_month_rounded, color: Color(0xFF2563EB), size: 24),
+                  SizedBox(width: 10),
+                  Text('Chọn Ngày Bắt Đầu Học Kỳ', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                ],
+              ),
+              content: SizedBox(
+                width: 480,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Chọn ngày bắt đầu của buổi học đầu tiên trong kỳ. Hệ thống sẽ tự động tính lịch 20 buổi học và tạo các bảng điểm danh trên Google Sheet theo ngày này:',
+                      style: TextStyle(color: Color(0xFF475569), fontSize: 13, height: 1.4),
+                    ),
+                    const SizedBox(height: 18),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFEFF6FF),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: const Color(0xFFBFDBFE)),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text('Ngày bắt đầu kỳ học:', style: TextStyle(fontSize: 11, color: Color(0xFF64748B))),
+                              const SizedBox(height: 2),
+                              Text(
+                                dateStr,
+                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Color(0xFF1D4ED8)),
+                              ),
+                            ],
+                          ),
+                          ElevatedButton.icon(
+                            onPressed: () async {
+                              final picked = await showDatePicker(
+                                context: context,
+                                initialDate: chosenDate,
+                                firstDate: DateTime(2025, 1, 1),
+                                lastDate: DateTime(2030, 12, 31),
+                              );
+                              if (picked != null) {
+                                setDialogState(() => chosenDate = picked);
+                              }
+                            },
+                            icon: const Icon(Icons.edit_calendar_rounded, size: 16),
+                            label: const Text('Đổi ngày...'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.white,
+                              foregroundColor: const Color(0xFF1D4ED8),
+                              elevation: 0,
+                              side: const BorderSide(color: Color(0xFFBFDBFE)),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFFFBEB),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: const Color(0xFFFDE68A)),
+                      ),
+                      child: const Row(
+                        children: [
+                          Icon(Icons.info_outline_rounded, size: 16, color: Color(0xFFD97706)),
+                          SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Quy chế FAP: Sinh viên được nghỉ <= 20% tổng số slot. Quá 20% (> 4 slot) sẽ bị CẤM THI.',
+                              style: TextStyle(fontSize: 12, color: Color(0xFF92400E)),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(ctx).pop(false),
+                  child: const Text('Hủy'),
+                ),
+                ElevatedButton.icon(
+                  onPressed: () => Navigator.of(ctx).pop(true),
+                  icon: const Icon(Icons.cloud_upload_rounded),
+                  label: const Text('Xác nhận & Đồng bộ Google Sheet'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF2563EB),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    if (confirmed == true) {
+      setState(() => _firstLessonDate = chosenDate);
+      await _processFilePath(filePath, autoSync: true);
+    }
+  }
+
+  Future<void> _processFilePath(String path, {bool autoSync = true}) async {
     try {
       final sheets = await _parser.parseFile(File(path));
       if (!mounted) return;
@@ -227,9 +411,11 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
         }
         _generateAllLessons();
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Đã phân tích thành công ${sheets.length} bảng tính!')),
-      );
+
+      if (autoSync) {
+        // Tự động tạo và đồng bộ toàn bộ các bảng tính lên Google Sheet
+        _syncAllImportedSheetsToCloud(showFeedback: true);
+      }
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -328,8 +514,123 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
     }
   }
 
-  void _openAttendanceWindow() {
+  /// Synchronizes the active class, roster, and lessons to Google Sheets via Next.js
+  /// Synchronizes all classes, Overview, and per-class sheets to Google Sheets
+  Future<bool> _syncToCloud({bool showFeedback = true}) async {
+    await _syncAllImportedSheetsToCloud(showFeedback: showFeedback);
+    return true;
+  }
+
+  /// Tự động tạo Overview và các sheet từng lớp học từ tệp Markbook lên Google Sheet
+  Future<void> _syncAllImportedSheetsToCloud({bool showFeedback = true}) async {
+    if (_parsedSheets.isEmpty) return;
+    setState(() => _isSyncing = true);
+
+    try {
+      final startDateStr = _firstLessonDate.toIso8601String().split('T')[0];
+      final classesPayload = _parsedSheets.map((sheet) {
+        final semester = 'FA26';
+        final sheetLessons = _allSheetLessons[sheet.sheetName] ?? [];
+        final lessons = sheetLessons.map((l) => {
+          'id': '${sheet.subjectCode}_${sheet.className}_Lesson_${l.sequenceNumber}',
+          'sequenceNumber': l.sequenceNumber,
+          'date': l.date.toIso8601String().split('T')[0],
+          'dailySlot': l.dailySlot,
+          'startTime': l.startTime,
+          'endTime': l.endTime,
+          'status': l.sequenceNumber == 1 ? 'completed' : 'scheduled',
+        }).toList();
+
+        return {
+          'id': '${sheet.subjectCode}_${sheet.className}_$semester',
+          'className': sheet.className,
+          'subjectCode': sheet.subjectCode,
+          'semester': semester,
+          'scheduleCode': sheet.scheduleCode,
+          'slotCount': sheet.detectedSlotCount,
+          'roster': sheet.roster.map((s) {
+            final studentAttendance = <String, String>{};
+            for (int slotNum = 1; slotNum <= sheet.detectedSlotCount; slotNum++) {
+              final record = _attendanceStore[sheet.sheetName]?[slotNum]?[s.email.toLowerCase()];
+              if (record != null && record.status != AttendanceStatus.blank) {
+                studentAttendance['$slotNum'] = record.status == AttendanceStatus.present ? 'P' : 'A';
+              }
+            }
+            return {
+              'rollNumber': s.rollNumber,
+              'fullName': s.fullName,
+              'email': s.email,
+              'memberCode': s.memberCode,
+              'attendance': studentAttendance,
+            };
+          }).toList(),
+          'lessons': lessons,
+        };
+      }).toList();
+
+      final res = await _apiClient.syncAllClasses(
+        classes: classesPayload,
+        startDate: startDateStr,
+      );
+
+      final isSuccess = res != null && res['success'] == true;
+      if (res != null && res['spreadsheetUrl'] != null) {
+        _googleSheetUrl = res['spreadsheetUrl'] as String?;
+      }
+
+      if (mounted) {
+        setState(() => _isSyncing = false);
+        if (showFeedback) {
+          if (isSuccess) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('☁️ Đã tạo Overview và đồng bộ ${_parsedSheets.length} lớp học lên Google Sheet thành công!'),
+                backgroundColor: const Color(0xFF059669),
+                duration: const Duration(seconds: 6),
+                action: _googleSheetUrl != null
+                    ? SnackBarAction(
+                        label: 'Mở Google Sheet',
+                        textColor: Colors.white,
+                        onPressed: _openGoogleSheetInBrowser,
+                      )
+                    : null,
+              ),
+            );
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('⚠️ Đồng bộ thất bại: Google Apps Script chưa nhận được phiên bản mới hoặc lỗi kết nối.'),
+                backgroundColor: const Color(0xFFDC2626),
+                duration: const Duration(seconds: 8),
+              ),
+            );
+          }
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isSyncing = false);
+        if (showFeedback) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Lỗi đồng bộ: $e'), backgroundColor: const Color(0xFFDC2626)),
+          );
+        }
+      }
+    }
+  }
+
+  Future<void> _openAttendanceWindow() async {
     if (_selectedSheet == null || _activeLesson == null) return;
+
+    final lessonId = '${_selectedSheet!.subjectCode}_${_selectedSheet!.className}_Lesson_${_activeLesson!.sequenceNumber}';
+
+    // Open window on backend and initialize slot on sheet without recreating database
+    final windowRes = await _apiClient.openWindow(lessonId);
+    if (windowRes != null && windowRes['window'] != null) {
+      _currentWindowId = windowRes['window']['id'] as String?;
+    } else {
+      _currentWindowId = 'win_${DateTime.now().millisecondsSinceEpoch}';
+    }
 
     setState(() {
       _isWindowOpen = true;
@@ -369,14 +670,43 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
 
     // Start 5-second polling timer (FR-11)
     _pollTimer?.cancel();
-    _pollTimer = Timer.periodic(const Duration(seconds: 5), (timer) {
-      // In production, ApiClient.pollAttendance is called
+    _pollTimer = Timer.periodic(const Duration(seconds: 5), (timer) async {
+      final res = await _apiClient.pollAttendance(lessonId);
+      if (res != null && res['results'] != null) {
+        final results = res['results'] as List;
+        bool changed = false;
+        final slotMap = _getSlotAttendance(_selectedSheet!.sheetName, _activeLesson!.sequenceNumber, roster: _selectedSheet!.roster);
+        for (final r in results) {
+          final email = (r['studentEmail'] as String? ?? '').toLowerCase();
+          final status = r['status'] as String? ?? '';
+          if (email.isNotEmpty && status == 'P') {
+            final current = slotMap[email];
+            if (current != null && current.status != AttendanceStatus.present) {
+              slotMap[email] = LiveStudentAttendance(
+                studentEmail: current.studentEmail,
+                studentName: current.studentName,
+                rollNumber: current.rollNumber,
+                status: AttendanceStatus.present,
+                isManualOverride: current.isManualOverride,
+              );
+              changed = true;
+            }
+          }
+        }
+        if (changed && mounted) {
+          setState(() {});
+          _saveStoreToDisk();
+        }
+      }
     });
   }
 
   void _closeAttendanceWindow() {
     _qrTimer?.cancel();
     _pollTimer?.cancel();
+    if (_currentWindowId != null) {
+      _apiClient.closeWindow(_currentWindowId!);
+    }
     setState(() {
       _isWindowOpen = false;
       _currentQrToken = '';
@@ -387,11 +717,26 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
     );
   }
 
-  void _rotateQrToken() {
-    final timestamp = DateTime.now().millisecondsSinceEpoch;
-    final lessonSeq = _activeLesson?.sequenceNumber ?? 1;
-    final token = 'prm393_${_selectedSheet?.className}_lesson${lessonSeq}_$timestamp';
-    _currentQrToken = 'http://localhost:3000/checkin?token=$token';
+  Future<void> _rotateQrToken() async {
+    final lessonId = '${_selectedSheet?.subjectCode}_${_selectedSheet?.className}_Lesson_${_activeLesson?.sequenceNumber ?? 1}';
+    final windowId = _currentWindowId ?? 'win_${DateTime.now().millisecondsSinceEpoch}';
+
+    final res = await _apiClient.generateQrToken(windowId, lessonId);
+    if (res != null && res['token'] != null) {
+      if (mounted) {
+        setState(() {
+          _currentQrToken = 'http://localhost:3000/checkin?token=${res['token']}';
+        });
+      }
+    } else {
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
+      final token = 'prm393_${_selectedSheet?.className}_lesson${_activeLesson?.sequenceNumber ?? 1}_$timestamp';
+      if (mounted) {
+        setState(() {
+          _currentQrToken = 'http://localhost:3000/checkin?token=$token';
+        });
+      }
+    }
   }
 
   // Manual Override (FR-14)
@@ -411,12 +756,25 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
         studentName: student.studentName,
         rollNumber: student.rollNumber,
         status: newStatus,
-        isManualOverride: true, // Manual override flag
+        isManualOverride: false,
         checkedInAt: DateTime.now(),
       );
     });
 
     _saveStoreToDisk();
+
+    // Cập nhật Realtime trực tiếp vào ô tương ứng trên Google Sheet
+    final lessonId = '${_selectedSheet!.subjectCode}_${_selectedSheet!.className}_Lesson_${_activeLesson!.sequenceNumber}';
+    final statusStr = newStatus == AttendanceStatus.present ? 'P' : 'A';
+    _apiClient.manualOverride(
+      lessonId: lessonId,
+      studentEmail: email,
+      status: statusStr,
+    ).then((ok) {
+      debugPrint('[Desktop Override] $lessonId - $email: $statusStr -> ${ok ? "Thành công" : "Thất bại"}');
+    }).catchError((err) {
+      debugPrint('[Desktop Override Error] $err');
+    });
   }
 
   // Simulate a student scanning QR
@@ -425,16 +783,6 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
     final slotMap = _getSlotAttendance(_selectedSheet!.sheetName, _activeLesson!.sequenceNumber, roster: _selectedSheet!.roster);
     final student = slotMap[email.toLowerCase()];
     if (student == null) return;
-
-    if (student.isManualOverride) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Không thể quét: ${student.studentName} đã được giảng viên điều chỉnh thủ công.'),
-          backgroundColor: Colors.orange,
-        ),
-      );
-      return;
-    }
 
     setState(() {
       slotMap[email.toLowerCase()] = LiveStudentAttendance(
@@ -448,6 +796,18 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
     });
 
     _saveStoreToDisk();
+
+    // Cập nhật Realtime trực tiếp lên Google Sheet
+    final lessonId = '${_selectedSheet!.subjectCode}_${_selectedSheet!.className}_Lesson_${_activeLesson!.sequenceNumber}';
+    _apiClient.manualOverride(
+      lessonId: lessonId,
+      studentEmail: email,
+      status: 'P',
+    ).then((ok) {
+      debugPrint('[Desktop CheckIn] $lessonId - $email: P -> ${ok ? "Thành công" : "Thất bại"}');
+    }).catchError((err) {
+      debugPrint('[Desktop CheckIn Error] $err');
+    });
   }
 
   @override
@@ -563,6 +923,40 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
                 ),
 
                 const Spacer(),
+
+                // Nút Mở Google Sheet trên Drive
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 14.0),
+                  child: InkWell(
+                    onTap: _openGoogleSheetInBrowser,
+                    borderRadius: BorderRadius.circular(10),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF0F766E).withValues(alpha: 0.35),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: const Color(0xFF14B8A6).withValues(alpha: 0.6)),
+                      ),
+                      child: const Row(
+                        children: [
+                          Icon(Icons.table_chart_rounded, color: Color(0xFF2DD4BF), size: 20),
+                          SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('Google Sheet', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
+                                SizedBox(height: 2),
+                                Text('Mở trên Drive ↗', style: TextStyle(color: Color(0xFF99F6E4), fontSize: 10)),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 10),
 
                 // Bottom Persistence & Semester Status Card
                 Padding(
@@ -723,6 +1117,34 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
               const SizedBox(width: 16),
               Row(
                 children: [
+                  if (_parsedSheets.isNotEmpty) ...[
+                    OutlinedButton.icon(
+                      onPressed: _isSyncing ? null : () => _syncAllImportedSheetsToCloud(showFeedback: true),
+                      icon: _isSyncing
+                          ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                          : const Icon(Icons.cloud_upload_outlined, color: Color(0xFF1D4ED8)),
+                      label: Text(_isSyncing ? 'Đang đồng bộ...' : 'Đồng bộ lên Google Sheet'),
+                      style: OutlinedButton.styleFrom(
+                        backgroundColor: const Color(0xFFEFF6FF),
+                        foregroundColor: const Color(0xFF1D4ED8),
+                        side: const BorderSide(color: Color(0xFFBFDBFE), width: 1.2),
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                  ],
+                  OutlinedButton.icon(
+                    onPressed: _openGoogleSheetInBrowser,
+                    icon: const Icon(Icons.open_in_new_rounded, color: Color(0xFF0F766E), size: 18),
+                    label: const Text('Mở file trên Drive'),
+                    style: OutlinedButton.styleFrom(
+                      backgroundColor: const Color(0xFFF0FDFA),
+                      foregroundColor: const Color(0xFF0F766E),
+                      side: const BorderSide(color: Color(0xFF99F6E4), width: 1.2),
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
                   OutlinedButton.icon(
                     onPressed: _loadSampleFile,
                     icon: const Icon(Icons.file_present_rounded, color: Color(0xFF2563EB)),
@@ -1070,6 +1492,21 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
                 ),
               ),
               const SizedBox(width: 16),
+              OutlinedButton.icon(
+                onPressed: _isSyncing ? null : () => _syncToCloud(showFeedback: true),
+                icon: _isSyncing
+                    ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                    : const Icon(Icons.cloud_upload_outlined, size: 18),
+                label: Text(_isSyncing ? 'Đang đồng bộ...' : 'Đồng bộ Google Sheet'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: const Color(0xFF1D4ED8),
+                  side: const BorderSide(color: Color(0xFFBFDBFE)),
+                  backgroundColor: const Color(0xFFEFF6FF),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+              ),
+              const SizedBox(width: 12),
               ElevatedButton.icon(
                 onPressed: () => setState(() => _selectedIndex = 2),
                 icon: const Icon(Icons.play_arrow),
@@ -1596,7 +2033,21 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
                   ],
                 ),
               ),
-              const SizedBox(width: 16),
+              OutlinedButton.icon(
+                onPressed: _isSyncing ? null : () => _syncToCloud(showFeedback: true),
+                icon: _isSyncing
+                    ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                    : const Icon(Icons.cloud_upload_outlined, size: 20),
+                label: Text(_isSyncing ? 'Đang đồng bộ...' : 'Đồng bộ Google Sheet'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: const Color(0xFF1D4ED8),
+                  side: const BorderSide(color: Color(0xFFBFDBFE)),
+                  backgroundColor: const Color(0xFFEFF6FF),
+                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 15),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
+              const SizedBox(width: 12),
               ElevatedButton.icon(
                 onPressed: _toggleAttendanceWindow,
                 icon: Icon(_isWindowOpen ? Icons.stop_circle_rounded : Icons.play_circle_filled_rounded, size: 22),
@@ -1889,24 +2340,6 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
                                     trailing: Row(
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
-                                        if (student.isManualOverride)
-                                          Container(
-                                            margin: const EdgeInsets.only(right: 8.0),
-                                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                            decoration: BoxDecoration(
-                                              color: const Color(0xFFFEF3C7),
-                                              borderRadius: BorderRadius.circular(6),
-                                              border: Border.all(color: const Color(0xFFFCD34D)),
-                                            ),
-                                            child: const Row(
-                                              mainAxisSize: MainAxisSize.min,
-                                              children: [
-                                                Icon(Icons.edit_rounded, size: 12, color: Color(0xFFB45309)),
-                                                SizedBox(width: 4),
-                                                Text('GV sửa tay', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFFB45309))),
-                                              ],
-                                            ),
-                                          ),
                                         // High-clarity, distinct status toggle button
                                         Tooltip(
                                           message: isPresent ? 'Nhấn để chuyển sang Vắng mặt' : 'Nhấn để chuyển sang Có mặt',

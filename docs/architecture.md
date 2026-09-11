@@ -2,20 +2,21 @@
 
 See [SRS v4.0](SRS.md) for requirements and unresolved decisions.
 
-- Lecturer application: Flutter Desktop / Dart on Windows.
-- Student website and API: Next.js / TypeScript on Vercel.
-- Data gateway: Google Apps Script with LockService.
+- Lecturer application: Flutter Desktop / Dart on Windows (`apps/desktop`).
+- Student website: Next.js / TypeScript (`apps/web`).
+- Backend API Server: Dart Shelf 3-layer architecture (`backend/`).
+- Data gateway: Google Apps Script with LockService (`apps-script/`).
 - Persistent data: Google Sheets.
 
-Communication: Desktop and student web -> Next.js API -> Apps Script -> Google Sheets.
+Communication: Desktop and Student Web -> Dart Shelf Backend (Port 8080) -> Apps Script -> Google Sheets.
 
 The backend uses three logical layers:
+- Controller: HTTP requests and responses (`backend/lib/controllers/`).
+- Service: attendance business rules & HMAC QR (`backend/lib/services/`).
+- Repository: communication with the data gateway (`backend/lib/repositories/`).
 
-- Controller: HTTP requests and responses.
-- Service: attendance business rules.
-- Repository: communication with the data gateway.
-
-The applications and their directory structure have been initialized:
+The applications and their directory structure:
 - `apps/desktop`: Flutter Desktop Windows application.
-- `apps/web`: Next.js App Router (Student web check-in & 3-layer backend API).
+- `apps/web`: Next.js Student web check-in UI.
+- `backend`: Dart Shelf 3-layer Backend API Server (Port 8080).
 - `apps-script`: Google Apps Script Data Gateway with LockService.

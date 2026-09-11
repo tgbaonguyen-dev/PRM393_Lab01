@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, Suspense } from 'react';
+import React, { useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 
 function CheckInForm() {
@@ -12,12 +12,10 @@ function CheckInForm() {
   const [isSuccess, setIsSuccess] = useState<boolean | null>(null);
   const [devEmail, setDevEmail] = useState('');
 
-  useEffect(() => {
-    if (!token) {
-      setStatusMessage('Không tìm thấy mã QR. Vui lòng quét lại mã từ màn hình của giảng viên.');
-      setIsSuccess(false);
-    }
-  }, [token]);
+  const effectiveMessage =
+    statusMessage || (!token ? 'Không tìm thấy mã QR. Vui lòng quét lại mã từ màn hình của giảng viên.' : null);
+  const effectiveIsSuccess =
+    isSuccess !== null ? isSuccess : (!token ? false : null);
 
   const handleCheckIn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -59,15 +57,15 @@ function CheckInForm() {
         <p className="text-sm text-slate-500 mt-1">Cổng điểm danh sinh viên bằng mã QR</p>
       </div>
 
-      {statusMessage && (
+      {effectiveMessage && (
         <div
           className={`p-4 rounded-xl mb-6 text-sm font-medium ${
-            isSuccess
+            effectiveIsSuccess
               ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
               : 'bg-rose-50 text-rose-800 border border-rose-200'
           }`}
         >
-          {statusMessage}
+          {effectiveMessage}
         </div>
       )}
 

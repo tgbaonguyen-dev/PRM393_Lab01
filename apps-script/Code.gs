@@ -11,7 +11,6 @@ function doPost(e) {
 
     // Acquire Script Lock to serialize concurrent check-ins
     var lock = LockService.getScriptLock();
-    // Wait up to 20 seconds for other concurrent executions to finish
     var hasLock = lock.tryLock(20000);
 
     if (!hasLock) {
@@ -43,10 +42,10 @@ function doPost(e) {
 
 function dispatchAction(action, payload) {
   switch (action) {
-    case 'setupDatabase':
-      return SheetRepository.setupDatabase();
-    case 'saveClassOffering':
-      return SheetRepository.saveClassOffering(payload.offering, payload.roster, payload.lessons);
+    case 'syncAllClasses':
+      return SheetRepository.syncAllClassesFromDesktop(payload.classes, payload.startDate);
+    case 'clearAllDatabase':
+      return SheetRepository.clearAllDatabase();
     case 'openAttendanceWindow':
       return SheetRepository.openWindow(payload.lessonId);
     case 'closeAttendanceWindow':
@@ -59,18 +58,41 @@ function dispatchAction(action, payload) {
       return SheetRepository.getResults(payload.lessonId);
     case 'getActiveWindow':
       return SheetRepository.getActiveWindow(payload.lessonId);
-    case 'getLesson':
-      return SheetRepository.getLesson(payload.lessonId);
-    case 'getRoster':
-      return SheetRepository.getRoster(payload.classOfferingId);
     default:
       throw new Error('Unknown action: ' + action);
   }
 }
 
 function doGet(e) {
+  var ss = SheetRepository.getSpreadsheet();
   return ContentService.createTextOutput(JSON.stringify({
     status: 'ok',
-    gateway: 'PRM393 Google Apps Script Data Gateway'
+    gateway: 'PRM393 Google Apps Script Data Gateway',
+    spreadsheetUrl: ss.getUrl()
   })).setMimeType(ContentService.MimeType.JSON);
+}
+
+/**
+ * Hàm xoá toàn bộ dữ liệu và sheet cũ trên Google Sheet
+ * Giảng viên có thể chọn hàm này và bấm Run trên Apps Script để dọn sạch ngay
+ */
+function clearEntireSpreadsheet() {
+  var ss = SheetRepository.getSpreadsheet();
+  SheetRepository.clearAllDatabase();
+  Logger.log('========================================================');
+  Logger.log('🧹 ĐÃ XOÁ TOÀN BỘ CÁC BẢNG CŨ TRÊN GOOGLE SHEET!');
+  Logger.log('👉 Sẵn sàng nhận dữ liệu đồng bộ từ Desktop app.');
+  Logger.log('👉 Link file: ' + ss.getUrl());
+  Logger.log('========================================================');
+  return ss.getUrl();
+}
+
+/**
+ * Custom Menu trên Google Sheet
+ */
+function onOpen() {
+  SpreadsheetApp.getUi()
+    .createMenu('PRM393')
+    .addItem('🧹 Dọn sạch dữ liệu cũ', 'clearEntireSpreadsheet')
+    .addToUi();
 }

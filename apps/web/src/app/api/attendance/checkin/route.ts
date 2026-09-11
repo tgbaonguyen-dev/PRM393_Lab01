@@ -34,13 +34,18 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Process check-in business rules
-    const result = await attendanceService.processCheckIn(qrToken, verifiedEmail);
+    // Forward to Dart Shelf Backend (Port 8080)
+    const dartRes = await fetch('http://localhost:8080/api/attendance/checkin', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        qrToken,
+        clientEmail: verifiedEmail,
+      }),
+    });
 
-    return NextResponse.json(
-      { success: result.success, message: result.message },
-      { status: result.statusCode }
-    );
+    const result = await dartRes.json();
+    return NextResponse.json(result, { status: dartRes.status });
   } catch (err: unknown) {
     const errorMsg = err instanceof Error ? err.message : 'Lỗi xử lý điểm danh';
     return NextResponse.json({ error: errorMsg }, { status: 500 });

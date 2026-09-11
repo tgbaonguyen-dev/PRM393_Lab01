@@ -1,5 +1,6 @@
 # Local configuration and credentials
 .env*
+!**/.env.example
 
 # Flutter / Dart generated files
 .dart_tool/

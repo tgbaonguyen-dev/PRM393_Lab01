@@ -5,6 +5,8 @@ import { AttendanceResult, AttendanceWindow, ClassOffering, Enrollment, Lesson }
  */
 export interface IDataGatewayRepository {
   getClassOffering(id: string): Promise<ClassOffering | null>;
+  saveClassOffering(offering: ClassOffering, roster: Enrollment[], lessons: Lesson[]): Promise<boolean>;
+  syncAllClasses(classes: unknown[], startDate: string): Promise<{ success: boolean; spreadsheetUrl?: string }>;
   getRoster(classOfferingId: string): Promise<Enrollment[]>;
   getLesson(id: string): Promise<Lesson | null>;
   getActiveWindow(lessonId: string): Promise<AttendanceWindow | null>;
@@ -44,6 +46,19 @@ export class GoogleAppsScriptRepository implements IDataGatewayRepository {
   async getClassOffering(id: string): Promise<ClassOffering | null> {
     const res = await this.postToGateway('getClassOffering', { id });
     return res.data;
+  }
+
+  async saveClassOffering(offering: ClassOffering, roster: Enrollment[], lessons: Lesson[]): Promise<boolean> {
+    const res = await this.postToGateway('saveClassOffering', { offering, roster, lessons });
+    return res.success;
+  }
+
+  async syncAllClasses(classes: unknown[], startDate: string): Promise<{ success: boolean; spreadsheetUrl?: string }> {
+    const res = await this.postToGateway('syncAllClasses', { classes, startDate });
+    return {
+      success: res.success,
+      spreadsheetUrl: res.data?.spreadsheetUrl,
+    };
   }
 
   async getRoster(classOfferingId: string): Promise<Enrollment[]> {

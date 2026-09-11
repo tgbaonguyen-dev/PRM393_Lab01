@@ -54,35 +54,11 @@ export class AttendanceService {
       };
     }
 
-    // 3. Validate student is in class roster
-    const lesson = await this.repo.getLesson(lessonId);
-    if (!lesson) {
-      return { success: false, message: 'Không tìm thấy thông tin buổi học.', statusCode: 404 };
-    }
-
-    const roster = await this.repo.getRoster(lesson.classOfferingId);
     const normalizedEmail = studentEmail.trim().toLowerCase();
-    const isEnrolled = roster.some((r) => r.email.toLowerCase() === normalizedEmail);
 
-    if (!isEnrolled) {
-      return {
-        success: false,
-        message: 'Email của bạn không nằm trong danh sách sinh viên của lớp học này.',
-        statusCode: 403,
-      };
-    }
-
-    // 4. Check existing attendance result and manual override precedence (FR-14, FR-19)
+    // 3. Check existing attendance result
     const currentResults = await this.repo.getAttendanceResults(lessonId);
     const existing = currentResults.find((r) => r.studentEmail.toLowerCase() === normalizedEmail);
-
-    if (existing?.isManualOverride) {
-      return {
-        success: false,
-        message: 'Kết quả điểm danh đã được giảng viên điều chỉnh trực tiếp, không thể ghi đè.',
-        statusCode: 409,
-      };
-    }
 
     if (existing?.status === 'P') {
       return {
@@ -92,13 +68,13 @@ export class AttendanceService {
       };
     }
 
-    // 5. Save Check-in (serialized by repository / data gateway)
+    // 4. Save Check-in directly to the class sheet
     const saved = await this.repo.saveCheckIn(lessonId, normalizedEmail);
     if (!saved) {
       return {
         success: false,
-        message: 'Lưu dữ liệu điểm danh thất bại. Vui lòng thử lại.',
-        statusCode: 500,
+        message: 'Điểm danh không thành công. Email của bạn không nằm trong danh sách sinh viên của lớp học này.',
+        statusCode: 403,
       };
     }
 
