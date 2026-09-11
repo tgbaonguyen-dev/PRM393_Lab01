@@ -8,7 +8,7 @@ The design, brand colors, fonts, and wireframes have not been finalized. This fi
 
 - Teachers use personal computers to manage classes and schedules and display QR codes.
 - Students use mobile browsers to sign in and check in.
-- Proposed UI direction: responsive Flutter Material 3.
+- Lecturer UI: Flutter Windows desktop. Student UI: responsive Next.js website. Visual design remains unapproved.
 
 ## Assigning a UI task
 

@@ -1,22 +1,34 @@
-# Project Context
+# Attendance Domain
 
-## Current direction
+Vocabulary for the lecturer attendance project. Current requirements, scope, decisions, and implementation status are recorded in [SRS v4.0](../docs/SRS.md). The previous web/Supabase direction is superseded by that specification.
 
-- PRM393 course project: five team members, an expected three-week schedule, and Flutter coursework.
-- Dynamic QR attendance web application with Flutter Web and a Dart backend, deployed over HTTPS.
-- Database First development. See `../docs/architecture.md` for backend responsibilities.
-- The proposed MVP initially serves one teacher, with data designed for multiple teachers with separate classes and teaching schedules.
-- Teachers import Excel files, open QR attendance, monitor or edit results, and export results. Students sign in with Google to check in.
-- Proposed services: Supabase for the database, Auth, and Realtime; Render for the web application and backend.
+## Language
 
-## Requirements status
+**Class offering**:
+A class taught for a specific subject and semester. A class code alone does not uniquely identify an offering.
 
-The SRS is the project initiator's proposal and has not been approved by the whole team. Decisions in the user's latest task provide updates; do not treat every SRS statement as finalized.
+**Daily slot**:
+One of four teaching time ranges in a day, numbered 1–4.
+_Avoid_: Using this term for a lesson's sequence number.
 
-Verify these points before implementing the relevant functionality:
-- The actual Excel format and column mapping.
-- The distinction between a lesson and a slot number.
-- Correcting incomplete student lists, reimporting schedules, and changing email addresses.
-- Manual-edit precedence over check-in, requests near session closure, and export conditions.
+**Schedule code**:
+A two-digit markbook worksheet prefix. The first digit selects Monday/Thursday, Tuesday/Friday, or Wednesday/Saturday; the second selects the daily slot.
 
-Once the team approves the SRS, place the approved version in `docs/` and update its path here. Do not turn missing information into official requirements by assumption.
+**Lesson**:
+A dated teaching occurrence within an offering, numbered 1–20 in the current scope. The export labels Slot 01–20 refer to these lessons.
+
+**Enrollment**:
+A student's membership in a class offering, with the email used to match their authenticated identity.
+
+**Attendance window**:
+An explicitly opened period accepting check-ins for one lesson. Reopening the lesson creates a new window while retaining results.
+_Avoid_: Using session to mean both lesson and attendance window.
+
+**Attendance result**:
+A student's result for a lesson: blank before first opening, then A (absent) or P (present).
+
+**Manual override**:
+A lecturer's explicit correction of an attendance result, which a later student check-in must not replace.
+
+**Markbook**:
+The imported multi-worksheet XLSX or ODS file supplying rosters and weekly schedule metadata. Grade and examination columns are not attendance results.
