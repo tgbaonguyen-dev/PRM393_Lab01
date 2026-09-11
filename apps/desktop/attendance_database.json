@@ -1,0 +1,1438 @@
+{
+  "11_PRN232_SE1917": {
+    "1": {
+      "firephoenix0304@gmail.com": {
+        "studentEmail": "firephoenix0304@gmail.com",
+        "studentName": "Nguyễn Ngọc Bảo Cường",
+        "rollNumber": "SE193416",
+        "status": "present",
+        "isManualOverride": false,
+        "checkedInAt": "2026-09-11T18:44:05.336903"
+      },
+      "zeit.lars2808@gmail.com": {
+        "studentEmail": "zeit.lars2808@gmail.com",
+        "studentName": "Ngô Chí Nam",
+        "rollNumber": "SE190507",
+        "status": "present",
+        "isManualOverride": false,
+        "checkedInAt": "2026-09-11T18:44:06.706379"
+      },
+      "trungnguyen14122005@gmail.com": {
+        "studentEmail": "trungnguyen14122005@gmail.com",
+        "studentName": "Đoàn Nguyễn Trung Nguyên",
+        "rollNumber": "SE193559",
+        "status": "present",
+        "isManualOverride": false,
+        "checkedInAt": "2026-09-11T18:44:07.215582"
+      },
+      "ngotanthanh125@gmail.com": {
+        "studentEmail": "ngotanthanh125@gmail.com",
+        "studentName": "Ngô Tấn Thành",
+        "rollNumber": "SE193445",
+        "status": "present",
+        "isManualOverride": false,
+        "checkedInAt": "2026-09-11T18:44:07.669195"
+      },
+      "thiennmhse172145@fpt.edu.vn": {
+        "studentEmail": "thiennmhse172145@fpt.edu.vn",
+        "studentName": "Nguyễn Mai Hào Thiên",
+        "rollNumber": "SE172145",
+        "status": "present",
+        "isManualOverride": false,
+        "checkedInAt": "2026-09-11T18:44:08.222042"
+      },
+      "baotgse182346@fpt.edu.vn": {
+        "studentEmail": "baotgse182346@fpt.edu.vn",
+        "studentName": "Trần Gia Bảo",
+        "rollNumber": "SE182346",
+        "status": "present",
+        "isManualOverride": false,
+        "checkedInAt": "2026-09-11T18:44:08.688289"
+      },
+      "huyddse180414@fpt.edu.vn": {
+        "studentEmail": "huyddse180414@fpt.edu.vn",
+        "studentName": "Đoàn Đình Huy",
+        "rollNumber": "SE180414",
+        "status": "present",
+        "isManualOverride": false,
+        "checkedInAt": "2026-09-11T18:44:09.194746"
+      },
+      "minhpvse183365@fpt.edu.vn": {
+        "studentEmail": "minhpvse183365@fpt.edu.vn",
+        "studentName": "Phạm Văn Minh",
+        "rollNumber": "SE183365",
+        "status": "absent",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "babaxauxa123@gmail.com": {
+        "studentEmail": "babaxauxa123@gmail.com",
+        "studentName": "Trần Đình Thiện",
+        "rollNumber": "SE193983",
+        "status": "absent",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "ducpqse182178@fpt.edu.vn": {
+        "studentEmail": "ducpqse182178@fpt.edu.vn",
+        "studentName": "Phạm Quang Đức",
+        "rollNumber": "SE182178",
+        "status": "absent",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "duyvqse180724@fpt.edu.vn": {
+        "studentEmail": "duyvqse180724@fpt.edu.vn",
+        "studentName": "Văn Quang Duy",
+        "rollNumber": "SE180724",
+        "status": "absent",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "longddse180296@fpt.edu.vn": {
+        "studentEmail": "longddse180296@fpt.edu.vn",
+        "studentName": "Đặng Đình Long",
+        "rollNumber": "SE180296",
+        "status": "absent",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "vinhntkse180756@fpt.edu.vn": {
+        "studentEmail": "vinhntkse180756@fpt.edu.vn",
+        "studentName": "Nguyễn Tống Khánh Vĩnh",
+        "rollNumber": "SE180756",
+        "status": "absent",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "khoahlbse172830@fpt.edu.vn": {
+        "studentEmail": "khoahlbse172830@fpt.edu.vn",
+        "studentName": "Hoàng Lê Bách Khoa",
+        "rollNumber": "SE172830",
+        "status": "absent",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "khoiddse182046@fpt.edu.vn": {
+        "studentEmail": "khoiddse182046@fpt.edu.vn",
+        "studentName": "Dương Đình Khôi",
+        "rollNumber": "SE182046",
+        "status": "absent",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "anhkiet5501@thptdongdo.edu.vn": {
+        "studentEmail": "anhkiet5501@thptdongdo.edu.vn",
+        "studentName": "Trần Anh Kiệt",
+        "rollNumber": "SE194832",
+        "status": "absent",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "quoctpkse182112@fpt.edu.vn": {
+        "studentEmail": "quoctpkse182112@fpt.edu.vn",
+        "studentName": "Trần Phạm Khánh Quốc",
+        "rollNumber": "SE182112",
+        "status": "absent",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "vynntse183571@fpt.edu.vn": {
+        "studentEmail": "vynntse183571@fpt.edu.vn",
+        "studentName": "Nguyễn Ngọc Tường Vy",
+        "rollNumber": "SE183571",
+        "status": "absent",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "hungdtss180069@fpt.edu.vn": {
+        "studentEmail": "hungdtss180069@fpt.edu.vn",
+        "studentName": "Đặng Thành Hưng",
+        "rollNumber": "SS180069",
+        "status": "absent",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "minhnbse182173@fpt.edu.vn": {
+        "studentEmail": "minhnbse182173@fpt.edu.vn",
+        "studentName": "Nguyễn Bình Minh",
+        "rollNumber": "SE182173",
+        "status": "absent",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "thienvnse182141@fpt.edu.vn": {
+        "studentEmail": "thienvnse182141@fpt.edu.vn",
+        "studentName": "Võ Nhật Thiên",
+        "rollNumber": "SE182141",
+        "status": "absent",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "thuanvctse182422@fpt.edu.vn": {
+        "studentEmail": "thuanvctse182422@fpt.edu.vn",
+        "studentName": "Văn Châu Trường Thuận",
+        "rollNumber": "SE182422",
+        "status": "absent",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "anhntse183220@fpt.edu.vn": {
+        "studentEmail": "anhntse183220@fpt.edu.vn",
+        "studentName": "Nghiêm Tuấn Anh",
+        "rollNumber": "SE183220",
+        "status": "absent",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "lqkhanh292005@gmail.com": {
+        "studentEmail": "lqkhanh292005@gmail.com",
+        "studentName": "Lê Quốc Khánh",
+        "rollNumber": "SE193989",
+        "status": "absent",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "manhcvse172328@fpt.edu.vn": {
+        "studentEmail": "manhcvse172328@fpt.edu.vn",
+        "studentName": "Chu Vương Mạnh",
+        "rollNumber": "SE172328",
+        "status": "absent",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "minhdase183432@fpt.edu.vn": {
+        "studentEmail": "minhdase183432@fpt.edu.vn",
+        "studentName": "Đỗ Anh Minh",
+        "rollNumber": "SE183432",
+        "status": "absent",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "nhatmoon71@gmail.com": {
+        "studentEmail": "nhatmoon71@gmail.com",
+        "studentName": "Mai Nhật Minh",
+        "rollNumber": "SE190302",
+        "status": "absent",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "phucpvse183363@fpt.edu.vn": {
+        "studentEmail": "phucpvse183363@fpt.edu.vn",
+        "studentName": "Phạm Vạn Phúc",
+        "rollNumber": "SE183363",
+        "status": "absent",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "giaphuphamdinh082@gmail.com": {
+        "studentEmail": "giaphuphamdinh082@gmail.com",
+        "studentName": "Phạm Đinh Gia Phú",
+        "rollNumber": "SE196506",
+        "status": "absent",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "thangvlqse184739@fpt.edu.vn": {
+        "studentEmail": "thangvlqse184739@fpt.edu.vn",
+        "studentName": "Vũ Lương Quang Thắng",
+        "rollNumber": "SE184739",
+        "status": "absent",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "thuathttse180359@fpt.edu.vn": {
+        "studentEmail": "thuathttse180359@fpt.edu.vn",
+        "studentName": "Huỳnh Trần Thế Thuật",
+        "rollNumber": "SE180359",
+        "status": "absent",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "trongtmse185045@fpt.edu.vn": {
+        "studentEmail": "trongtmse185045@fpt.edu.vn",
+        "studentName": "Tăng Minh Trọng",
+        "rollNumber": "SE185045",
+        "status": "absent",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "tuanptse184480@fpt.edu.vn": {
+        "studentEmail": "tuanptse184480@fpt.edu.vn",
+        "studentName": "Phan Thanh Tuấn",
+        "rollNumber": "SE184480",
+        "status": "absent",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "tulpnse185102@fpt.edu.vn": {
+        "studentEmail": "tulpnse185102@fpt.edu.vn",
+        "studentName": "Lữ Phước Nhật Tú",
+        "rollNumber": "SE185102",
+        "status": "absent",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "phanthithaovy060406@gmail.com": {
+        "studentEmail": "phanthithaovy060406@gmail.com",
+        "studentName": "Phan Thị Thảo Vy",
+        "rollNumber": "SA194282",
+        "status": "absent",
+        "isManualOverride": false,
+        "checkedInAt": null
+      }
+    }
+  },
+  "12_PRM393_SE1917": {
+    "1": {
+      "firephoenix0304@gmail.com": {
+        "studentEmail": "firephoenix0304@gmail.com",
+        "studentName": "Nguyễn Ngọc Bảo Cường",
+        "rollNumber": "SE193416",
+        "status": "absent",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "zeit.lars2808@gmail.com": {
+        "studentEmail": "zeit.lars2808@gmail.com",
+        "studentName": "Ngô Chí Nam",
+        "rollNumber": "SE190507",
+        "status": "absent",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "trungnguyen14122005@gmail.com": {
+        "studentEmail": "trungnguyen14122005@gmail.com",
+        "studentName": "Đoàn Nguyễn Trung Nguyên",
+        "rollNumber": "SE193559",
+        "status": "absent",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "ngotanthanh125@gmail.com": {
+        "studentEmail": "ngotanthanh125@gmail.com",
+        "studentName": "Ngô Tấn Thành",
+        "rollNumber": "SE193445",
+        "status": "absent",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "thiennmhse172145@fpt.edu.vn": {
+        "studentEmail": "thiennmhse172145@fpt.edu.vn",
+        "studentName": "Nguyễn Mai Hào Thiên",
+        "rollNumber": "SE172145",
+        "status": "absent",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "ducpqse182178@fpt.edu.vn": {
+        "studentEmail": "ducpqse182178@fpt.edu.vn",
+        "studentName": "Phạm Quang Đức",
+        "rollNumber": "SE182178",
+        "status": "absent",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "duyvqse180724@fpt.edu.vn": {
+        "studentEmail": "duyvqse180724@fpt.edu.vn",
+        "studentName": "Văn Quang Duy",
+        "rollNumber": "SE180724",
+        "status": "absent",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "longddse180296@fpt.edu.vn": {
+        "studentEmail": "longddse180296@fpt.edu.vn",
+        "studentName": "Đặng Đình Long",
+        "rollNumber": "SE180296",
+        "status": "absent",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "vinhntkse180756@fpt.edu.vn": {
+        "studentEmail": "vinhntkse180756@fpt.edu.vn",
+        "studentName": "Nguyễn Tống Khánh Vĩnh",
+        "rollNumber": "SE180756",
+        "status": "absent",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "sonnpxse183201@fpt.edu.vn": {
+        "studentEmail": "sonnpxse183201@fpt.edu.vn",
+        "studentName": "Nguyễn Phạm Xuân Sơn",
+        "rollNumber": "SE183201",
+        "status": "absent",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "duongquocthai368@gmail.com": {
+        "studentEmail": "duongquocthai368@gmail.com",
+        "studentName": "Dương Quốc Thái",
+        "rollNumber": "SE192024",
+        "status": "absent",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "tuanvdse184988@fpt.edu.vn": {
+        "studentEmail": "tuanvdse184988@fpt.edu.vn",
+        "studentName": "Vũ Đức Tuấn",
+        "rollNumber": "SE184988",
+        "status": "absent",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "quancase184141@fpt.edu.vn": {
+        "studentEmail": "quancase184141@fpt.edu.vn",
+        "studentName": "Chu Anh Quân",
+        "rollNumber": "SE184141",
+        "status": "absent",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "synnvse160343@fpt.edu.vn": {
+        "studentEmail": "synnvse160343@fpt.edu.vn",
+        "studentName": "Nguyễn Ngọc Vệ Sỹ",
+        "rollNumber": "SE160343",
+        "status": "absent",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "minhdase183432@fpt.edu.vn": {
+        "studentEmail": "minhdase183432@fpt.edu.vn",
+        "studentName": "Đỗ Anh Minh",
+        "rollNumber": "SE183432",
+        "status": "absent",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "trongtmse185045@fpt.edu.vn": {
+        "studentEmail": "trongtmse185045@fpt.edu.vn",
+        "studentName": "Tăng Minh Trọng",
+        "rollNumber": "SE185045",
+        "status": "absent",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "tuanptse184480@fpt.edu.vn": {
+        "studentEmail": "tuanptse184480@fpt.edu.vn",
+        "studentName": "Phan Thanh Tuấn",
+        "rollNumber": "SE184480",
+        "status": "absent",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "tulpnse185102@fpt.edu.vn": {
+        "studentEmail": "tulpnse185102@fpt.edu.vn",
+        "studentName": "Lữ Phước Nhật Tú",
+        "rollNumber": "SE185102",
+        "status": "absent",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "duongvuthaian@gmail.com": {
+        "studentEmail": "duongvuthaian@gmail.com",
+        "studentName": "Dương Vũ Thái An",
+        "rollNumber": "SE194622",
+        "status": "absent",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "hoangdvse183095@fpt.edu.vn": {
+        "studentEmail": "hoangdvse183095@fpt.edu.vn",
+        "studentName": "Đỗ Việt Hoàng",
+        "rollNumber": "SE183095",
+        "status": "absent",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "minhpvse183365@fpt.edu.vn": {
+        "studentEmail": "minhpvse183365@fpt.edu.vn",
+        "studentName": "Phạm Văn Minh",
+        "rollNumber": "SE183365",
+        "status": "absent",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "thangvlqse184739@fpt.edu.vn": {
+        "studentEmail": "thangvlqse184739@fpt.edu.vn",
+        "studentName": "Vũ Lương Quang Thắng",
+        "rollNumber": "SE184739",
+        "status": "absent",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "khoiddse182046@fpt.edu.vn": {
+        "studentEmail": "khoiddse182046@fpt.edu.vn",
+        "studentName": "Dương Đình Khôi",
+        "rollNumber": "SE182046",
+        "status": "absent",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "khoina231@gmail.com": {
+        "studentEmail": "khoina231@gmail.com",
+        "studentName": "Nguyễn Anh Khôi",
+        "rollNumber": "SE194126",
+        "status": "absent",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "quoctpkse182112@fpt.edu.vn": {
+        "studentEmail": "quoctpkse182112@fpt.edu.vn",
+        "studentName": "Trần Phạm Khánh Quốc",
+        "rollNumber": "SE182112",
+        "status": "absent",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "neihtel1604@gmail.com": {
+        "studentEmail": "neihtel1604@gmail.com",
+        "studentName": "Lê Hưng Thiện",
+        "rollNumber": "SE193703",
+        "status": "absent",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "vynntse183571@fpt.edu.vn": {
+        "studentEmail": "vynntse183571@fpt.edu.vn",
+        "studentName": "Nguyễn Ngọc Tường Vy",
+        "rollNumber": "SE183571",
+        "status": "absent",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "huynguyen12042005@gmail.com": {
+        "studentEmail": "huynguyen12042005@gmail.com",
+        "studentName": "Nguyễn Quốc Huy",
+        "rollNumber": "SE194044",
+        "status": "absent",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "mailenguyen2301@gmail.com": {
+        "studentEmail": "mailenguyen2301@gmail.com",
+        "studentName": "Mai Lê Nguyên",
+        "rollNumber": "SE192120",
+        "status": "absent",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "dangthuanphat465@gmail.com": {
+        "studentEmail": "dangthuanphat465@gmail.com",
+        "studentName": "Đặng Thuận Phát",
+        "rollNumber": "SE194093",
+        "status": "absent",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "truongnduy1808@gmail.com": {
+        "studentEmail": "truongnduy1808@gmail.com",
+        "studentName": "Nguyễn Duy Trường",
+        "rollNumber": "SE194160",
+        "status": "absent",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "hungdtss180069@fpt.edu.vn": {
+        "studentEmail": "hungdtss180069@fpt.edu.vn",
+        "studentName": "Đặng Thành Hưng",
+        "rollNumber": "SS180069",
+        "status": "absent",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "minhnbse182173@fpt.edu.vn": {
+        "studentEmail": "minhnbse182173@fpt.edu.vn",
+        "studentName": "Nguyễn Bình Minh",
+        "rollNumber": "SE182173",
+        "status": "absent",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "thienvnse182141@fpt.edu.vn": {
+        "studentEmail": "thienvnse182141@fpt.edu.vn",
+        "studentName": "Võ Nhật Thiên",
+        "rollNumber": "SE182141",
+        "status": "absent",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "thuanvctse182422@fpt.edu.vn": {
+        "studentEmail": "thuanvctse182422@fpt.edu.vn",
+        "studentName": "Văn Châu Trường Thuận",
+        "rollNumber": "SE182422",
+        "status": "absent",
+        "isManualOverride": false,
+        "checkedInAt": null
+      }
+    }
+  },
+  "13_PRM392_SE1920": {
+    "1": {
+      "baontgse183271@fpt.edu.vn": {
+        "studentEmail": "baontgse183271@fpt.edu.vn",
+        "studentName": "Nguyễn Trần Gia Bảo",
+        "rollNumber": "SE183271",
+        "status": "blank",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "sonnpxse183201@fpt.edu.vn": {
+        "studentEmail": "sonnpxse183201@fpt.edu.vn",
+        "studentName": "Nguyễn Phạm Xuân Sơn",
+        "rollNumber": "SE183201",
+        "status": "blank",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "duongquocthai368@gmail.com": {
+        "studentEmail": "duongquocthai368@gmail.com",
+        "studentName": "Dương Quốc Thái",
+        "rollNumber": "SE192024",
+        "status": "blank",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "tuanvdse184988@fpt.edu.vn": {
+        "studentEmail": "tuanvdse184988@fpt.edu.vn",
+        "studentName": "Vũ Đức Tuấn",
+        "rollNumber": "SE184988",
+        "status": "blank",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "hoangquocbao011105@gmail.com": {
+        "studentEmail": "hoangquocbao011105@gmail.com",
+        "studentName": "Hoàng Quốc Bảo",
+        "rollNumber": "SE196327",
+        "status": "blank",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "tduc01234@gmail.com": {
+        "studentEmail": "tduc01234@gmail.com",
+        "studentName": "Trang Thuận Đức",
+        "rollNumber": "SE192160",
+        "status": "blank",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "lehoangduy23092005@gmail.com": {
+        "studentEmail": "lehoangduy23092005@gmail.com",
+        "studentName": "Lê Hoàng Duy",
+        "rollNumber": "SE192427",
+        "status": "blank",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "dnhuy207@gmail.com": {
+        "studentEmail": "dnhuy207@gmail.com",
+        "studentName": "Đỗ Nhất Huy",
+        "rollNumber": "SE196437",
+        "status": "blank",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "nbn1784@gmail.com": {
+        "studentEmail": "nbn1784@gmail.com",
+        "studentName": "Nguyễn Bảo Nguyên",
+        "rollNumber": "SE196296",
+        "status": "blank",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "lephangiabao9904.1920@gmail.com": {
+        "studentEmail": "lephangiabao9904.1920@gmail.com",
+        "studentName": "Lê Phan Gia Bảo",
+        "rollNumber": "SE194347",
+        "status": "blank",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "khanhtrangamer@gmail.com": {
+        "studentEmail": "khanhtrangamer@gmail.com",
+        "studentName": "Trần Nguyễn Nam Khánh",
+        "rollNumber": "SE196250",
+        "status": "blank",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "ahkhoinguyen169@gmail.com": {
+        "studentEmail": "ahkhoinguyen169@gmail.com",
+        "studentName": "Nguyễn Hoàng Anh Khôi",
+        "rollNumber": "SE194466",
+        "status": "blank",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "phucltse184265@fpt.edu.vn": {
+        "studentEmail": "phucltse184265@fpt.edu.vn",
+        "studentName": "Lê Trường Phúc",
+        "rollNumber": "SE184265",
+        "status": "blank",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "tqvuong102@gmail.com": {
+        "studentEmail": "tqvuong102@gmail.com",
+        "studentName": "Trương Quốc Vương",
+        "rollNumber": "SE196401",
+        "status": "blank",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "haianhlam29052005@gmail.com": {
+        "studentEmail": "haianhlam29052005@gmail.com",
+        "studentName": "Lâm Thiên Hải Anh",
+        "rollNumber": "SE194909",
+        "status": "blank",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "datttse182072@fpt.edu.vn": {
+        "studentEmail": "datttse182072@fpt.edu.vn",
+        "studentName": "Trần Tiến Đạt",
+        "rollNumber": "SE182072",
+        "status": "blank",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "hungvnhe170876@fpt.edu.vn": {
+        "studentEmail": "hungvnhe170876@fpt.edu.vn",
+        "studentName": "Vũ Ngọc Hưng",
+        "rollNumber": "HE170876",
+        "status": "blank",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "phuocttse180299@fpt.edu.vn": {
+        "studentEmail": "phuocttse180299@fpt.edu.vn",
+        "studentName": "Tô Thiên Phước",
+        "rollNumber": "SE180299",
+        "status": "blank",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "megalit2578@gmail.com": {
+        "studentEmail": "megalit2578@gmail.com",
+        "studentName": "Trần Duy Đạt",
+        "rollNumber": "SE190622",
+        "status": "blank",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "caubom205@gmail.com": {
+        "studentEmail": "caubom205@gmail.com",
+        "studentName": "Trần Trung Hải",
+        "rollNumber": "SE196610",
+        "status": "blank",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "danghoang862@gmail.com": {
+        "studentEmail": "danghoang862@gmail.com",
+        "studentName": "Đặng Minh Hoàng",
+        "rollNumber": "SE196624",
+        "status": "blank",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "khoithse184144@fpt.edu.vn": {
+        "studentEmail": "khoithse184144@fpt.edu.vn",
+        "studentName": "Trần Hoài Khôi",
+        "rollNumber": "SE184144",
+        "status": "blank",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "nhanlhse184226@fpt.edu.vn": {
+        "studentEmail": "nhanlhse184226@fpt.edu.vn",
+        "studentName": "Lâm Hoàng Nhân",
+        "rollNumber": "SE184226",
+        "status": "blank",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "bonndse180400@fpt.edu.vn": {
+        "studentEmail": "bonndse180400@fpt.edu.vn",
+        "studentName": "Nguyễn Đức Bổn",
+        "rollNumber": "SE180400",
+        "status": "blank",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "minhntse180629@fpt.edu.vn": {
+        "studentEmail": "minhntse180629@fpt.edu.vn",
+        "studentName": "Nguyễn Thành Minh",
+        "rollNumber": "SE180629",
+        "status": "blank",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "nguyenhtse180338@fpt.edu.vn": {
+        "studentEmail": "nguyenhtse180338@fpt.edu.vn",
+        "studentName": "Hoàng Thanh Nguyên",
+        "rollNumber": "SE180338",
+        "status": "blank",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "quynvpse180447@fpt.edu.vn": {
+        "studentEmail": "quynvpse180447@fpt.edu.vn",
+        "studentName": "Nguyễn Văn Phú Quý",
+        "rollNumber": "SE180447",
+        "status": "blank",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "davidduong1711@gmail.com": {
+        "studentEmail": "davidduong1711@gmail.com",
+        "studentName": "Dương Hạo Cơ",
+        "rollNumber": "SE194941",
+        "status": "blank",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "duongduy12314@gmail.com": {
+        "studentEmail": "duongduy12314@gmail.com",
+        "studentName": "Dương Thành Thanh Duy",
+        "rollNumber": "SE194673",
+        "status": "blank",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "vuduchung060905@gmail.com": {
+        "studentEmail": "vuduchung060905@gmail.com",
+        "studentName": "Vũ Đức Hùng",
+        "rollNumber": "SE193324",
+        "status": "blank",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "victornhatthinh@gmail.com": {
+        "studentEmail": "victornhatthinh@gmail.com",
+        "studentName": "Nguyễn Huỳnh Nhật Thịnh",
+        "rollNumber": "SE194001",
+        "status": "blank",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "hieubqse180374@fpt.edu.vn": {
+        "studentEmail": "hieubqse180374@fpt.edu.vn",
+        "studentName": "Bùi Quang Hiếu",
+        "rollNumber": "SE180374",
+        "status": "blank",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "hoangdvse183095@fpt.edu.vn": {
+        "studentEmail": "hoangdvse183095@fpt.edu.vn",
+        "studentName": "Đỗ Việt Hoàng",
+        "rollNumber": "SE183095",
+        "status": "blank",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "vinhtltse183051@fpt.edu.vn": {
+        "studentEmail": "vinhtltse183051@fpt.edu.vn",
+        "studentName": "Thân Lê Thành Vinh",
+        "rollNumber": "SE183051",
+        "status": "blank",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "binhdhse183011@fpt.edu.vn": {
+        "studentEmail": "binhdhse183011@fpt.edu.vn",
+        "studentName": "Dương Hòa Bình",
+        "rollNumber": "SE183011",
+        "status": "blank",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "huyndse161632@fpt.edu.vn": {
+        "studentEmail": "huyndse161632@fpt.edu.vn",
+        "studentName": "Nguyễn Đức Huy",
+        "rollNumber": "SE161632",
+        "status": "blank",
+        "isManualOverride": false,
+        "checkedInAt": null
+      }
+    }
+  },
+  "14_PRM393_SE1920": {
+    "1": {
+      "haianhlam29052005@gmail.com": {
+        "studentEmail": "haianhlam29052005@gmail.com",
+        "studentName": "Lâm Thiên Hải Anh",
+        "rollNumber": "SE194909",
+        "status": "blank",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "hoangquocbao011105@gmail.com": {
+        "studentEmail": "hoangquocbao011105@gmail.com",
+        "studentName": "Hoàng Quốc Bảo",
+        "rollNumber": "SE196327",
+        "status": "blank",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "lephangiabao9904.1920@gmail.com": {
+        "studentEmail": "lephangiabao9904.1920@gmail.com",
+        "studentName": "Lê Phan Gia Bảo",
+        "rollNumber": "SE194347",
+        "status": "blank",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "baontgse183271@fpt.edu.vn": {
+        "studentEmail": "baontgse183271@fpt.edu.vn",
+        "studentName": "Nguyễn Trần Gia Bảo",
+        "rollNumber": "SE183271",
+        "status": "blank",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "binhdhse183011@fpt.edu.vn": {
+        "studentEmail": "binhdhse183011@fpt.edu.vn",
+        "studentName": "Dương Hòa Bình",
+        "rollNumber": "SE183011",
+        "status": "blank",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "bonndse180400@fpt.edu.vn": {
+        "studentEmail": "bonndse180400@fpt.edu.vn",
+        "studentName": "Nguyễn Đức Bổn",
+        "rollNumber": "SE180400",
+        "status": "blank",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "davidduong1711@gmail.com": {
+        "studentEmail": "davidduong1711@gmail.com",
+        "studentName": "Dương Hạo Cơ",
+        "rollNumber": "SE194941",
+        "status": "blank",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "megalit2578@gmail.com": {
+        "studentEmail": "megalit2578@gmail.com",
+        "studentName": "Trần Duy Đạt",
+        "rollNumber": "SE190622",
+        "status": "blank",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "datttse182072@fpt.edu.vn": {
+        "studentEmail": "datttse182072@fpt.edu.vn",
+        "studentName": "Trần Tiến Đạt",
+        "rollNumber": "SE182072",
+        "status": "blank",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "tduc01234@gmail.com": {
+        "studentEmail": "tduc01234@gmail.com",
+        "studentName": "Trang Thuận Đức",
+        "rollNumber": "SE192160",
+        "status": "blank",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "duongduy12314@gmail.com": {
+        "studentEmail": "duongduy12314@gmail.com",
+        "studentName": "Dương Thành Thanh Duy",
+        "rollNumber": "SE194673",
+        "status": "blank",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "lehoangduy23092005@gmail.com": {
+        "studentEmail": "lehoangduy23092005@gmail.com",
+        "studentName": "Lê Hoàng Duy",
+        "rollNumber": "SE192427",
+        "status": "blank",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "caubom205@gmail.com": {
+        "studentEmail": "caubom205@gmail.com",
+        "studentName": "Trần Trung Hải",
+        "rollNumber": "SE196610",
+        "status": "blank",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "hieubqse180374@fpt.edu.vn": {
+        "studentEmail": "hieubqse180374@fpt.edu.vn",
+        "studentName": "Bùi Quang Hiếu",
+        "rollNumber": "SE180374",
+        "status": "blank",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "danghoang862@gmail.com": {
+        "studentEmail": "danghoang862@gmail.com",
+        "studentName": "Đặng Minh Hoàng",
+        "rollNumber": "SE196624",
+        "status": "blank",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "hoangdvse183095@fpt.edu.vn": {
+        "studentEmail": "hoangdvse183095@fpt.edu.vn",
+        "studentName": "Đỗ Việt Hoàng",
+        "rollNumber": "SE183095",
+        "status": "blank",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "vuduchung060905@gmail.com": {
+        "studentEmail": "vuduchung060905@gmail.com",
+        "studentName": "Vũ Đức Hùng",
+        "rollNumber": "SE193324",
+        "status": "blank",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "hungvnhe170876@fpt.edu.vn": {
+        "studentEmail": "hungvnhe170876@fpt.edu.vn",
+        "studentName": "Vũ Ngọc Hưng",
+        "rollNumber": "HE170876",
+        "status": "blank",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "dnhuy207@gmail.com": {
+        "studentEmail": "dnhuy207@gmail.com",
+        "studentName": "Đỗ Nhất Huy",
+        "rollNumber": "SE196437",
+        "status": "blank",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "huyndse161632@fpt.edu.vn": {
+        "studentEmail": "huyndse161632@fpt.edu.vn",
+        "studentName": "Nguyễn Đức Huy",
+        "rollNumber": "SE161632",
+        "status": "blank",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "khanhtrangamer@gmail.com": {
+        "studentEmail": "khanhtrangamer@gmail.com",
+        "studentName": "Trần Nguyễn Nam Khánh",
+        "rollNumber": "SE196250",
+        "status": "blank",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "ahkhoinguyen169@gmail.com": {
+        "studentEmail": "ahkhoinguyen169@gmail.com",
+        "studentName": "Nguyễn Hoàng Anh Khôi",
+        "rollNumber": "SE194466",
+        "status": "blank",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "khoithse184144@fpt.edu.vn": {
+        "studentEmail": "khoithse184144@fpt.edu.vn",
+        "studentName": "Trần Hoài Khôi",
+        "rollNumber": "SE184144",
+        "status": "blank",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "minhntse180629@fpt.edu.vn": {
+        "studentEmail": "minhntse180629@fpt.edu.vn",
+        "studentName": "Nguyễn Thành Minh",
+        "rollNumber": "SE180629",
+        "status": "blank",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "nguyenhtse180338@fpt.edu.vn": {
+        "studentEmail": "nguyenhtse180338@fpt.edu.vn",
+        "studentName": "Hoàng Thanh Nguyên",
+        "rollNumber": "SE180338",
+        "status": "blank",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "nbn1784@gmail.com": {
+        "studentEmail": "nbn1784@gmail.com",
+        "studentName": "Nguyễn Bảo Nguyên",
+        "rollNumber": "SE196296",
+        "status": "blank",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "nhanlhse184226@fpt.edu.vn": {
+        "studentEmail": "nhanlhse184226@fpt.edu.vn",
+        "studentName": "Lâm Hoàng Nhân",
+        "rollNumber": "SE184226",
+        "status": "blank",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "phucltse184265@fpt.edu.vn": {
+        "studentEmail": "phucltse184265@fpt.edu.vn",
+        "studentName": "Lê Trường Phúc",
+        "rollNumber": "SE184265",
+        "status": "blank",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "phuocttse180299@fpt.edu.vn": {
+        "studentEmail": "phuocttse180299@fpt.edu.vn",
+        "studentName": "Tô Thiên Phước",
+        "rollNumber": "SE180299",
+        "status": "blank",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "quynvpse180447@fpt.edu.vn": {
+        "studentEmail": "quynvpse180447@fpt.edu.vn",
+        "studentName": "Nguyễn Văn Phú Quý",
+        "rollNumber": "SE180447",
+        "status": "blank",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "sonnpxse183201@fpt.edu.vn": {
+        "studentEmail": "sonnpxse183201@fpt.edu.vn",
+        "studentName": "Nguyễn Phạm Xuân Sơn",
+        "rollNumber": "SE183201",
+        "status": "blank",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "duongquocthai368@gmail.com": {
+        "studentEmail": "duongquocthai368@gmail.com",
+        "studentName": "Dương Quốc Thái",
+        "rollNumber": "SE192024",
+        "status": "blank",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "victornhatthinh@gmail.com": {
+        "studentEmail": "victornhatthinh@gmail.com",
+        "studentName": "Nguyễn Huỳnh Nhật Thịnh",
+        "rollNumber": "SE194001",
+        "status": "blank",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "tuanvdse184988@fpt.edu.vn": {
+        "studentEmail": "tuanvdse184988@fpt.edu.vn",
+        "studentName": "Vũ Đức Tuấn",
+        "rollNumber": "SE184988",
+        "status": "blank",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "vinhtltse183051@fpt.edu.vn": {
+        "studentEmail": "vinhtltse183051@fpt.edu.vn",
+        "studentName": "Thân Lê Thành Vinh",
+        "rollNumber": "SE183051",
+        "status": "blank",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "tqvuong102@gmail.com": {
+        "studentEmail": "tqvuong102@gmail.com",
+        "studentName": "Trương Quốc Vương",
+        "rollNumber": "SE196401",
+        "status": "blank",
+        "isManualOverride": false,
+        "checkedInAt": null
+      }
+    }
+  },
+  "22_SWD392_SE1927": {
+    "1": {
+      "bacnvse180739@fpt.edu.vn": {
+        "studentEmail": "bacnvse180739@fpt.edu.vn",
+        "studentName": "Nguyễn Văn Bắc",
+        "rollNumber": "SE180739",
+        "status": "blank",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "hungndbse180775@fpt.edu.vn": {
+        "studentEmail": "hungndbse180775@fpt.edu.vn",
+        "studentName": "Nguyễn Đỗ Bảo Hưng",
+        "rollNumber": "SE180775",
+        "status": "blank",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "votranngochuu@gmail.com": {
+        "studentEmail": "votranngochuu@gmail.com",
+        "studentName": "Võ Trần Ngọc Hữu",
+        "rollNumber": "SE196276",
+        "status": "blank",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "huyennttse182418@fpt.edu.vn": {
+        "studentEmail": "huyennttse182418@fpt.edu.vn",
+        "studentName": "Nguyễn Thị Thu Huyền",
+        "rollNumber": "SE182418",
+        "status": "blank",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "trinlnse181653@fpt.edu.vn": {
+        "studentEmail": "trinlnse181653@fpt.edu.vn",
+        "studentName": "Nguyễn Lê Ngọc Trí",
+        "rollNumber": "SE181653",
+        "status": "blank",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "bachnphse183175@fpt.edu.vn": {
+        "studentEmail": "bachnphse183175@fpt.edu.vn",
+        "studentName": "Nguyễn Phan Huy Bách",
+        "rollNumber": "SE183175",
+        "status": "blank",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "donvtse183237@fpt.edu.vn": {
+        "studentEmail": "donvtse183237@fpt.edu.vn",
+        "studentName": "Vũ Tiến Đơn",
+        "rollNumber": "SE183237",
+        "status": "blank",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "lekiet2442005@gmail.com": {
+        "studentEmail": "lekiet2442005@gmail.com",
+        "studentName": "Lê Tuấn Kiệt",
+        "rollNumber": "SE190124",
+        "status": "blank",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "dangp2660@gmail.com": {
+        "studentEmail": "dangp2660@gmail.com",
+        "studentName": "Đặng Hồng Phước",
+        "rollNumber": "SE190769",
+        "status": "blank",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "nhutdtqse173283@fpt.edu.vn": {
+        "studentEmail": "nhutdtqse173283@fpt.edu.vn",
+        "studentName": "Đoàn Trần Quang Nhựt",
+        "rollNumber": "SE173283",
+        "status": "blank",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "thinhphse180133@fpt.edu.vn": {
+        "studentEmail": "thinhphse180133@fpt.edu.vn",
+        "studentName": "Phạm Hưng Thịnh",
+        "rollNumber": "SE180133",
+        "status": "blank",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "daindse160368@fpt.edu.vn": {
+        "studentEmail": "daindse160368@fpt.edu.vn",
+        "studentName": "Nguyễn Đức Đại",
+        "rollNumber": "SE160368",
+        "status": "blank",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "hominhieu27072005@gmail.com": {
+        "studentEmail": "hominhieu27072005@gmail.com",
+        "studentName": "Hồ Minh Hiếu",
+        "rollNumber": "SE193051",
+        "status": "blank",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "kientuong707@gmail.com": {
+        "studentEmail": "kientuong707@gmail.com",
+        "studentName": "Tưởng Hiếu Kiên",
+        "rollNumber": "SE193042",
+        "status": "blank",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "minhtruong300605@gmail.com": {
+        "studentEmail": "minhtruong300605@gmail.com",
+        "studentName": "Trương Trần Anh Minh",
+        "rollNumber": "SE194165",
+        "status": "blank",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "tqt12342018s@gmail.com": {
+        "studentEmail": "tqt12342018s@gmail.com",
+        "studentName": "Trần Quốc Thái",
+        "rollNumber": "SE192786",
+        "status": "blank",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "danghoangtrucvy090105@gmail.com": {
+        "studentEmail": "danghoangtrucvy090105@gmail.com",
+        "studentName": "Đặng Hoàng Trúc Vy",
+        "rollNumber": "SE192635",
+        "status": "blank",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "nguyenchaunhatanh1008@gmail.com": {
+        "studentEmail": "nguyenchaunhatanh1008@gmail.com",
+        "studentName": "Nguyễn Châu Nhật Anh",
+        "rollNumber": "SE192324",
+        "status": "blank",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "duy1632005@gmail.com": {
+        "studentEmail": "duy1632005@gmail.com",
+        "studentName": "Lê Đình Duy",
+        "rollNumber": "SE196427",
+        "status": "blank",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "hunglvse181785@fpt.edu.vn": {
+        "studentEmail": "hunglvse181785@fpt.edu.vn",
+        "studentName": "Lưu Vũ Hưng",
+        "rollNumber": "SE181785",
+        "status": "blank",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "hungttse183526@fpt.edu.vn": {
+        "studentEmail": "hungttse183526@fpt.edu.vn",
+        "studentName": "Trần Tuấn Hưng",
+        "rollNumber": "SE183526",
+        "status": "blank",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "trankienqt02@gmail.com": {
+        "studentEmail": "trankienqt02@gmail.com",
+        "studentName": "Trần Ngọc Trung Kiên",
+        "rollNumber": "DE190260",
+        "status": "blank",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "longchse182479@fpt.edu.vn": {
+        "studentEmail": "longchse182479@fpt.edu.vn",
+        "studentName": "Chiêm Hoàng Long",
+        "rollNumber": "SE182479",
+        "status": "blank",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "hoanganhle552005@gmail.com": {
+        "studentEmail": "hoanganhle552005@gmail.com",
+        "studentName": "Lê Hoàng Anh",
+        "rollNumber": "SE192270",
+        "status": "blank",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "anhpntse184648@fpt.edu.vn": {
+        "studentEmail": "anhpntse184648@fpt.edu.vn",
+        "studentName": "Phạm Nguyễn Thế Anh",
+        "rollNumber": "SE184648",
+        "status": "blank",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "datn100705@gmail.com": {
+        "studentEmail": "datn100705@gmail.com",
+        "studentName": "Nguyễn Thành Đạt",
+        "rollNumber": "SE194539",
+        "status": "blank",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "khangntdse184419@fpt.edu.vn": {
+        "studentEmail": "khangntdse184419@fpt.edu.vn",
+        "studentName": "Nguyễn Trần Duy Khang",
+        "rollNumber": "SE184419",
+        "status": "blank",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "kietlnase184435@fpt.edu.vn": {
+        "studentEmail": "kietlnase184435@fpt.edu.vn",
+        "studentName": "Lê Nguyễn Anh Kiệt",
+        "rollNumber": "SE184435",
+        "status": "blank",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "trieuthqse184535@fpt.edu.vn": {
+        "studentEmail": "trieuthqse184535@fpt.edu.vn",
+        "studentName": "Trương Hoàng Quốc Triệu",
+        "rollNumber": "SE184535",
+        "status": "blank",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "huynbpse180549@fpt.edu.vn": {
+        "studentEmail": "huynbpse180549@fpt.edu.vn",
+        "studentName": "Nguyễn Bình Phương Huy",
+        "rollNumber": "SE180549",
+        "status": "blank",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "loanlthse182208@fpt.edu.vn": {
+        "studentEmail": "loanlthse182208@fpt.edu.vn",
+        "studentName": "Lê Thị Hồng Loan",
+        "rollNumber": "SE182208",
+        "status": "blank",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "quantmse180644@fpt.edu.vn": {
+        "studentEmail": "quantmse180644@fpt.edu.vn",
+        "studentName": "Trần Minh Quân",
+        "rollNumber": "SE180644",
+        "status": "blank",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "tanvtse183061@fpt.edu.vn": {
+        "studentEmail": "tanvtse183061@fpt.edu.vn",
+        "studentName": "Võ Thành Tấn",
+        "rollNumber": "SE183061",
+        "status": "blank",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "thonglqse180488@fpt.edu.vn": {
+        "studentEmail": "thonglqse180488@fpt.edu.vn",
+        "studentName": "Lê Quốc Thông",
+        "rollNumber": "SE180488",
+        "status": "blank",
+        "isManualOverride": false,
+        "checkedInAt": null
+      },
+      "vinhnqse184104@fpt.edu.vn": {
+        "studentEmail": "vinhnqse184104@fpt.edu.vn",
+        "studentName": "Nguyễn Quang Vinh",
+        "rollNumber": "SE184104",
+        "status": "blank",
+        "isManualOverride": false,
+        "checkedInAt": null
+      }
+    }
+  }
+}

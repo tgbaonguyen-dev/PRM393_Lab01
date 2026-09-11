@@ -15,4 +15,7 @@ The backend uses three logical layers:
 - Service: attendance business rules.
 - Repository: communication with the data gateway.
 
-The old Flutter Web/Dart/Supabase scaffold has been removed. The new applications and their directory structure have not been initialized yet.
+The applications and their directory structure have been initialized:
+- `apps/desktop`: Flutter Desktop Windows application.
+- `apps/web`: Next.js App Router (Student web check-in & 3-layer backend API).
+- `apps-script`: Google Apps Script Data Gateway with LockService.
