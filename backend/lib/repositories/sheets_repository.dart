@@ -1,0 +1,159 @@
+import 'dart:convert';
+import 'dart:io';
+import 'package:http/http.dart' as http;
+
+/// Tầng Repository kết nối trực tiếp với Google Apps Script Data Gateway qua HTTPS
+/// Tuân thủ quy ước kiến trúc 3 lớp (SRS v4.0 & docs/architecture.md)
+class SheetsRepository {
+  final String gatewayUrl;
+  final http.Client _client;
+
+  SheetsRepository({String? gatewayUrl, http.Client? client})
+      : gatewayUrl = gatewayUrl ??
+            Platform.environment['APPS_SCRIPT_GATEWAY_URL'] ??
+            'https://script.google.com/macros/s/AKfycbxuAV49xcKSzJHeiyRZ96LEj_qwLLP_omiJu5XTXbCo-xdRg0G7KhE9SNZI_y28r21ftw/exec',
+        _client = client ?? http.Client();
+
+  /// Gửi POST Request đến Google Apps Script Gateway và xử lý 302 Redirect
+  Future<Map<String, dynamic>> _postToGateway(String action, Map<String, dynamic> payload) async {
+    if (gatewayUrl.isEmpty) {
+      return {'success': false, 'error': 'Chưa cấu hình APPS_SCRIPT_GATEWAY_URL'};
+    }
+
+    var response = await _client.post(
+      Uri.parse(gatewayUrl),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'action': action,
+        'payload': payload,
+      }),
+    );
+
+    // Google Apps Script Web App trả về mã 302 Redirect sang googleusercontent.com/echo
+    if (response.statusCode == 302 ||
+        response.statusCode == 301 ||
+        response.statusCode == 303 ||
+        response.statusCode == 307) {
+      final redirectUrl = response.headers['location'];
+      if (redirectUrl != null && redirectUrl.isNotEmpty) {
+        response = await _client.get(Uri.parse(redirectUrl));
+      }
+    }
+
+    if (response.statusCode != 200) {
+      throw Exception('Data Gateway trả về HTTP ${response.statusCode}: ${response.body}');
+    }
+
+    final dynamic decoded = jsonDecode(response.body);
+    if (decoded is Map<String, dynamic>) {
+      return decoded;
+    }
+    return {'success': true, 'data': decoded};
+  }
+
+  /// Đồng bộ toàn bộ danh sách lớp học và tạo tab riêng cho từng lớp (kèm Tab Overview)
+  Future<Map<String, dynamic>> syncAllClasses({
+    required List<dynamic> classes,
+    required String startDate,
+  }) async {
+    final res = await _postToGateway('syncAllClasses', {
+      'classes': classes,
+      'startDate': startDate,
+    });
+    return {
+      'success': res['success'] == true,
+      'spreadsheetUrl': res['data']?['spreadsheetUrl'],
+      'classCount': res['data']?['classCount'] ?? classes.length,
+      'message': 'Đã đồng bộ toàn bộ các lớp học lên Google Sheet thành công.',
+    };
+  }
+
+  /// Khởi tạo bảng mẫu mặc định
+  Future<bool> setupDatabase() async {
+    final res = await _postToGateway('setupDatabase', {});
+    return res['success'] == true;
+  }
+
+  /// Lưu thông tin Lớp học, Danh sách SV và các buổi học vào Google Sheets
+  Future<bool> saveClassOffering({
+    required Map<String, dynamic> offering,
+    required List<Map<String, dynamic>> roster,
+    required List<Map<String, dynamic>> lessons,
+  }) async {
+    final res = await _postToGateway('saveClassOffering', {
+      'offering': offering,
+      'roster': roster,
+      'lessons': lessons,
+    });
+    return res['success'] == true;
+  }
+
+  /// Mở ca điểm danh (FR-09, FR-10)
+  Future<Map<String, dynamic>?> openAttendanceWindow(String sessionId) async {
+    final res = await _postToGateway('openAttendanceWindow', {
+      'sessionId': sessionId,
+    });
+    if (res['success'] == true && res['data'] is Map<String, dynamic>) {
+      return res['data'] as Map<String, dynamic>;
+    }
+    return null;
+  }
+
+  /// Đóng ca điểm danh (FR-12)
+  Future<bool> closeAttendanceWindow(String windowId) async {
+    final res = await _postToGateway('closeAttendanceWindow', {
+      'windowId': windowId,
+    });
+    return res['success'] == true;
+  }
+
+  /// Ghi nhận sinh viên check-in (FR-17, FR-19, FR-20, AC-10)
+  Future<Map<String, dynamic>> recordCheckIn(String sessionId, String studentEmail) async {
+    final res = await _postToGateway('saveCheckIn', {
+      'sessionId': sessionId,
+      'studentEmail': studentEmail,
+    });
+    return res;
+  }
+
+  /// Giảng viên sửa thủ công A <-> P (FR-14)
+  Future<bool> recordManualOverride(String sessionId, String studentEmail, String status) async {
+    final res = await _postToGateway('saveManualOverride', {
+      'sessionId': sessionId,
+      'studentEmail': studentEmail,
+      'status': status,
+    });
+    return res['success'] == true;
+  }
+
+  /// Lấy danh sách kết quả điểm danh phục vụ Polling 5s (FR-11)
+  Future<List<Map<String, dynamic>>> getAttendanceResults(String sessionId) async {
+    final res = await _postToGateway('getAttendanceResults', {
+      'sessionId': sessionId,
+    });
+    final dynamic data = res['data'];
+    if (data is List) {
+      return data.cast<Map<String, dynamic>>();
+    }
+    return [];
+  }
+
+  /// Lấy thông tin ca điểm danh đang mở
+  Future<Map<String, dynamic>?> getActiveWindow(String sessionId) async {
+    final res = await _postToGateway('getActiveWindow', {
+      'sessionId': sessionId,
+    });
+    if (res['success'] == true && res['data'] is Map<String, dynamic>) {
+      return res['data'] as Map<String, dynamic>;
+    }
+    return null;
+  }
+
+  /// Nạp dữ liệu mẫu 5 sinh viên để test (M5)
+  Future<bool> seedSampleData(List<Map<String, dynamic>> students) async {
+    final res = await _postToGateway('seedSampleData', {
+      'students': students,
+    });
+    return res['success'] == true;
+  }
+}
