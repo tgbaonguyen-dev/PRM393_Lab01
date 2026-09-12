@@ -9,6 +9,8 @@ The design, brand colors, fonts, and wireframes have not been finalized. This fi
 - Teachers use personal computers to manage classes and schedules and display QR codes.
 - Students use mobile browsers to sign in and check in.
 - Lecturer UI: Flutter Windows desktop. Student UI: responsive Next.js website. Visual design remains unapproved.
+- Lecturer UI: Flutter Windows desktop located in `/apps/desktop`.
+- Student UI: responsive Next.js website located in `/apps/web`. Visual design remains unapproved.
 
 ## Assigning a UI task
 
