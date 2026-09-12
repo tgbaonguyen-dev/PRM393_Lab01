@@ -1,0 +1,589 @@
+/**
+ * Google Apps Script Data Gateway for PRM393 Attendance System
+ * Tạo Tab Overview và Tab riêng cho TỪNG LỚP HỌC của Giảng viên
+ * Hiển thị 20 Slot điểm danh, tự tính Tỉ lệ vắng & Cảnh báo CẤM THI (>20%)
+ * Cập nhật Realtime trực tiếp vào từng ô Slot của sinh viên với LockService chống đua.
+ */
+
+function doPost(e) {
+  try {
+    var contents = JSON.parse(e.postData.contents);
+    var action = contents.action;
+    var payload = contents.payload || {};
+
+    // 1. Acquire Script Lock để tuần tự hóa các yêu cầu điểm danh đồng thời
+    var lock = LockService.getScriptLock();
+    var hasLock = lock.tryLock(20000); // Chờ tối đa 20 giây
+
+    if (!hasLock) {
+      return ContentService.createTextOutput(JSON.stringify({
+        success: false,
+        error: 'Hệ thống đang bận xử lý lượt điểm danh khác. Vui lòng thử lại sau giây lát.'
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+
+    var result;
+    try {
+      result = dispatchAction(action, payload);
+    } finally {
+      lock.releaseLock();
+    }
+
+    return ContentService.createTextOutput(JSON.stringify({
+      success: true,
+      data: result
+    })).setMimeType(ContentService.MimeType.JSON);
+
+  } catch (err) {
+    return ContentService.createTextOutput(JSON.stringify({
+      success: false,
+      error: err.toString()
+    })).setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+function doGet(e) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  return ContentService.createTextOutput(JSON.stringify({
+    status: 'ok',
+    gateway: 'PRM393 Google Apps Script Data Gateway (Class Markbooks Active)',
+    spreadsheetUrl: ss ? ss.getUrl() : null
+  })).setMimeType(ContentService.MimeType.JSON);
+}
+
+function dispatchAction(action, payload) {
+  switch (action) {
+    case 'syncAllClasses':
+      return DatabaseService.syncAllClassesFromDesktop(payload.classes, payload.startDate);
+    case 'setupDatabase':
+      return DatabaseService.setupDatabase();
+    case 'openAttendanceWindow':
+      return DatabaseService.openAttendanceWindow(payload.lessonId || payload.sessionId);
+    case 'closeAttendanceWindow':
+      return DatabaseService.closeAttendanceWindow(payload.windowId);
+    case 'saveCheckIn':
+      return DatabaseService.recordCheckIn(payload.lessonId || payload.sessionId, payload.studentEmail);
+    case 'saveManualOverride':
+      return DatabaseService.recordOverride(payload.lessonId || payload.sessionId, payload.studentEmail, payload.status);
+    case 'getAttendanceResults':
+      return DatabaseService.getAttendanceResults(payload.lessonId || payload.sessionId);
+    case 'getActiveWindow':
+      return DatabaseService.getActiveWindow(payload.lessonId || payload.sessionId);
+    case 'clearAllDatabase':
+      return DatabaseService.clearAllDatabase();
+    default:
+      throw new Error('Unknown action: ' + action);
+  }
+}
+
+/**
+ * Service Quản lý dữ liệu và Giao diện Bảng điểm Markbook trên Google Sheets
+ */
+var DatabaseService = {
+  getSpreadsheet: function () {
+    return SpreadsheetApp.getActiveSpreadsheet();
+  },
+
+  /**
+   * Xóa sạch toàn bộ các sheet cũ để làm mới hoàn toàn
+   */
+  clearAllDatabase: function () {
+    var ss = this.getSpreadsheet();
+    var tempSheet = ss.insertSheet('Temp_' + new Date().getTime());
+    var sheets = ss.getSheets();
+    for (var i = 0; i < sheets.length; i++) {
+      if (sheets[i].getName() !== tempSheet.getName()) {
+        try {
+          ss.deleteSheet(sheets[i]);
+        } catch (e) {}
+      }
+    }
+    return tempSheet;
+  },
+
+  /**
+   * Đồng bộ toàn bộ các lớp học từ Desktop App lên Google Sheet
+   * Tạo Sheet Overview và Sheet riêng cho TỪNG LỚP HỌC
+   */
+  syncAllClassesFromDesktop: function (classes, startDateStr) {
+    var ss = this.getSpreadsheet();
+    var tempSheet = this.clearAllDatabase();
+
+    // 1. Tạo Sheet OVERVIEW
+    var overviewSheet = ss.insertSheet('Overview', 0);
+    this.setupOverviewSheet(overviewSheet, classes, startDateStr);
+
+    // 2. Tạo Sheet cho TỪNG LỚP HỌC
+    for (var i = 0; i < classes.length; i++) {
+      try {
+        var cls = classes[i];
+        var cName = cls.className || ('Lop_' + (i + 1));
+        var sheetName = (cls.scheduleCode || '12') + '_' + (cls.subjectCode || 'PRM393') + '_' + cName;
+        var existing = ss.getSheetByName(sheetName);
+        if (existing) {
+          try { ss.deleteSheet(existing); } catch (e) {}
+        }
+        var classSheet = ss.insertSheet(sheetName);
+        this.setupClassMarkbookSheet(classSheet, cls, startDateStr);
+      } catch (classErr) {
+        Logger.log('Lỗi tạo sheet lớp ' + i + ': ' + classErr);
+      }
+    }
+
+    // 3. Xoá sheet tạm
+    try {
+      if (tempSheet && ss.getSheets().length > 1) {
+        ss.deleteSheet(tempSheet);
+      }
+    } catch (e) {}
+
+    SpreadsheetApp.flush();
+    return {
+      success: true,
+      classCount: classes.length,
+      spreadsheetUrl: ss.getUrl()
+    };
+  },
+
+  /**
+   * Thiết lập Sheet Overview tổng quan
+   */
+  setupOverviewSheet: function (sheet, classes, startDateStr) {
+    sheet.clear();
+
+    // Banner tiêu đề
+    sheet.getRange('A1:I1').merge();
+    var titleCell = sheet.getRange('A1');
+    titleCell.setValue('📊 TỔNG QUAN LỊCH GIẢNG DẠY HỌC KỲ (Bắt đầu từ: ' + (startDateStr || 'Theo lịch FAP') + ')');
+    titleCell.setBackground('#1E3A8A');
+    titleCell.setFontColor('#FFFFFF');
+    titleCell.setFontWeight('bold');
+    titleCell.setFontSize(14);
+    titleCell.setHorizontalAlignment('center');
+    titleCell.setVerticalAlignment('middle');
+    sheet.setRowHeight(1, 45);
+
+    // Header bảng
+    var headers = ['STT', 'Mã Môn', 'Tên Lớp', 'Mã Lịch FAP', 'Lịch Học Chi Tiết', 'Phòng Học', 'Slot 01 (Khai giảng)', 'Slot 20 (Kết thúc)', 'Sĩ Số'];
+    sheet.getRange(2, 1, 1, headers.length).setValues([headers]);
+    var hRange = sheet.getRange(2, 1, 1, headers.length);
+    hRange.setBackground('#2563EB');
+    hRange.setFontColor('#FFFFFF');
+    hRange.setFontWeight('bold');
+    hRange.setHorizontalAlignment('center');
+    hRange.setVerticalAlignment('middle');
+    sheet.setRowHeight(2, 35);
+
+    // Dữ liệu từng lớp
+    var rows = [];
+    for (var i = 0; i < classes.length; i++) {
+      var c = classes[i];
+      var lessons = c.lessons || [];
+      var firstDate = (lessons.length > 0 && lessons[0].date) ? lessons[0].date : (startDateStr || '-');
+      var lastDate = (lessons.length > 0 && lessons[lessons.length - 1].date) ? lessons[lessons.length - 1].date : '-';
+      var schedDesc = this.getScheduleDescription(c.scheduleCode);
+
+      rows.push([
+        i + 1,
+        c.subjectCode || 'PRM393',
+        c.className,
+        c.scheduleCode || '',
+        schedDesc,
+        c.room || 'P.Lab',
+        firstDate,
+        lastDate,
+        c.roster ? c.roster.length : 0
+      ]);
+    }
+
+    if (rows.length > 0) {
+      var dataRange = sheet.getRange(3, 1, rows.length, headers.length);
+      dataRange.setValues(rows);
+      dataRange.setHorizontalAlignment('center');
+      dataRange.setVerticalAlignment('middle');
+      dataRange.setBorder(true, true, true, true, true, true, '#CBD5E1', SpreadsheetApp.BorderStyle.SOLID);
+    }
+
+    sheet.setFrozenRows(2);
+    var colWidths = [45, 90, 110, 80, 200, 90, 140, 140, 80];
+    for (var c = 0; c < colWidths.length; c++) {
+      sheet.setColumnWidth(c + 1, colWidths[c]);
+    }
+  },
+
+  /**
+   * Thiết lập Sheet Markbook cho 1 Lớp cụ thể (như hình ảnh mong muốn)
+   */
+  setupClassMarkbookSheet: function (sheet, cls, startDateStr) {
+    sheet.clear();
+    var lessons = cls.lessons || [];
+    var slotCount = lessons.length > 0 ? lessons.length : (cls.slotCount || 20);
+    var scheduleInfo = this.getScheduleDescription(cls.scheduleCode);
+
+    // Dòng 1: Banner lớp học
+    var totalCols = 5 + slotCount + 3; // 5 cột info + N slot + 3 cột thống kê
+    sheet.getRange(1, 1, 1, totalCols).merge();
+    var bannerCell = sheet.getRange(1, 1);
+    bannerCell.setValue('📚 Môn: ' + (cls.subjectCode || 'PRM393') + '  |  Lớp: ' + cls.className + '  |  Lịch: ' + cls.scheduleCode + ' (' + scheduleInfo + ')  |  Sĩ số: ' + (cls.roster ? cls.roster.length : 0) + ' SV');
+    bannerCell.setBackground('#1E3A8A'); // Navy Blue
+    bannerCell.setFontColor('#FFFFFF');
+    bannerCell.setFontWeight('bold');
+    bannerCell.setFontSize(12);
+    bannerCell.setHorizontalAlignment('left');
+    bannerCell.setVerticalAlignment('middle');
+    sheet.setRowHeight(1, 38);
+
+    // Dòng 2: Tiêu đề cột
+    var headers = ['STT', 'MSSV', 'Họ và tên', 'Email FPT', 'Mã FAP'];
+    for (var s = 1; s <= slotCount; s++) {
+      var les = lessons[s - 1];
+      var slotTitle = 'Slot ' + (s < 10 ? '0' + s : s);
+      if (les && les.date) {
+        slotTitle += '\n(' + String(les.date).substring(5) + ')'; // Slot 01\n(09-07)
+      }
+      headers.push(slotTitle);
+    }
+    headers.push('Tổng vắng (A)');
+    headers.push('Tỉ lệ vắng (%)');
+    headers.push('Kết quả FAP');
+
+    sheet.getRange(2, 1, 1, headers.length).setValues([headers]);
+    var headerRange = sheet.getRange(2, 1, 1, headers.length);
+    headerRange.setBackground('#2563EB'); // Royal Blue
+    headerRange.setFontColor('#FFFFFF');
+    headerRange.setFontWeight('bold');
+    headerRange.setHorizontalAlignment('center');
+    headerRange.setVerticalAlignment('middle');
+    headerRange.setWrap(true);
+    sheet.setRowHeight(2, 42);
+
+    // Dòng 3..N: Dữ liệu Sinh viên
+    var roster = cls.roster || [];
+    var rows = [];
+
+    for (var r = 0; r < roster.length; r++) {
+      var st = roster[r];
+      var rowNum = r + 3;
+      var email = String(st.email || '').trim().toLowerCase();
+      var row = [
+        r + 1,
+        st.rollNumber || '',
+        st.fullName || '',
+        email,
+        st.memberCode || ''
+      ];
+
+      // Điền trạng thái điểm danh hiện tại nếu có
+      var studentAttendance = st.attendance || {};
+      for (var s = 1; s <= slotCount; s++) {
+        var status = studentAttendance[s] || studentAttendance[String(s)] || '';
+        row.push(status);
+      }
+
+      // Công thức tính Tổng Vắng (số buổi 'A')
+      var startColLetter = 'F';
+      var endColLetter = this.getColumnLetter(5 + slotCount);
+      var absentColLetter = this.getColumnLetter(5 + slotCount + 1);
+      var pctColLetter = this.getColumnLetter(5 + slotCount + 2);
+
+      var absentFormula = '=COUNTIF(' + startColLetter + rowNum + ':' + endColLetter + rowNum + ', "A")';
+      var pctFormula = '=IF(' + slotCount + '>0, ' + absentColLetter + rowNum + '/' + slotCount + ', 0)';
+      var resultFormula = '=IF(' + pctColLetter + rowNum + '>0.20, "🚫 CẤM THI", IF(' + pctColLetter + rowNum + '>=0.15, "⚠️ NGUY CƠ", "✅ ĐỦ ĐIỀU KIỆN"))';
+
+      row.push(absentFormula);
+      row.push(pctFormula);
+      row.push(resultFormula);
+
+      rows.push(row);
+    }
+
+    if (rows.length > 0) {
+      var dataRange = sheet.getRange(3, 1, rows.length, headers.length);
+      dataRange.setValues(rows);
+      dataRange.setVerticalAlignment('middle');
+      dataRange.setBorder(true, true, true, true, true, true, '#CBD5E1', SpreadsheetApp.BorderStyle.SOLID);
+
+      // Căn giữa STT, MSSV, Mã FAP, và các cột Slot
+      sheet.getRange(3, 1, rows.length, 2).setHorizontalAlignment('center');
+      sheet.getRange(3, 5, rows.length, slotCount + 3).setHorizontalAlignment('center');
+      sheet.getRange(3, 6, rows.length, slotCount + 3).setFontWeight('bold');
+
+      // Định dạng % cho cột Tỉ lệ vắng
+      var pctColIndex = 5 + slotCount + 2;
+      sheet.getRange(3, pctColIndex, rows.length, 1).setNumberFormat('0.0%');
+
+      // Conditional Formatting: P = Xanh lá (#DCFCE7, text #15803D), A = Đỏ (#FEE2E2, text #B91C1C)
+      var slotRange = sheet.getRange(3, 6, rows.length, slotCount);
+      var ruleP = SpreadsheetApp.newConditionalFormatRule()
+        .whenTextEqualTo('P')
+        .setBackground('#DCFCE7')
+        .setFontColor('#15803D')
+        .setRanges([slotRange])
+        .build();
+
+      var ruleA = SpreadsheetApp.newConditionalFormatRule()
+        .whenTextEqualTo('A')
+        .setBackground('#FEE2E2')
+        .setFontColor('#B91C1C')
+        .setRanges([slotRange])
+        .build();
+
+      sheet.setConditionalFormatRules([ruleP, ruleA]);
+    }
+
+    // Cố định dòng 2 (Header) và 3 cột đầu (STT, MSSV, Tên)
+    sheet.setFrozenRows(2);
+    sheet.setFrozenColumns(3);
+
+    // Độ rộng các cột
+    sheet.setColumnWidth(1, 45);  // STT
+    sheet.setColumnWidth(2, 95);  // MSSV
+    sheet.setColumnWidth(3, 180); // Họ và tên
+    sheet.setColumnWidth(4, 220); // Email
+    sheet.setColumnWidth(5, 85);  // MemberCode
+    sheet.setColumnWidths(6, slotCount, 68); // Các cột Slot
+    sheet.setColumnWidth(5 + slotCount + 1, 105);
+    sheet.setColumnWidth(5 + slotCount + 2, 105);
+    sheet.setColumnWidth(5 + slotCount + 3, 130);
+  },
+
+  /**
+   * Ghi nhận điểm danh sinh viên (P - Có mặt)
+   * Cập nhật trực tiếp vào ô tương ứng trong sheet của lớp
+   */
+  recordCheckIn: function (lessonId, studentEmail) {
+    return this.setAttendanceStatus(lessonId, studentEmail, 'P');
+  },
+
+  /**
+   * Giảng viên đổi điểm danh thủ công (P hoặc A)
+   */
+  recordOverride: function (lessonId, studentEmail, status) {
+    return this.setAttendanceStatus(lessonId, studentEmail, status);
+  },
+
+  /**
+   * Cập nhật giá trị ô Slot của sinh viên trong đúng sheet lớp tương ứng
+   * Tuyệt đối không tạo lại sheet, chỉ cập nhật 1 ô duy nhất trong 1 giây!
+   */
+  setAttendanceStatus: function (lessonId, studentEmail, status) {
+    var ss = this.getSpreadsheet();
+    var parts = this.parseLessonId(lessonId);
+    if (!parts) return { success: false, error: 'Sai định dạng lessonId: ' + lessonId };
+
+    var targetSheet = this.findClassSheet(ss, parts);
+    if (!targetSheet) return { success: false, error: 'Không tìm thấy sheet của lớp ' + parts.className };
+
+    var data = targetSheet.getDataRange().getValues();
+    if (data.length <= 2) return { success: false, error: 'Sheet lớp chưa có sinh viên' };
+
+    var normalizedEmail = String(studentEmail).trim().toLowerCase();
+    var targetRow = -1;
+
+    // Tìm dòng của sinh viên (cột D là Email, index 3; hoặc cột B là MSSV, index 1)
+    for (var r = 2; r < data.length; r++) {
+      var emailInCell = String(data[r][3]).trim().toLowerCase();
+      var rollInCell = String(data[r][1]).trim().toLowerCase();
+      if (emailInCell === normalizedEmail || rollInCell === normalizedEmail) {
+        targetRow = r + 1; // 1-indexed
+        break;
+      }
+    }
+
+    if (targetRow === -1) {
+      return { success: false, error: 'Không tìm thấy sinh viên ' + studentEmail + ' trong lớp ' + parts.className };
+    }
+
+    // Cột slot tương ứng: Slot 1 là cột F (cột 6), Slot N là (5 + sequenceNumber)
+    var targetCol = 5 + parts.sequenceNumber;
+    targetSheet.getRange(targetRow, targetCol).setValue(status);
+    SpreadsheetApp.flush();
+
+    return {
+      success: true,
+      className: parts.className,
+      sequenceNumber: parts.sequenceNumber,
+      studentEmail: studentEmail,
+      status: status
+    };
+  },
+
+  /**
+   * Lấy kết quả điểm danh của 1 buổi học để phục vụ polling 5s
+   */
+  getAttendanceResults: function (lessonId) {
+    var ss = this.getSpreadsheet();
+    var parts = this.parseLessonId(lessonId);
+    if (!parts) return [];
+
+    var targetSheet = this.findClassSheet(ss, parts);
+    if (!targetSheet) return [];
+
+    var data = targetSheet.getDataRange().getValues();
+    if (data.length <= 2) return [];
+
+    var colIndex = 5 + parts.sequenceNumber - 1; // 0-indexed
+    var results = [];
+
+    for (var r = 2; r < data.length; r++) {
+      var email = String(data[r][3]).trim().toLowerCase();
+      var val = String(data[r][colIndex] || '').trim();
+      if (email && val) {
+        results.push({
+          studentEmail: email,
+          status: val,
+          isManualOverride: false
+        });
+      }
+    }
+
+    return results;
+  },
+
+  /**
+   * Quản lý ca điểm danh mở (Lưu trong ScriptProperties để phản hồi tức thì)
+   */
+  openAttendanceWindow: function (lessonId) {
+    var parts = this.parseLessonId(lessonId);
+    if (parts) {
+      // Khi mở ca lần đầu: chuyển toàn bộ ô trống của slot đó thành 'A'
+      var ss = this.getSpreadsheet();
+      var targetSheet = this.findClassSheet(ss, parts);
+      if (targetSheet) {
+        var data = targetSheet.getDataRange().getValues();
+        var targetCol = 5 + parts.sequenceNumber;
+        for (var r = 2; r < data.length; r++) {
+          var currentVal = String(data[r][targetCol - 1] || '').trim();
+          if (currentVal === '') {
+            targetSheet.getRange(r + 1, targetCol).setValue('A');
+          }
+        }
+        SpreadsheetApp.flush();
+      }
+    }
+
+    var props = PropertiesService.getScriptProperties();
+    var windowId = 'win_' + new Date().getTime();
+    var windowData = {
+      id: windowId,
+      lessonId: lessonId,
+      openedAt: new Date().toISOString(),
+      isOpen: true
+    };
+    props.setProperty('ACTIVE_WINDOW', JSON.stringify(windowData));
+    return windowData;
+  },
+
+  closeAttendanceWindow: function (windowId) {
+    var props = PropertiesService.getScriptProperties();
+    var windowStr = props.getProperty('ACTIVE_WINDOW');
+    if (windowStr) {
+      var win = JSON.parse(windowStr);
+      win.isOpen = false;
+      win.closedAt = new Date().toISOString();
+      props.setProperty('ACTIVE_WINDOW', JSON.stringify(win));
+    }
+    return true;
+  },
+
+  getActiveWindow: function (lessonId) {
+    var props = PropertiesService.getScriptProperties();
+    var windowStr = props.getProperty('ACTIVE_WINDOW');
+    if (!windowStr) return null;
+    var win = JSON.parse(windowStr);
+    if (win.isOpen && (!lessonId || win.lessonId === lessonId)) {
+      return win;
+    }
+    return null;
+  },
+
+  /**
+   * Khởi tạo bảng mẫu mặc định nếu chạy lần đầu
+   */
+  setupDatabase: function () {
+    var ss = this.getSpreadsheet();
+    var sampleClass = {
+      className: 'SE1917',
+      subjectCode: 'PRM393',
+      scheduleCode: '12',
+      slotCount: 20,
+      lessons: [],
+      roster: [
+        { rollNumber: 'SE182346', fullName: 'Trần Gia Bảo', email: 'baotgse182346@fpt.edu.vn', memberCode: 'BaoTG' },
+        { rollNumber: 'SE193416', fullName: 'Nguyễn Ngọc Bảo Cường', email: 'cuongnnbse193416@fpt.edu.vn', memberCode: 'CuongNNB' },
+        { rollNumber: 'SE190507', fullName: 'Ngô Chí Nam', email: 'namncse190507@fpt.edu.vn', memberCode: 'NamNC' },
+        { rollNumber: 'SE193445', fullName: 'Ngô Tấn Thành', email: 'thanhntse193445@fpt.edu.vn', memberCode: 'ThanhNT' },
+        { rollNumber: 'SE172145', fullName: 'Nguyễn Mai Hào Thiên', email: 'thiennmhse172145@fpt.edu.vn', memberCode: 'ThienNMH' }
+      ]
+    };
+    for (var s = 1; s <= 20; s++) {
+      sampleClass.lessons.push({ sequenceNumber: s, date: '2026-09-' + (10 + s) });
+    }
+    return this.syncAllClassesFromDesktop([sampleClass], '2026-09-07');
+  },
+
+  /**
+   * Tìm sheet của lớp bằng cách khớp cả className và subjectCode
+   */
+  findClassSheet: function (ss, parts) {
+    var sheets = ss.getSheets();
+    for (var i = 0; i < sheets.length; i++) {
+      var sName = sheets[i].getName();
+      if (sName === 'Overview' || sName.indexOf('Temp_') === 0) continue;
+      var matchClass = sName.toLowerCase().indexOf(parts.className.toLowerCase()) !== -1;
+      var matchSubject = !parts.subjectCode || sName.toLowerCase().indexOf(parts.subjectCode.toLowerCase()) !== -1;
+      if (matchClass && matchSubject) {
+        return sheets[i];
+      }
+    }
+    return null;
+  },
+
+  /**
+   * Phân tích lessonId dạng 'PRM393_SE1917_Lesson_1' thành subjectCode, className và sequenceNumber
+   */
+  parseLessonId: function (lessonId) {
+    if (!lessonId) return null;
+    var match = lessonId.match(/^([A-Za-z0-9]+)_([A-Za-z0-9]+)_Lesson_(\d+)/i);
+    if (match) {
+      return {
+        subjectCode: match[1],
+        className: match[2],
+        sequenceNumber: parseInt(match[3], 10)
+      };
+    }
+    var fallback = lessonId.match(/_([A-Za-z0-9]+)_Lesson_(\d+)/i);
+    if (fallback) {
+      return {
+        subjectCode: '',
+        className: fallback[1],
+        sequenceNumber: parseInt(fallback[2], 10)
+      };
+    }
+    return null;
+  },
+
+  getScheduleDescription: function (code) {
+    var map = {
+      '12': 'Thứ 2 & Thứ 5, Ca 2 (09:50 - 12:10)',
+      '14': 'Thứ 2 & Thứ 5, Ca 4 (15:20 - 17:40)',
+      '21': 'Thứ 3 & Thứ 6, Ca 1 (07:30 - 09:50)',
+      '22': 'Thứ 3 & Thứ 6, Ca 2 (09:50 - 12:10)',
+      '23': 'Thứ 3 & Thứ 6, Ca 3 (12:50 - 15:10)',
+      '24': 'Thứ 3 & Thứ 6, Ca 4 (15:20 - 17:40)',
+      '31': 'Thứ 4 & Thứ 7, Ca 1 (07:30 - 09:50)',
+      '32': 'Thứ 4 & Thứ 7, Ca 2 (09:50 - 12:10)'
+    };
+    return map[String(code)] || ('Mã lịch ' + code);
+  },
+
+  getColumnLetter: function (colIndex) {
+    var temp, letter = '';
+    while (colIndex > 0) {
+      temp = (colIndex - 1) % 26;
+      letter = String.fromCharCode(temp + 65) + letter;
+      colIndex = Math.floor((colIndex - temp - 1) / 26);
+    }
+    return letter;
+  }
+};
