@@ -37,7 +37,9 @@ class ScheduleCodeParser {
   static ScheduleRule parse(String code) {
     final rule = tryParse(code);
     if (rule == null) {
-      throw FormatException('Mã lịch "$code" không hợp lệ. Mã phải từ 11 đến 34.');
+      throw FormatException(
+        'Mã lịch "$code" không hợp lệ. Mã phải từ 11 đến 34.',
+      );
     }
     return rule;
   }

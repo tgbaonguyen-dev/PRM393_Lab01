@@ -34,25 +34,25 @@ class ClassLesson {
   });
 
   ClassLesson copyWith({DateTime? date, bool? isAdjusted}) => ClassLesson(
-        lessonId: lessonId,
-        sequenceNumber: sequenceNumber,
-        date: date ?? this.date,
-        dailySlot: dailySlot,
-        startTime: startTime,
-        endTime: endTime,
-        isAdjusted: isAdjusted ?? this.isAdjusted,
-      );
+    lessonId: lessonId,
+    sequenceNumber: sequenceNumber,
+    date: date ?? this.date,
+    dailySlot: dailySlot,
+    startTime: startTime,
+    endTime: endTime,
+    isAdjusted: isAdjusted ?? this.isAdjusted,
+  );
 
   Map<String, dynamic> toJson() => {
-        'lessonId': lessonId,
-        'sequenceNumber': sequenceNumber,
-        'date': _dateOnly(date),
-        'dailySlot': dailySlot,
-        'startTime': startTime,
-        'endTime': endTime,
-        'status': 'scheduled',
-        'isAdjusted': isAdjusted,
-      };
+    'lessonId': lessonId,
+    'sequenceNumber': sequenceNumber,
+    'date': _dateOnly(date),
+    'dailySlot': dailySlot,
+    'startTime': startTime,
+    'endTime': endTime,
+    'status': 'scheduled',
+    'isAdjusted': isAdjusted,
+  };
 
   static String _dateOnly(DateTime value) =>
       '${value.year.toString().padLeft(4, '0')}-'

@@ -39,12 +39,12 @@ class ImportedStudent {
   String get normalizedEmail => email.trim().toLowerCase();
 
   Map<String, dynamic> toJson() => {
-        'classCode': classCode,
-        'rollNumber': rollNumber,
-        'fullName': fullName,
-        'email': normalizedEmail,
-        'memberCode': memberCode,
-      };
+    'classCode': classCode,
+    'rollNumber': rollNumber,
+    'fullName': fullName,
+    'email': normalizedEmail,
+    'memberCode': memberCode,
+  };
 }
 
 class ImportedClass {
@@ -69,19 +69,27 @@ class ImportedClass {
   bool get hasErrors => issues.any((issue) => issue.isError);
   bool get isReady => !hasErrors && semester.trim().isNotEmpty;
 
-  String get offeringId => [subjectCode, classCode, semester]
-      .map((value) => value.trim().toUpperCase())
-      .join('_');
+  String get offeringId => [
+    subjectCode,
+    classCode,
+    semester,
+  ].map((value) => value.trim().toUpperCase()).join('_');
 
-  ImportedClass copyWith({String? semester}) => ImportedClass(
-        sourceSheetName: sourceSheetName,
-        scheduleCode: scheduleCode,
-        subjectCode: subjectCode,
-        classCode: classCode,
-        semester: semester ?? this.semester,
-        students: students,
-        issues: issues,
-      );
+  ImportedClass copyWith({
+    String? scheduleCode,
+    String? subjectCode,
+    String? classCode,
+    String? semester,
+    List<ImportValidationIssue>? issues,
+  }) => ImportedClass(
+    sourceSheetName: sourceSheetName,
+    scheduleCode: scheduleCode ?? this.scheduleCode,
+    subjectCode: subjectCode ?? this.subjectCode,
+    classCode: classCode ?? this.classCode,
+    semester: semester ?? this.semester,
+    students: students,
+    issues: issues ?? this.issues,
+  );
 }
 
 class WorkbookImportResult {
@@ -93,6 +101,8 @@ class WorkbookImportResult {
     required this.classes,
   });
 
-  int get totalStudents =>
-      classes.fold(0, (total, importedClass) => total + importedClass.students.length);
+  int get totalStudents => classes.fold(
+    0,
+    (total, importedClass) => total + importedClass.students.length,
+  );
 }
