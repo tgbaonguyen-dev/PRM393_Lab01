@@ -97,7 +97,7 @@ class ScheduleService {
         throw ScheduleValidationException('classOffering thiếu ${entry.key}.');
       }
     }
-    if (!RegExp(r'^[123][1-8]$').hasMatch(fields['scheduleCode']!)) {
+    if (!RegExp(r'^[123][1-5]$').hasMatch(fields['scheduleCode']!)) {
       throw const ScheduleValidationException('scheduleCode không hợp lệ.');
     }
     final lessonCount = input['lessonCount'] ?? 20;

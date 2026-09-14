@@ -24,6 +24,7 @@ class _ImportScreenState extends State<ImportScreen> {
   final Map<String, ImportedClass> _editedClasses = {};
   final Set<String> _specialLessonCountSheets = {};
   int _selectedIndex = 0;
+  String? _hoveredSheetName;
   bool _isLoading = false;
   String? _loadError;
 
@@ -137,6 +138,36 @@ class _ImportScreenState extends State<ImportScreen> {
     });
   }
 
+  void _removeClass(int index) {
+    final result = _result;
+    if (result == null || index < 0 || index >= result.classes.length) return;
+
+    final removed = result.classes[index];
+    final remaining = List<ImportedClass>.of(result.classes)..removeAt(index);
+    setState(() {
+      _editedClasses.remove(removed.sourceSheetName);
+      _specialLessonCountSheets.remove(removed.sourceSheetName);
+      _hoveredSheetName = null;
+      if (remaining.isEmpty) {
+        _result = null;
+        _selectedIndex = 0;
+        _scheduleCodeController.clear();
+        _subjectCodeController.clear();
+        _classCodeController.clear();
+        _lessonCountController.text = '20';
+        return;
+      }
+
+      _result = WorkbookImportResult(
+        sourceFileName: result.sourceFileName,
+        classes: remaining,
+      );
+      _selectedIndex = index.clamp(0, remaining.length - 1);
+      final next = remaining[_selectedIndex];
+      _loadMetadata(_editedClasses[next.sourceSheetName] ?? next);
+    });
+  }
+
   void _loadMetadata(ImportedClass importedClass) {
     _scheduleCodeController.text = importedClass.scheduleCode;
     _subjectCodeController.text = importedClass.subjectCode;
@@ -182,7 +213,7 @@ class _ImportScreenState extends State<ImportScreen> {
 
     final invalidCount = prepared.where((item) {
       final metadataValid =
-          RegExp(r'^[123][1-8]$').hasMatch(item.scheduleCode) &&
+          RegExp(r'^[123][1-5]$').hasMatch(item.scheduleCode) &&
           item.subjectCode.trim().isNotEmpty &&
           item.classCode.trim().isNotEmpty;
       final lessonCountValid = item.lessonCount >= 1 && item.lessonCount <= 60;
@@ -385,31 +416,58 @@ class _ImportScreenState extends State<ImportScreen> {
                 final errors = item.issues
                     .where((issue) => issue.isError)
                     .length;
-                return ListTile(
-                  selected: index == _selectedIndex,
-                  selectedTileColor: Theme.of(
-                    context,
-                  ).colorScheme.primaryContainer,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
+                final isHovered = _hoveredSheetName == item.sourceSheetName;
+                return MouseRegion(
+                  onEnter: (_) =>
+                      setState(() => _hoveredSheetName = item.sourceSheetName),
+                  onExit: (_) {
+                    if (_hoveredSheetName == item.sourceSheetName) {
+                      setState(() => _hoveredSheetName = null);
+                    }
+                  },
+                  child: ListTile(
+                    selected: index == _selectedIndex,
+                    selectedTileColor: Theme.of(
+                      context,
+                    ).colorScheme.primaryContainer,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    onTap: () => _selectClass(index),
+                    leading: Icon(
+                      errors > 0
+                          ? Icons.error_outline
+                          : Icons.check_circle_outline,
+                      color: errors > 0 ? Colors.red : Colors.green,
+                    ),
+                    title: Text(
+                      item.subjectCode.isEmpty
+                          ? item.sourceSheetName
+                          : item.subjectCode,
+                      style: const TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                    subtitle: Text(
+                      '${item.classCode.isEmpty ? 'Chưa rõ lớp' : item.classCode} • ${item.students.length} SV',
+                    ),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(item.scheduleCode),
+                        AnimatedOpacity(
+                          opacity: isHovered ? 1 : 0,
+                          duration: const Duration(milliseconds: 120),
+                          child: IgnorePointer(
+                            ignoring: !isHovered,
+                            child: IconButton(
+                              tooltip: 'Xóa lớp này',
+                              onPressed: () => _removeClass(index),
+                              icon: const Icon(Icons.close, color: Colors.red),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                  onTap: () => _selectClass(index),
-                  leading: Icon(
-                    errors > 0
-                        ? Icons.error_outline
-                        : Icons.check_circle_outline,
-                    color: errors > 0 ? Colors.red : Colors.green,
-                  ),
-                  title: Text(
-                    item.subjectCode.isEmpty
-                        ? item.sourceSheetName
-                        : item.subjectCode,
-                    style: const TextStyle(fontWeight: FontWeight.w700),
-                  ),
-                  subtitle: Text(
-                    '${item.classCode.isEmpty ? 'Chưa rõ lớp' : item.classCode} • ${item.students.length} SV',
-                  ),
-                  trailing: Text(item.scheduleCode),
                 );
               },
             ),
