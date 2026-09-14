@@ -35,7 +35,7 @@ class ExportReportService {
   }) async {
     try {
       final excel = Excel.createExcel();
-      final sheetName = '$subjectCode\_$className';
+      final sheetName = '${subjectCode}_$className';
       final Sheet sheet = excel[sheetName];
       excel.setDefaultSheet(sheetName);
 
@@ -75,7 +75,8 @@ class ExportReportService {
 
       for (final lesNum in sortedLessons) {
         final date = lessonDates[lesNum];
-        final slotLabel = 'Slot ${lesNum.toString().padLeft(2, '0')}' + (date != null && date.isNotEmpty ? '\n($date)' : '');
+        final dateSuffix = date != null && date.isNotEmpty ? '\n($date)' : '';
+        final slotLabel = 'Slot ${lesNum.toString().padLeft(2, '0')}$dateSuffix';
         headers.add(slotLabel);
       }
 
@@ -228,7 +229,8 @@ class ExportReportService {
 
       for (final lesNum in sortedLessons) {
         final date = lessonDates[lesNum];
-        final label = 'Slot ${lesNum.toString().padLeft(2, '0')}' + (date != null && date.isNotEmpty ? ' ($date)' : '');
+        final dateSuffix = date != null && date.isNotEmpty ? ' ($date)' : '';
+        final label = 'Slot ${lesNum.toString().padLeft(2, '0')}$dateSuffix';
         headers.add('"$label"');
       }
 

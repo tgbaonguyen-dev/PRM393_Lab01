@@ -1,0 +1,105 @@
+import 'package:backend/services/schedule_service.dart';
+import 'package:test/test.dart';
+
+void main() {
+  test('validates and saves a 20-lesson schedule', () async {
+    final repository = _FakeScheduleRepository();
+    final service = ScheduleService(repository: repository);
+
+    final result = await service.saveSchedule(_validPayload());
+
+    expect(repository.saveCount, 1);
+    expect((result['lessons'] as List), hasLength(20));
+    expect(service.getSchedule('PRM393_SE1917_FA26'), isNotNull);
+  });
+
+  test('rejects a schedule that does not contain 20 lessons', () async {
+    final payload = _validPayload();
+    (payload['lessons'] as List).removeLast();
+    final service = ScheduleService(repository: _FakeScheduleRepository());
+
+    expect(
+      () => service.saveSchedule(payload),
+      throwsA(isA<ScheduleValidationException>()),
+    );
+  });
+
+  test('accepts a configured 12-lesson special subject', () async {
+    final repository = _FakeScheduleRepository();
+    final service = ScheduleService(repository: repository);
+
+    final result = await service.saveSchedule(_validPayload(lessonCount: 12));
+
+    expect((result['lessons'] as List), hasLength(12));
+    expect(
+      (result['classOffering'] as Map<String, dynamic>)['lessonCount'],
+      12,
+    );
+  });
+
+  test('does not report success when repository fails', () async {
+    final service = ScheduleService(
+      repository: _FakeScheduleRepository(shouldSave: false),
+    );
+
+    expect(() => service.saveSchedule(_validPayload()), throwsStateError);
+  });
+}
+
+class _FakeScheduleRepository implements ScheduleRepository {
+  final bool shouldSave;
+  int saveCount = 0;
+
+  _FakeScheduleRepository({this.shouldSave = true});
+
+  @override
+  Future<bool> save({
+    required Map<String, dynamic> classOffering,
+    required List<Map<String, dynamic>> students,
+    required List<Map<String, dynamic>> lessons,
+  }) async {
+    saveCount++;
+    return shouldSave;
+  }
+}
+
+Map<String, dynamic> _validPayload({int lessonCount = 20}) {
+  final firstDate = DateTime(2026, 9, 7);
+  return {
+    'classOffering': {
+      'classId': 'PRM393_SE1917_FA26',
+      'classCode': 'SE1917',
+      'subjectCode': 'PRM393',
+      'semester': 'FA26',
+      'scheduleCode': '12',
+      'sourceSheetName': '12_PRM393_SE1917',
+      'lessonCount': lessonCount,
+    },
+    'students': [
+      {
+        'classCode': 'SE1917',
+        'rollNumber': 'SE123456',
+        'fullName': 'Student One',
+        'email': 'student@example.com',
+        'memberCode': 'M001',
+      },
+    ],
+    'lessons': List.generate(lessonCount, (index) {
+      final week = index ~/ 2;
+      final date = firstDate.add(
+        Duration(days: week * 7 + (index.isOdd ? 3 : 0)),
+      );
+      return {
+        'lessonId': 'PRM393_SE1917_FA26-L${index + 1}',
+        'sequenceNumber': index + 1,
+        'date':
+            '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}',
+        'dailySlot': 2,
+        'startTime': '09:30',
+        'endTime': '11:45',
+        'status': 'scheduled',
+        'isAdjusted': false,
+      };
+    }),
+  };
+}
