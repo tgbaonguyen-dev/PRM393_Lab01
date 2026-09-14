@@ -25,6 +25,17 @@ void main() {
     expect(group3.dailySlot, 1);
   });
 
+  test('supports evening slots 5 through 8 with continued break times', () {
+    final slot5 = ScheduleCodeParser.parse('15');
+    final slot8 = ScheduleCodeParser.parse('38');
+
+    expect(slot5.startTime, '17:45');
+    expect(slot5.endTime, '20:00');
+    expect(slot8.startTime, '01:15');
+    expect(slot8.endTime, '03:30');
+    expect(slot8.weekdays, [DateTime.wednesday, DateTime.saturday]);
+  });
+
   test('rejects an invalid schedule code', () {
     expect(() => ScheduleCodeParser.parse('9X'), throwsFormatException);
   });

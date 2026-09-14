@@ -33,6 +33,34 @@ void main() {
     expect(find.text('Xác nhận buổi'), findsNothing);
     expect(find.text('Lưu lịch lớp'), findsNothing);
   });
+
+  testWidgets('shows only slots used by the imported class schedules', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1440, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: ScheduleGeneratorScreen(
+          importedClasses: [
+            _class('11_PRM111_SE1917', '11', 'PRM111', 'SE1917', 20),
+            _class('14_PRM114_SE1918', '14', 'PRM114', 'SE1918', 20),
+            _class('17_PRM117_SE1919', '17', 'PRM117', 'SE1919', 20),
+          ],
+          semesterStart: DateTime(2026, 9, 7),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Slot 1'), findsOneWidget);
+    expect(find.text('Slot 4'), findsOneWidget);
+    expect(find.text('Slot 7'), findsOneWidget);
+    expect(find.text('Slot 2'), findsNothing);
+    expect(find.text('Slot 5'), findsNothing);
+    expect(find.text('Slot 8'), findsNothing);
+  });
 }
 
 ImportedClass _class(

@@ -71,11 +71,13 @@ class ScheduleOverview {
     required Map<String, List<ClassLesson>> schedules,
     required DateTime now,
   }) {
-    final currentMinute = now.hour * 60 + now.minute;
     for (final item in allLessons(classes: classes, schedules: schedules)) {
-      if (!_sameDay(item.lesson.date, now)) continue;
-      if (currentMinute >= _minutes(item.lesson.startTime) &&
-          currentMinute <= _minutes(item.lesson.endTime)) {
+      final start = _atTime(item.lesson.date, item.lesson.startTime);
+      var end = _atTime(item.lesson.date, item.lesson.endTime);
+      if (!end.isAfter(start)) {
+        end = end.add(const Duration(days: 1));
+      }
+      if (!now.isBefore(start) && !now.isAfter(end)) {
         return item;
       }
     }
@@ -102,5 +104,16 @@ class ScheduleOverview {
   static int _minutes(String value) {
     final parts = value.split(':');
     return int.parse(parts[0]) * 60 + int.parse(parts[1]);
+  }
+
+  static DateTime _atTime(DateTime date, String value) {
+    final minutes = _minutes(value);
+    return DateTime(
+      date.year,
+      date.month,
+      date.day,
+      minutes ~/ 60,
+      minutes % 60,
+    );
   }
 }

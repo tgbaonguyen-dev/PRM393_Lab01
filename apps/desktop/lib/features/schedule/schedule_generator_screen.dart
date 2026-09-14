@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 
 import '../import/models/import_models.dart';
 import 'models/schedule_models.dart';
+import 'services/schedule_code_parser.dart';
 import 'services/schedule_generator.dart';
 import 'services/schedule_overview.dart';
 
@@ -25,12 +26,6 @@ class ScheduleGeneratorScreen extends StatefulWidget {
 
 class _ScheduleGeneratorScreenState extends State<ScheduleGeneratorScreen> {
   static const _allClasses = '__all_classes__';
-  static const _slotTimes = <int, (String, String)>{
-    1: ('07:00', '09:15'),
-    2: ('09:30', '11:45'),
-    3: ('12:30', '14:45'),
-    4: ('15:00', '17:15'),
-  };
   static const _dayNames = <String>[
     'THỨ HAI',
     'THỨ BA',
@@ -55,6 +50,15 @@ class _ScheduleGeneratorScreenState extends State<ScheduleGeneratorScreen> {
   );
 
   String? get _classFilter => _filter == _allClasses ? null : _filter;
+
+  List<int> get _visibleSlots {
+    final slots = ScheduleOverview.allLessons(
+      classes: _classes,
+      schedules: _schedules,
+      classFilter: _classFilter,
+    ).map((item) => item.lesson.dailySlot).toSet().toList()..sort();
+    return slots;
+  }
 
   @override
   void initState() {
@@ -277,6 +281,7 @@ class _ScheduleGeneratorScreenState extends State<ScheduleGeneratorScreen> {
   }
 
   Widget _weeklyTable() {
+    final visibleSlots = _visibleSlots;
     final days = List.generate(
       7,
       (index) => _weekStart.add(Duration(days: index)),
@@ -321,9 +326,10 @@ class _ScheduleGeneratorScreenState extends State<ScheduleGeneratorScreen> {
                         ),
                       ],
                     ),
-                    ...List.generate(4, (index) {
-                      final slot = index + 1;
-                      final time = _slotTimes[slot]!;
+                    ...visibleSlots.indexed.map((entry) {
+                      final index = entry.$1;
+                      final slot = entry.$2;
+                      final time = ScheduleCodeParser.slotTimes[slot]!;
                       return TableRow(
                         decoration: BoxDecoration(
                           color: index.isEven

@@ -182,7 +182,7 @@ class _ImportScreenState extends State<ImportScreen> {
 
     final invalidCount = prepared.where((item) {
       final metadataValid =
-          RegExp(r'^[123][1-4]$').hasMatch(item.scheduleCode) &&
+          RegExp(r'^[123][1-8]$').hasMatch(item.scheduleCode) &&
           item.subjectCode.trim().isNotEmpty &&
           item.classCode.trim().isNotEmpty;
       final lessonCountValid = item.lessonCount >= 1 && item.lessonCount <= 60;
