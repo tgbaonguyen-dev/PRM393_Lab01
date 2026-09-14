@@ -193,6 +193,88 @@ class _ImportScreenState extends State<ImportScreen> {
   bool _isSpecialLessonCountClass(ImportedClass importedClass) =>
       _specialLessonCountSheets.contains(importedClass.sourceSheetName);
 
+  ImportedClass _validateClassMetadata(ImportedClass importedClass) {
+    const metadataIssueCodes = {
+      'invalid_schedule_code',
+      'missing_subject_code',
+      'missing_class_code',
+      'class_conflict',
+      'invalid_lesson_count',
+    };
+    final issues = importedClass.issues
+        .where((issue) => !metadataIssueCodes.contains(issue.code))
+        .toList();
+
+    void addError(String code, String message, String field) {
+      issues.add(
+        ImportValidationIssue(
+          severity: ValidationSeverity.error,
+          code: code,
+          message: message,
+          sheetName: importedClass.sourceSheetName,
+          field: field,
+        ),
+      );
+    }
+
+    if (!RegExp(r'^[123][1-5]$').hasMatch(importedClass.scheduleCode)) {
+      addError(
+        'invalid_schedule_code',
+        'Mã lịch phải theo dạng 1X, 2X hoặc 3X; X từ 1 đến 5.',
+        'ScheduleCode',
+      );
+    }
+    if (importedClass.subjectCode.trim().isEmpty) {
+      addError('missing_subject_code', 'Chưa có mã môn.', 'SubjectCode');
+    }
+    if (importedClass.classCode.trim().isEmpty) {
+      addError('missing_class_code', 'Chưa có mã lớp.', 'ClassCode');
+    }
+
+    final rosterClasses = importedClass.students
+        .map((student) => student.classCode.trim().toUpperCase())
+        .where((classCode) => classCode.isNotEmpty)
+        .toSet();
+    if (rosterClasses.length == 1 &&
+        importedClass.classCode.trim().toUpperCase() != rosterClasses.single) {
+      addError(
+        'class_conflict',
+        'Mã lớp phải khớp với cột Class (${rosterClasses.single}).',
+        'ClassCode',
+      );
+    }
+    if (_isSpecialLessonCountClass(importedClass) &&
+        (importedClass.lessonCount < 1 || importedClass.lessonCount > 60)) {
+      addError(
+        'invalid_lesson_count',
+        'Số buổi đặc biệt phải từ 1 đến 60.',
+        'LessonCount',
+      );
+    }
+    return importedClass.copyWith(issues: issues);
+  }
+
+  void _confirmSelectedClass() {
+    _storeSelectedMetadata();
+    final importedClass = _selectedClass;
+    if (importedClass == null) return;
+    final validated = _validateClassMetadata(importedClass);
+    setState(() {
+      _editedClasses[validated.sourceSheetName] = validated;
+      _loadMetadata(validated);
+    });
+    final errorCount = validated.issues.where((issue) => issue.isError).length;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          errorCount == 0
+              ? 'Đã xác nhận ${validated.subjectCode} - ${validated.classCode}. Có thể sinh lịch.'
+              : 'Lớp này còn $errorCount lỗi. Hãy sửa các ô được báo rồi xác nhận lại.',
+        ),
+      ),
+    );
+  }
+
   List<ImportedClass>? _prepareAllClasses() {
     _storeSelectedMetadata();
     final result = _result;
@@ -200,14 +282,7 @@ class _ImportScreenState extends State<ImportScreen> {
     final prepared = result.classes
         .map((original) {
           final edited = _editedClasses[original.sourceSheetName] ?? original;
-          final issues = edited.issues.where((issue) {
-            return !const {
-              'invalid_schedule_code',
-              'missing_subject_code',
-              'class_conflict',
-            }.contains(issue.code);
-          }).toList();
-          return edited.copyWith(issues: issues);
+          return _validateClassMetadata(edited);
         })
         .toList(growable: false);
 
@@ -506,6 +581,12 @@ class _ImportScreenState extends State<ImportScreen> {
                   ),
                 ),
                 const SizedBox(width: 10),
+                OutlinedButton.icon(
+                  onPressed: _confirmSelectedClass,
+                  icon: const Icon(Icons.verified_outlined),
+                  label: const Text('Xác nhận lớp'),
+                ),
+                const SizedBox(width: 8),
                 FilledButton.icon(
                   onPressed: _continueToSchedule,
                   icon: const Icon(Icons.arrow_forward),
