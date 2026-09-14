@@ -69,7 +69,13 @@ class ImportedClass {
   });
 
   bool get hasErrors => issues.any((issue) => issue.isError);
-  bool get isReady => !hasErrors && semester.trim().isNotEmpty;
+  bool get isReady => !hasErrors;
+
+  /// FPT projects with a PRN subject code normally have 22 meetings; all
+  /// other regular subjects have 20. A different count is only entered for
+  /// an individually added special subject.
+  static int defaultLessonCountFor(String subjectCode) =>
+      subjectCode.trim().toUpperCase().contains('PRN') ? 22 : 20;
 
   String get offeringId => [
     subjectCode,

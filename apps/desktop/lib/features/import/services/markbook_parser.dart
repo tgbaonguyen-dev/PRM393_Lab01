@@ -157,6 +157,7 @@ class MarkbookParser {
         scheduleCode: scheduleCode,
         subjectCode: subjectCode,
         classCode: sheetClassCode,
+        lessonCount: ImportedClass.defaultLessonCountFor(subjectCode),
         students: const [],
         issues: issues,
       );
@@ -176,6 +177,7 @@ class MarkbookParser {
         scheduleCode: scheduleCode,
         subjectCode: subjectCode,
         classCode: sheetClassCode,
+        lessonCount: ImportedClass.defaultLessonCountFor(subjectCode),
         students: const [],
         issues: issues,
       );
@@ -350,6 +352,7 @@ class MarkbookParser {
       scheduleCode: scheduleCode,
       subjectCode: subjectCode,
       classCode: resolvedClassCode,
+      lessonCount: ImportedClass.defaultLessonCountFor(subjectCode),
       students: students,
       issues: issues,
     );

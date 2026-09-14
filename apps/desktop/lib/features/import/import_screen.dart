@@ -19,10 +19,10 @@ class _ImportScreenState extends State<ImportScreen> {
   final _scheduleCodeController = TextEditingController();
   final _subjectCodeController = TextEditingController();
   final _classCodeController = TextEditingController();
-  final _semesterController = TextEditingController();
   final _lessonCountController = TextEditingController(text: '20');
   WorkbookImportResult? _result;
   final Map<String, ImportedClass> _editedClasses = {};
+  final Set<String> _specialLessonCountSheets = {};
   int _selectedIndex = 0;
   bool _isLoading = false;
   String? _loadError;
@@ -39,7 +39,6 @@ class _ImportScreenState extends State<ImportScreen> {
     _scheduleCodeController.dispose();
     _subjectCodeController.dispose();
     _classCodeController.dispose();
-    _semesterController.dispose();
     _lessonCountController.dispose();
     super.dispose();
   }
@@ -96,6 +95,9 @@ class _ImportScreenState extends State<ImportScreen> {
         final previousEdits = singleClassOnly
             ? Map<String, ImportedClass>.of(_editedClasses)
             : <String, ImportedClass>{};
+        final previousSpecialSheets = singleClassOnly
+            ? Set<String>.of(_specialLessonCountSheets)
+            : <String>{};
         _editedClasses
           ..clear()
           ..addEntries(
@@ -106,6 +108,12 @@ class _ImportScreenState extends State<ImportScreen> {
               ),
             ),
           );
+        _specialLessonCountSheets
+          ..clear()
+          ..addAll(previousSpecialSheets);
+        if (singleClassOnly) {
+          _specialLessonCountSheets.add(result.classes.single.sourceSheetName);
+        }
         _selectedIndex = singleClassOnly ? combined.classes.length - 1 : 0;
         if (combined.classes.isNotEmpty) {
           _loadMetadata(combined.classes[_selectedIndex]);
@@ -133,7 +141,6 @@ class _ImportScreenState extends State<ImportScreen> {
     _scheduleCodeController.text = importedClass.scheduleCode;
     _subjectCodeController.text = importedClass.subjectCode;
     _classCodeController.text = importedClass.classCode;
-    _semesterController.text = importedClass.semester;
     _lessonCountController.text = importedClass.lessonCount.toString();
   }
 
@@ -144,22 +151,24 @@ class _ImportScreenState extends State<ImportScreen> {
       scheduleCode: _scheduleCodeController.text.trim(),
       subjectCode: _subjectCodeController.text.trim().toUpperCase(),
       classCode: _classCodeController.text.trim().toUpperCase(),
-      semester: _semesterController.text.trim().toUpperCase(),
-      lessonCount: int.tryParse(_lessonCountController.text.trim()) ?? 0,
+      lessonCount: _isSpecialLessonCountClass(importedClass)
+          ? int.tryParse(_lessonCountController.text.trim()) ?? 0
+          : ImportedClass.defaultLessonCountFor(
+              _subjectCodeController.text.trim(),
+            ),
     );
   }
+
+  bool _isSpecialLessonCountClass(ImportedClass importedClass) =>
+      _specialLessonCountSheets.contains(importedClass.sourceSheetName);
 
   List<ImportedClass>? _prepareAllClasses() {
     _storeSelectedMetadata();
     final result = _result;
     if (result == null) return null;
-    final commonSemester = _semesterController.text.trim().toUpperCase();
     final prepared = result.classes
         .map((original) {
           final edited = _editedClasses[original.sourceSheetName] ?? original;
-          final semester = edited.semester.trim().isEmpty
-              ? commonSemester
-              : edited.semester.trim().toUpperCase();
           final issues = edited.issues.where((issue) {
             return !const {
               'invalid_schedule_code',
@@ -168,7 +177,7 @@ class _ImportScreenState extends State<ImportScreen> {
               'class_from_roster',
             }.contains(issue.code);
           }).toList();
-          return edited.copyWith(semester: semester, issues: issues);
+          return edited.copyWith(issues: issues);
         })
         .toList(growable: false);
 
@@ -176,8 +185,7 @@ class _ImportScreenState extends State<ImportScreen> {
       final metadataValid =
           RegExp(r'^[123][1-4]$').hasMatch(item.scheduleCode) &&
           item.subjectCode.trim().isNotEmpty &&
-          item.classCode.trim().isNotEmpty &&
-          item.semester.trim().isNotEmpty;
+          item.classCode.trim().isNotEmpty;
       final lessonCountValid = item.lessonCount >= 1 && item.lessonCount <= 60;
       return !metadataValid ||
           !lessonCountValid ||
@@ -187,7 +195,7 @@ class _ImportScreenState extends State<ImportScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'Còn $invalidCount lớp chưa hợp lệ. Hãy kiểm tra metadata, dữ liệu và số buổi (1–60).',
+            'Còn $invalidCount lớp chưa hợp lệ. Hãy kiểm tra mã lịch, metadata, dữ liệu và số buổi môn đặc biệt (1–60).',
           ),
         ),
       );
@@ -203,22 +211,34 @@ class _ImportScreenState extends State<ImportScreen> {
     if (!mounted) return;
     final semesterStart = await showDatePicker(
       context: context,
-      helpText: 'Chọn mốc bắt đầu học kỳ',
+      helpText: 'Chọn ngày bắt đầu để sinh lịch',
       confirmText: 'Xem lịch tất cả lớp',
       initialDate: DateTime(now.year, now.month, now.day),
       firstDate: DateTime(now.year - 2),
       lastDate: DateTime(now.year + 3, 12, 31),
     );
     if (semesterStart == null || !mounted) return;
+    final classesForSchedule = classes
+        .map((item) => item.copyWith(semester: _semesterCodeFor(semesterStart)))
+        .toList(growable: false);
     Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (_) => ScheduleGeneratorScreen(
-          importedClasses: classes,
+          importedClasses: classesForSchedule,
           initialClassIndex: _selectedIndex,
           semesterStart: semesterStart,
         ),
       ),
     );
+  }
+
+  String _semesterCodeFor(DateTime start) {
+    final prefix = switch (start.month) {
+      <= 4 => 'SP',
+      <= 8 => 'SU',
+      _ => 'FA',
+    };
+    return '$prefix${(start.year % 100).toString().padLeft(2, '0')}';
   }
 
   @override
@@ -312,7 +332,7 @@ class _ImportScreenState extends State<ImportScreen> {
                 OutlinedButton.icon(
                   onPressed: _isLoading ? null : _pickSingleClassFile,
                   icon: const Icon(Icons.playlist_add),
-                  label: const Text('Thêm file 1 lớp'),
+                  label: const Text('Thêm môn đặc biệt'),
                 ),
               ],
             );
@@ -401,6 +421,7 @@ class _ImportScreenState extends State<ImportScreen> {
   }
 
   Widget _preview(ImportedClass importedClass) {
+    final isSpecialLessonCount = _isSpecialLessonCountClass(importedClass);
     return Card(
       elevation: 0,
       child: Padding(
@@ -418,8 +439,12 @@ class _ImportScreenState extends State<ImportScreen> {
                       _metadataField('Mã lịch', _scheduleCodeController, 105),
                       _metadataField('Môn', _subjectCodeController, 125),
                       _metadataField('Lớp', _classCodeController, 125),
-                      _metadataField('Học kỳ', _semesterController, 105),
-                      _metadataField('Số buổi', _lessonCountController, 105),
+                      if (isSpecialLessonCount)
+                        _metadataField(
+                          'Số buổi đặc biệt',
+                          _lessonCountController,
+                          145,
+                        ),
                     ],
                   ),
                 ),
@@ -434,6 +459,15 @@ class _ImportScreenState extends State<ImportScreen> {
             if (importedClass.issues.isNotEmpty) ...[
               const SizedBox(height: 12),
               _issues(importedClass.issues),
+            ],
+            if (isSpecialLessonCount) ...[
+              const SizedBox(height: 8),
+              Text(
+                'Môn này được thêm riêng nên có thể đặt số buổi khác mặc định. Mã PRN mặc định 22 buổi, môn khác mặc định 20 buổi.',
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
             ],
             const SizedBox(height: 12),
             Text(

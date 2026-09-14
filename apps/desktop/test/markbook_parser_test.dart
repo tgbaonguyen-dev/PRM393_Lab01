@@ -32,6 +32,20 @@ void main() {
     expect(importedClass.students.single.email, 'student@example.com');
     expect(importedClass.students.single.normalizedRollNumber, 'SE123456');
     expect(importedClass.hasErrors, isFalse);
+    expect(importedClass.lessonCount, 20);
+  });
+
+  test('defaults PRN subjects to 22 lessons', () {
+    final result = parser.parseBytes(
+      bytes: _workbookBytes([
+        ['Class', 'RollNumber', 'Email', 'MemberCode', 'FullName'],
+        ['SE1922', 'SE111111', 'student@example.com', 'M001', 'Student'],
+      ], sheetName: '23_PRN232_SE1922'),
+      extension: 'xlsx',
+      sourceFileName: 'markbook.xlsx',
+    );
+
+    expect(result.classes.single.lessonCount, 22);
   });
 
   test('reports missing columns and duplicate identities', () {
