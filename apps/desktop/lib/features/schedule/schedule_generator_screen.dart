@@ -118,7 +118,8 @@ class _ScheduleGeneratorScreenState extends State<ScheduleGeneratorScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Lịch giảng dạy'),
-        backgroundColor: Colors.white,
+        backgroundColor: const Color(0xFFE0F2FE),
+        foregroundColor: const Color(0xFF1D4ED8),
       ),
       body: Padding(
         padding: const EdgeInsets.all(20),

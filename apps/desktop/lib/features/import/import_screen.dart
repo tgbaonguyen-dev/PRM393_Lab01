@@ -352,7 +352,8 @@ class _ImportScreenState extends State<ImportScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Nhập Markbook'),
-        backgroundColor: Colors.white,
+        backgroundColor: const Color(0xFFE0F2FE),
+        foregroundColor: const Color(0xFF1D4ED8),
       ),
       body: Padding(
         padding: const EdgeInsets.all(24),
