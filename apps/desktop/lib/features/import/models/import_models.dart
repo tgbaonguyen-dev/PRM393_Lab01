@@ -53,6 +53,7 @@ class ImportedClass {
   final String subjectCode;
   final String classCode;
   final String semester;
+  final int lessonCount;
   final List<ImportedStudent> students;
   final List<ImportValidationIssue> issues;
 
@@ -64,6 +65,7 @@ class ImportedClass {
     required this.students,
     required this.issues,
     this.semester = '',
+    this.lessonCount = 20,
   });
 
   bool get hasErrors => issues.any((issue) => issue.isError);
@@ -80,6 +82,7 @@ class ImportedClass {
     String? subjectCode,
     String? classCode,
     String? semester,
+    int? lessonCount,
     List<ImportValidationIssue>? issues,
   }) => ImportedClass(
     sourceSheetName: sourceSheetName,
@@ -87,6 +90,7 @@ class ImportedClass {
     subjectCode: subjectCode ?? this.subjectCode,
     classCode: classCode ?? this.classCode,
     semester: semester ?? this.semester,
+    lessonCount: lessonCount ?? this.lessonCount,
     students: students,
     issues: issues ?? this.issues,
   );

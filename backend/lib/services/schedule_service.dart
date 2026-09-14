@@ -59,6 +59,7 @@ class ScheduleService {
     final normalizedLessons = _normalizeAndValidateLessons(
       lessons,
       normalizedOffering['scheduleCode'] as String,
+      normalizedOffering['lessonCount'] as int,
     );
     final classId = normalizedOffering['classId'] as String;
 
@@ -99,7 +100,13 @@ class ScheduleService {
     if (!RegExp(r'^[123][1-4]$').hasMatch(fields['scheduleCode']!)) {
       throw const ScheduleValidationException('scheduleCode không hợp lệ.');
     }
-    return fields;
+    final lessonCount = input['lessonCount'] ?? 20;
+    if (lessonCount is! int || lessonCount < 1 || lessonCount > 60) {
+      throw const ScheduleValidationException(
+        'lessonCount phải là số nguyên từ 1 đến 60.',
+      );
+    }
+    return <String, dynamic>{...fields, 'lessonCount': lessonCount};
   }
 
   List<Map<String, dynamic>> _normalizeStudents(
@@ -157,9 +164,12 @@ class ScheduleService {
   List<Map<String, dynamic>> _normalizeAndValidateLessons(
     List<Map<String, dynamic>> lessons,
     String scheduleCode,
+    int expectedLessonCount,
   ) {
-    if (lessons.length != 20) {
-      throw const ScheduleValidationException('Lịch phải có đúng 20 buổi.');
+    if (lessons.length != expectedLessonCount) {
+      throw ScheduleValidationException(
+        'Lịch phải có đúng $expectedLessonCount buổi.',
+      );
     }
     final ids = <String>{};
     final dates = <String>{};
@@ -190,7 +200,7 @@ class ScheduleService {
       final isAdjusted = lesson['isAdjusted'] == true;
       if (sequence != expectedSequence) {
         throw ScheduleValidationException(
-          'sequenceNumber phải liên tục từ 1 đến 20; sai tại buổi $expectedSequence.',
+          'sequenceNumber phải liên tục từ 1 đến $expectedLessonCount; sai tại buổi $expectedSequence.',
         );
       }
       if (lessonId.isEmpty || !ids.add(lessonId)) {

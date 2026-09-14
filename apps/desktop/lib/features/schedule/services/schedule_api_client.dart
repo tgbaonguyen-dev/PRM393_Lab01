@@ -29,6 +29,7 @@ class ScheduleApiClient {
           'semester': importedClass.semester,
           'scheduleCode': importedClass.scheduleCode,
           'sourceSheetName': importedClass.sourceSheetName,
+          'lessonCount': importedClass.lessonCount,
         },
         'students': importedClass.students
             .map((student) => student.toJson())

@@ -24,6 +24,19 @@ void main() {
     );
   });
 
+  test('accepts a configured 12-lesson special subject', () async {
+    final repository = _FakeScheduleRepository();
+    final service = ScheduleService(repository: repository);
+
+    final result = await service.saveSchedule(_validPayload(lessonCount: 12));
+
+    expect((result['lessons'] as List), hasLength(12));
+    expect(
+      (result['classOffering'] as Map<String, dynamic>)['lessonCount'],
+      12,
+    );
+  });
+
   test('does not report success when repository fails', () async {
     final service = ScheduleService(
       repository: _FakeScheduleRepository(shouldSave: false),
@@ -50,7 +63,7 @@ class _FakeScheduleRepository implements ScheduleRepository {
   }
 }
 
-Map<String, dynamic> _validPayload() {
+Map<String, dynamic> _validPayload({int lessonCount = 20}) {
   final firstDate = DateTime(2026, 9, 7);
   return {
     'classOffering': {
@@ -60,6 +73,7 @@ Map<String, dynamic> _validPayload() {
       'semester': 'FA26',
       'scheduleCode': '12',
       'sourceSheetName': '12_PRM393_SE1917',
+      'lessonCount': lessonCount,
     },
     'students': [
       {
@@ -70,7 +84,7 @@ Map<String, dynamic> _validPayload() {
         'memberCode': 'M001',
       },
     ],
-    'lessons': List.generate(20, (index) {
+    'lessons': List.generate(lessonCount, (index) {
       final week = index ~/ 2;
       final date = firstDate.add(
         Duration(days: week * 7 + (index.isOdd ? 3 : 0)),

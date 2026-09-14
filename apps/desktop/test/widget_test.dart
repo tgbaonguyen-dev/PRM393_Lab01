@@ -15,5 +15,6 @@ void main() {
 
     expect(find.text('Bước 1 — Nhập danh sách lớp'), findsOneWidget);
     expect(find.text('Chọn Markbook'), findsOneWidget);
+    expect(find.text('Thêm file 1 lớp'), findsOneWidget);
   });
 }

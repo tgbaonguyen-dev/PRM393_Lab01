@@ -4,6 +4,24 @@ import 'schedule_code_parser.dart';
 class ScheduleGenerator {
   static const lessonCount = 20;
 
+  /// Finds the first real teaching day for a class on or after the semester
+  /// anchor chosen by the lecturer.
+  static DateTime firstTeachingDateOnOrAfter({
+    required String scheduleCode,
+    required DateTime semesterStart,
+  }) {
+    final rule = ScheduleCodeParser.parse(scheduleCode);
+    var cursor = DateTime(
+      semesterStart.year,
+      semesterStart.month,
+      semesterStart.day,
+    );
+    while (!rule.weekdays.contains(cursor.weekday)) {
+      cursor = cursor.add(const Duration(days: 1));
+    }
+    return cursor;
+  }
+
   static bool isValidFirstDate(String scheduleCode, DateTime firstDate) {
     final rule = ScheduleCodeParser.tryParse(scheduleCode);
     return rule != null && rule.weekdays.contains(firstDate.weekday);
@@ -13,7 +31,11 @@ class ScheduleGenerator {
     required String classOfferingId,
     required String scheduleCode,
     required DateTime firstDate,
+    int lessonCount = ScheduleGenerator.lessonCount,
   }) {
+    if (lessonCount < 1 || lessonCount > 60) {
+      throw ArgumentError('Số buổi phải từ 1 đến 60.');
+    }
     final rule = ScheduleCodeParser.parse(scheduleCode);
     final normalizedFirstDate = DateTime(
       firstDate.year,

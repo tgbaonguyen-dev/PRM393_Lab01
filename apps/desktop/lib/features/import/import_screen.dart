@@ -20,14 +20,18 @@ class _ImportScreenState extends State<ImportScreen> {
   final _subjectCodeController = TextEditingController();
   final _classCodeController = TextEditingController();
   final _semesterController = TextEditingController();
+  final _lessonCountController = TextEditingController(text: '20');
   WorkbookImportResult? _result;
+  final Map<String, ImportedClass> _editedClasses = {};
   int _selectedIndex = 0;
   bool _isLoading = false;
   String? _loadError;
 
   ImportedClass? get _selectedClass {
     final classes = _result?.classes ?? const <ImportedClass>[];
-    return classes.isEmpty ? null : classes[_selectedIndex];
+    if (classes.isEmpty) return null;
+    final original = classes[_selectedIndex];
+    return _editedClasses[original.sourceSheetName] ?? original;
   }
 
   @override
@@ -36,10 +40,20 @@ class _ImportScreenState extends State<ImportScreen> {
     _subjectCodeController.dispose();
     _classCodeController.dispose();
     _semesterController.dispose();
+    _lessonCountController.dispose();
     super.dispose();
   }
 
   Future<void> _pickFile() async {
+    await _pickAndLoad(singleClassOnly: false);
+  }
+
+  Future<void> _pickSingleClassFile() async {
+    await _pickAndLoad(singleClassOnly: true);
+  }
+
+  Future<void> _pickAndLoad({required bool singleClassOnly}) async {
+    _storeSelectedMetadata();
     final selection = await FilePicker.platform.pickFiles(
       type: FileType.custom,
       allowedExtensions: const ['xlsx', 'ods'],
@@ -53,11 +67,48 @@ class _ImportScreenState extends State<ImportScreen> {
     try {
       final result = await _parser.parseFile(File(path));
       if (!mounted) return;
+      if (singleClassOnly && result.classes.length != 1) {
+        throw const FormatException(
+          'Tệp thêm riêng phải chứa đúng 1 sheet/lớp.',
+        );
+      }
+      final existing = _result?.classes ?? const <ImportedClass>[];
+      if (singleClassOnly &&
+          existing.any((item) {
+            final incoming = result.classes.single;
+            return item.sourceSheetName == incoming.sourceSheetName ||
+                (item.subjectCode == incoming.subjectCode &&
+                    item.classCode == incoming.classCode);
+          })) {
+        throw const FormatException(
+          'Lớp này đã tồn tại trong danh sách import.',
+        );
+      }
+      final combined = singleClassOnly && _result != null
+          ? WorkbookImportResult(
+              sourceFileName:
+                  '${_result!.sourceFileName}, ${result.sourceFileName}',
+              classes: [...existing, ...result.classes],
+            )
+          : result;
       setState(() {
-        _result = result;
-        _selectedIndex = 0;
-        if (result.classes.isNotEmpty) {
-          _loadMetadata(result.classes.first);
+        _result = combined;
+        final previousEdits = singleClassOnly
+            ? Map<String, ImportedClass>.of(_editedClasses)
+            : <String, ImportedClass>{};
+        _editedClasses
+          ..clear()
+          ..addEntries(
+            combined.classes.map(
+              (item) => MapEntry(
+                item.sourceSheetName,
+                previousEdits[item.sourceSheetName] ?? item,
+              ),
+            ),
+          );
+        _selectedIndex = singleClassOnly ? combined.classes.length - 1 : 0;
+        if (combined.classes.isNotEmpty) {
+          _loadMetadata(combined.classes[_selectedIndex]);
         }
       });
     } catch (error) {
@@ -70,9 +121,11 @@ class _ImportScreenState extends State<ImportScreen> {
   }
 
   void _selectClass(int index) {
+    _storeSelectedMetadata();
     setState(() {
       _selectedIndex = index;
-      _loadMetadata(_result!.classes[index]);
+      final original = _result!.classes[index];
+      _loadMetadata(_editedClasses[original.sourceSheetName] ?? original);
     });
   }
 
@@ -81,50 +134,88 @@ class _ImportScreenState extends State<ImportScreen> {
     _subjectCodeController.text = importedClass.subjectCode;
     _classCodeController.text = importedClass.classCode;
     _semesterController.text = importedClass.semester;
+    _lessonCountController.text = importedClass.lessonCount.toString();
   }
 
-  void _continueToSchedule() {
+  void _storeSelectedMetadata() {
     final importedClass = _selectedClass;
     if (importedClass == null) return;
-    final scheduleCode = _scheduleCodeController.text.trim();
-    final subjectCode = _subjectCodeController.text.trim().toUpperCase();
-    final classCode = _classCodeController.text.trim().toUpperCase();
-    final semester = _semesterController.text.trim().toUpperCase();
-    final unresolvedIssues = importedClass.issues.where((issue) {
-      return !const {
-        'invalid_schedule_code',
-        'missing_subject_code',
-        'class_conflict',
-        'class_from_roster',
-      }.contains(issue.code);
-    }).toList();
-    final metadataValid =
-        RegExp(r'^[123][1-4]$').hasMatch(scheduleCode) &&
-        subjectCode.isNotEmpty &&
-        classCode.isNotEmpty &&
-        semester.isNotEmpty;
-    if (unresolvedIssues.any((issue) => issue.isError) || !metadataValid) {
+    _editedClasses[importedClass.sourceSheetName] = importedClass.copyWith(
+      scheduleCode: _scheduleCodeController.text.trim(),
+      subjectCode: _subjectCodeController.text.trim().toUpperCase(),
+      classCode: _classCodeController.text.trim().toUpperCase(),
+      semester: _semesterController.text.trim().toUpperCase(),
+      lessonCount: int.tryParse(_lessonCountController.text.trim()) ?? 0,
+    );
+  }
+
+  List<ImportedClass>? _prepareAllClasses() {
+    _storeSelectedMetadata();
+    final result = _result;
+    if (result == null) return null;
+    final commonSemester = _semesterController.text.trim().toUpperCase();
+    final prepared = result.classes
+        .map((original) {
+          final edited = _editedClasses[original.sourceSheetName] ?? original;
+          final semester = edited.semester.trim().isEmpty
+              ? commonSemester
+              : edited.semester.trim().toUpperCase();
+          final issues = edited.issues.where((issue) {
+            return !const {
+              'invalid_schedule_code',
+              'missing_subject_code',
+              'class_conflict',
+              'class_from_roster',
+            }.contains(issue.code);
+          }).toList();
+          return edited.copyWith(semester: semester, issues: issues);
+        })
+        .toList(growable: false);
+
+    final invalidCount = prepared.where((item) {
+      final metadataValid =
+          RegExp(r'^[123][1-4]$').hasMatch(item.scheduleCode) &&
+          item.subjectCode.trim().isNotEmpty &&
+          item.classCode.trim().isNotEmpty &&
+          item.semester.trim().isNotEmpty;
+      final lessonCountValid = item.lessonCount >= 1 && item.lessonCount <= 60;
+      return !metadataValid ||
+          !lessonCountValid ||
+          item.issues.any((issue) => issue.isError);
+    }).length;
+    if (invalidCount > 0) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            !metadataValid
-                ? 'Hãy nhập đúng mã lịch, môn, lớp và học kỳ.'
-                : 'Markbook vẫn còn lỗi dữ liệu cần xử lý.',
+            'Còn $invalidCount lớp chưa hợp lệ. Hãy kiểm tra metadata, dữ liệu và số buổi (1–60).',
           ),
         ),
       );
-      return;
+      return null;
     }
+    return prepared;
+  }
+
+  Future<void> _continueToSchedule() async {
+    final classes = _prepareAllClasses();
+    if (classes == null || classes.isEmpty) return;
+    final now = DateTime.now();
+    if (!mounted) return;
+    final semesterStart = await showDatePicker(
+      context: context,
+      helpText: 'Chọn mốc bắt đầu học kỳ',
+      confirmText: 'Xem lịch tất cả lớp',
+      initialDate: DateTime(now.year, now.month, now.day),
+      firstDate: DateTime(now.year - 2),
+      lastDate: DateTime(now.year + 3, 12, 31),
+    );
+    if (semesterStart == null || !mounted) return;
     Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (_) => ScheduleGeneratorScreen(
-          importedClass: importedClass.copyWith(
-            scheduleCode: scheduleCode,
-            subjectCode: subjectCode,
-            classCode: classCode,
-            semester: semester,
-            issues: unresolvedIssues,
-          ),
+          importedClasses: classes,
+          initialClassIndex: _selectedIndex,
+          semesterStart: semesterStart,
         ),
       ),
     );
@@ -175,38 +266,74 @@ class _ImportScreenState extends State<ImportScreen> {
       elevation: 0,
       child: Padding(
         padding: const EdgeInsets.all(20),
-        child: Row(
-          children: [
-            const Icon(Icons.table_view_outlined, size: 38),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final heading = Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.table_view_outlined, size: 38),
+                const SizedBox(width: 16),
+                Flexible(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Bước 1 — Nhập danh sách lớp',
+                        style: TextStyle(
+                          fontSize: 21,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        result == null
+                            ? 'Chọn tệp .xlsx hoặc .ods. Tệp nguồn chỉ được đọc.'
+                            : '${result.sourceFileName} • ${result.classes.length} lớp • ${result.totalStudents} sinh viên',
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            );
+            final actions = Wrap(
+              spacing: 10,
+              runSpacing: 8,
+              children: [
+                FilledButton.icon(
+                  onPressed: _isLoading ? null : _pickFile,
+                  icon: _isLoading
+                      ? const SizedBox.square(
+                          dimension: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.upload_file),
+                  label: Text(_isLoading ? 'Đang đọc...' : 'Chọn Markbook'),
+                ),
+                OutlinedButton.icon(
+                  onPressed: _isLoading ? null : _pickSingleClassFile,
+                  icon: const Icon(Icons.playlist_add),
+                  label: const Text('Thêm file 1 lớp'),
+                ),
+              ],
+            );
+            if (constraints.maxWidth < 900) {
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const Text(
-                    'Bước 1 — Nhập danh sách lớp',
-                    style: TextStyle(fontSize: 21, fontWeight: FontWeight.w700),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    result == null
-                        ? 'Chọn tệp .xlsx hoặc .ods. Tệp nguồn chỉ được đọc.'
-                        : '${result.sourceFileName} • ${result.classes.length} lớp • ${result.totalStudents} sinh viên',
-                  ),
+                  heading,
+                  const SizedBox(height: 12),
+                  Align(alignment: Alignment.centerRight, child: actions),
                 ],
-              ),
-            ),
-            FilledButton.icon(
-              onPressed: _isLoading ? null : _pickFile,
-              icon: _isLoading
-                  ? const SizedBox.square(
-                      dimension: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.upload_file),
-              label: Text(_isLoading ? 'Đang đọc...' : 'Chọn Markbook'),
-            ),
-          ],
+              );
+            }
+            return Row(
+              children: [
+                Expanded(child: heading),
+                const SizedBox(width: 16),
+                actions,
+              ],
+            );
+          },
         ),
       ),
     );
@@ -233,7 +360,9 @@ class _ImportScreenState extends State<ImportScreen> {
               itemCount: classes.length,
               separatorBuilder: (_, _) => const SizedBox(height: 6),
               itemBuilder: (_, index) {
-                final item = classes[index];
+                final original = classes[index];
+                final item =
+                    _editedClasses[original.sourceSheetName] ?? original;
                 final errors = item.issues
                     .where((issue) => issue.isError)
                     .length;
@@ -290,6 +419,7 @@ class _ImportScreenState extends State<ImportScreen> {
                       _metadataField('Môn', _subjectCodeController, 125),
                       _metadataField('Lớp', _classCodeController, 125),
                       _metadataField('Học kỳ', _semesterController, 105),
+                      _metadataField('Số buổi', _lessonCountController, 105),
                     ],
                   ),
                 ),
@@ -297,7 +427,7 @@ class _ImportScreenState extends State<ImportScreen> {
                 FilledButton.icon(
                   onPressed: _continueToSchedule,
                   icon: const Icon(Icons.arrow_forward),
-                  label: const Text('Tạo lịch'),
+                  label: const Text('Tiếp tục: Xem lịch giảng dạy'),
                 ),
               ],
             ),
