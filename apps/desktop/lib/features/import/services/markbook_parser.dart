@@ -311,14 +311,6 @@ class MarkbookParser {
     var resolvedClassCode = sheetClassCode;
     if (resolvedClassCode.isEmpty && rosterClasses.length == 1) {
       resolvedClassCode = rosterClasses.single;
-      issues.add(
-        _warning(
-          sheet.name,
-          'class_from_roster',
-          'Tên sheet không có mã lớp; đã lấy $resolvedClassCode từ cột Class. Hãy xác nhận trước khi lưu.',
-          field: 'Class',
-        ),
-      );
     }
     if (rosterClasses.length > 1) {
       issues.add(

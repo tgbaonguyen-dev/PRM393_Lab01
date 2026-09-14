@@ -29,6 +29,9 @@ void main() {
     expect(find.text('Buổi 01 / 20'), findsOneWidget);
     expect(find.text('Buổi 01 / 12'), findsOneWidget);
     expect(find.text('Mở điểm danh • Chờ M2'), findsOneWidget);
+    expect(find.text('Chỉnh ngày'), findsNothing);
+    expect(find.text('Xác nhận buổi'), findsNothing);
+    expect(find.text('Lưu lịch lớp'), findsNothing);
   });
 }
 

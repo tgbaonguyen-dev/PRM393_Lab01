@@ -70,7 +70,7 @@ void main() {
     expect(issues.any((issue) => issue.code == 'invalid_email'), isTrue);
   });
 
-  test('takes class code from roster when sheet suffix is absent', () {
+  test('takes class code from roster silently when sheet suffix is absent', () {
     final result = parser.parseBytes(
       bytes: _workbookBytes([
         ['Class', 'RollNumber', 'Email', 'MemberCode', 'FullName'],
@@ -81,12 +81,7 @@ void main() {
     );
 
     expect(result.classes.single.classCode, 'SE1922');
-    expect(
-      result.classes.single.issues.any(
-        (issue) => issue.code == 'class_from_roster',
-      ),
-      isTrue,
-    );
+    expect(result.classes.single.issues, isEmpty);
   });
 
   final realOds = File('../../../FA26_Markbook.ods');

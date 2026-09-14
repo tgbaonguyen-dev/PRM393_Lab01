@@ -3,7 +3,6 @@ import 'package:intl/intl.dart';
 
 import '../import/models/import_models.dart';
 import 'models/schedule_models.dart';
-import 'services/schedule_api_client.dart';
 import 'services/schedule_generator.dart';
 import 'services/schedule_overview.dart';
 
@@ -11,14 +10,12 @@ class ScheduleGeneratorScreen extends StatefulWidget {
   final List<ImportedClass> importedClasses;
   final DateTime semesterStart;
   final int initialClassIndex;
-  final ScheduleApiClient? apiClient;
 
   const ScheduleGeneratorScreen({
     super.key,
     required this.importedClasses,
     required this.semesterStart,
     this.initialClassIndex = 0,
-    this.apiClient,
   }) : assert(importedClasses.length > 0);
 
   @override
@@ -44,17 +41,12 @@ class _ScheduleGeneratorScreenState extends State<ScheduleGeneratorScreen> {
     'CHỦ NHẬT',
   ];
 
-  late final ScheduleApiClient _apiClient;
   late final List<ImportedClass> _classes;
   final Map<String, List<ClassLesson>> _schedules = {};
   late DateTime _weekStart;
   String _filter = _allClasses;
   String? _selectedKey;
-  String? _confirmedKey;
   String? _suggestedKey;
-  String? _message;
-  bool _messageIsError = false;
-  bool _isSaving = false;
 
   ScheduledLessonView? get _selectedLesson => ScheduleOverview.findByKey(
     key: _selectedKey,
@@ -67,7 +59,6 @@ class _ScheduleGeneratorScreenState extends State<ScheduleGeneratorScreen> {
   @override
   void initState() {
     super.initState();
-    _apiClient = widget.apiClient ?? ScheduleApiClient();
     _classes = List<ImportedClass>.unmodifiable(widget.importedClasses);
     _weekStart = ScheduleOverview.startOfWeek(widget.semesterStart);
     _generateAllSchedules();
@@ -115,77 +106,6 @@ class _ScheduleGeneratorScreenState extends State<ScheduleGeneratorScreen> {
   void _selectLesson(ScheduledLessonView item) {
     setState(() {
       _selectedKey = item.key;
-      _confirmedKey = null;
-      _message = null;
-    });
-  }
-
-  void _confirmLesson() {
-    final selected = _selectedLesson;
-    if (selected == null) return;
-    setState(() {
-      _confirmedKey = selected.key;
-      _message =
-          'Đã xác nhận buổi ${selected.lesson.sequenceNumber} của ${selected.importedClass.subjectCode} - ${selected.importedClass.classCode}.';
-      _messageIsError = false;
-    });
-  }
-
-  Future<void> _editSelectedLesson() async {
-    final selected = _selectedLesson;
-    if (selected == null) return;
-    final picked = await showDatePicker(
-      context: context,
-      helpText: 'Chọn ngày nghỉ lễ hoặc học bù',
-      initialDate: selected.lesson.date,
-      firstDate: DateTime(selected.lesson.date.year - 1),
-      lastDate: DateTime(selected.lesson.date.year + 1, 12, 31),
-    );
-    if (picked == null || !mounted) return;
-    try {
-      final classKey = selected.importedClass.sourceSheetName;
-      final updated = ScheduleGenerator.replaceLessonDate(
-        lessons: _schedules[classKey]!,
-        sequenceNumber: selected.lesson.sequenceNumber,
-        newDate: picked,
-      );
-      setState(() {
-        _schedules[classKey] = updated;
-        _weekStart = ScheduleOverview.startOfWeek(picked);
-        _confirmedKey = null;
-        _message = 'Đã điều chỉnh ngày buổi ${selected.lesson.sequenceNumber}.';
-        _messageIsError = false;
-      });
-    } catch (error) {
-      _showMessage(
-        error.toString().replaceFirst('Invalid argument(s): ', ''),
-        isError: true,
-      );
-    }
-  }
-
-  Future<void> _saveSelectedClass() async {
-    final selected = _selectedLesson;
-    if (selected == null) return;
-    setState(() => _isSaving = true);
-    try {
-      final message = await _apiClient.saveSchedule(
-        importedClass: selected.importedClass,
-        lessons: _schedules[selected.importedClass.sourceSheetName]!,
-      );
-      _showMessage(message, isError: false);
-    } catch (error) {
-      _showMessage('Không thể lưu lịch: $error', isError: true);
-    } finally {
-      if (mounted) setState(() => _isSaving = false);
-    }
-  }
-
-  void _showMessage(String message, {required bool isError}) {
-    if (!mounted) return;
-    setState(() {
-      _message = message;
-      _messageIsError = isError;
     });
   }
 
@@ -204,10 +124,6 @@ class _ScheduleGeneratorScreenState extends State<ScheduleGeneratorScreen> {
             _toolbar(),
             const SizedBox(height: 12),
             _selectionPanel(),
-            if (_message != null) ...[
-              const SizedBox(height: 10),
-              _messageBanner(),
-            ],
             const SizedBox(height: 12),
             Expanded(child: _weeklyTable()),
           ],
@@ -317,7 +233,7 @@ class _ScheduleGeneratorScreenState extends State<ScheduleGeneratorScreen> {
                 Expanded(
                   child: selected == null
                       ? const Text(
-                          'Không có buổi đang diễn ra. Hãy chọn một ô lịch để xác nhận buổi cần điểm danh.',
+                          'Không có buổi đang diễn ra. Hãy chọn một ô lịch để chọn buổi cần điểm danh.',
                         )
                       : Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -343,38 +259,9 @@ class _ScheduleGeneratorScreenState extends State<ScheduleGeneratorScreen> {
               spacing: 8,
               runSpacing: 8,
               children: [
-                TextButton.icon(
-                  onPressed: selected == null ? null : _editSelectedLesson,
-                  icon: const Icon(Icons.edit_calendar_outlined),
-                  label: const Text('Chỉnh ngày'),
-                ),
-                FilledButton.tonalIcon(
-                  onPressed: selected == null ? null : _confirmLesson,
-                  icon: Icon(
-                    selected?.key == _confirmedKey
-                        ? Icons.check_circle
-                        : Icons.check,
-                  ),
-                  label: Text(
-                    selected?.key == _confirmedKey
-                        ? 'Đã xác nhận'
-                        : 'Xác nhận buổi',
-                  ),
-                ),
-                OutlinedButton.icon(
-                  onPressed: selected == null || _isSaving
-                      ? null
-                      : _saveSelectedClass,
-                  icon: _isSaving
-                      ? const SizedBox.square(
-                          dimension: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.save_outlined),
-                  label: Text(_isSaving ? 'Đang lưu...' : 'Lưu lịch lớp'),
-                ),
                 Tooltip(
-                  message: 'Thành viên 2 sẽ gắn màn hình mở phiên và QR.',
+                  message:
+                      'Thành viên 2 sẽ gắn màn hình mở phiên và QR vào buổi bạn đã chọn.',
                   child: FilledButton.icon(
                     onPressed: null,
                     icon: const Icon(Icons.play_arrow),
@@ -388,19 +275,6 @@ class _ScheduleGeneratorScreenState extends State<ScheduleGeneratorScreen> {
       ),
     );
   }
-
-  Widget _messageBanner() => Container(
-    width: double.infinity,
-    padding: const EdgeInsets.all(10),
-    decoration: BoxDecoration(
-      color: _messageIsError ? Colors.red.shade50 : Colors.green.shade50,
-      border: Border.all(
-        color: _messageIsError ? Colors.red.shade200 : Colors.green.shade200,
-      ),
-      borderRadius: BorderRadius.circular(10),
-    ),
-    child: Text(_message!),
-  );
 
   Widget _weeklyTable() {
     final days = List.generate(
@@ -526,7 +400,6 @@ class _ScheduleGeneratorScreenState extends State<ScheduleGeneratorScreen> {
   Widget _lessonCard(ScheduledLessonView item) {
     final selected = item.key == _selectedKey;
     final suggested = item.key == _suggestedKey;
-    final confirmed = item.key == _confirmedKey;
     final borderColor = suggested
         ? Colors.green
         : selected
@@ -557,12 +430,6 @@ class _ScheduleGeneratorScreenState extends State<ScheduleGeneratorScreen> {
                         style: const TextStyle(fontWeight: FontWeight.w800),
                       ),
                     ),
-                    if (confirmed)
-                      const Icon(
-                        Icons.check_circle,
-                        size: 16,
-                        color: Colors.green,
-                      ),
                   ],
                 ),
                 Text(

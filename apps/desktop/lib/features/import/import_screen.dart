@@ -174,7 +174,6 @@ class _ImportScreenState extends State<ImportScreen> {
               'invalid_schedule_code',
               'missing_subject_code',
               'class_conflict',
-              'class_from_roster',
             }.contains(issue.code);
           }).toList();
           return edited.copyWith(issues: issues);
