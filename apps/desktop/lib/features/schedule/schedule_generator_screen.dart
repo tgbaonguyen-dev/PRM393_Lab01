@@ -117,7 +117,7 @@ class _ScheduleGeneratorScreenState extends State<ScheduleGeneratorScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('PRM393 • Lịch giảng dạy'),
+        title: const Text('Lịch giảng dạy'),
         backgroundColor: Colors.white,
       ),
       body: Padding(

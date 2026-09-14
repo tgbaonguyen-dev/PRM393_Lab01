@@ -351,7 +351,7 @@ class _ImportScreenState extends State<ImportScreen> {
     final selectedClass = _selectedClass;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('PRM393 • Nhập Markbook'),
+        title: const Text('Nhập Markbook'),
         backgroundColor: Colors.white,
       ),
       body: Padding(
