@@ -108,7 +108,7 @@ class _StudentAttendanceTableState extends State<StudentAttendanceTable> {
             SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: DataTable(
-                headingRowColor: MaterialStateProperty.all(
+                headingRowColor: WidgetStateProperty.all(
                   const Color(0xFFF8FAFC),
                 ),
                 headingTextStyle: const TextStyle(
@@ -132,7 +132,7 @@ class _StudentAttendanceTableState extends State<StudentAttendanceTable> {
                   final isP = s.isPresent;
                   final isA = s.isAbsent;
                   return DataRow(
-                    color: MaterialStateProperty.resolveWith<Color>((states) {
+                    color: WidgetStateProperty.resolveWith<Color>((states) {
                       if (isP) return const Color(0xFFF0FDF4); // Nền xanh nhạt
                       if (isA) return const Color(0xFFFEF2F2); // Nền đỏ nhạt
                       return Colors.white;
