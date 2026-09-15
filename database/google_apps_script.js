@@ -185,9 +185,15 @@ var DatabaseService = {
   clearAllDatabase: function () {
     var ss = this.getSpreadsheet();
     var tempSheet = ss.insertSheet('Temp_' + new Date().getTime());
+    // M1 stores canonical schedules here. The legacy presentation reset must
+    // never delete them, otherwise a later demo sync would erase history.
+    var protectedSheets = {
+      'Classes': true, 'Students': true, 'Lessons': true,
+      'Sessions': true, 'Attendances': true
+    };
     var sheets = ss.getSheets();
     for (var i = 0; i < sheets.length; i++) {
-      if (sheets[i].getName() !== tempSheet.getName()) {
+      if (sheets[i].getName() !== tempSheet.getName() && !protectedSheets[sheets[i].getName()]) {
         try {
           ss.deleteSheet(sheets[i]);
         } catch (e) {}
@@ -624,7 +630,8 @@ var DatabaseService = {
     var sheets = ss.getSheets();
     for (var i = 0; i < sheets.length; i++) {
       var sName = sheets[i].getName();
-      if (sName === 'Overview' || sName.indexOf('Temp_') === 0) continue;
+      if (sName === 'Overview' || sName.indexOf('Temp_') === 0 ||
+          sName === 'Classes' || sName === 'Students' || sName === 'Lessons') continue;
       var matchClass = sName.toLowerCase().indexOf(parts.className.toLowerCase()) !== -1;
       var matchSubject = !parts.subjectCode || sName.toLowerCase().indexOf(parts.subjectCode.toLowerCase()) !== -1;
       if (matchClass && matchSubject) {
@@ -639,6 +646,16 @@ var DatabaseService = {
    */
   parseLessonId: function (lessonId) {
     if (!lessonId) return null;
+    // M1 canonical ID: SUBJECT_CLASS_SEMESTER-L01.
+    // Keep the older SUBJECT_CLASS_Lesson_1 form for existing attendance code.
+    var m1Match = lessonId.match(/^([A-Za-z0-9]+)_([A-Za-z0-9]+)(?:_[A-Za-z0-9]+)?-L(\d+)$/i);
+    if (m1Match) {
+      return {
+        subjectCode: m1Match[1],
+        className: m1Match[2],
+        sequenceNumber: parseInt(m1Match[3], 10)
+      };
+    }
     var match = lessonId.match(/^([A-Za-z0-9]+)_([A-Za-z0-9]+)_Lesson_(\d+)/i);
     if (match) {
       return {
@@ -659,17 +676,23 @@ var DatabaseService = {
   },
 
   getScheduleDescription: function (code) {
-    var map = {
-      '12': 'Thứ 2 & Thứ 5, Ca 2 (09:50 - 12:10)',
-      '14': 'Thứ 2 & Thứ 5, Ca 4 (15:20 - 17:40)',
-      '21': 'Thứ 3 & Thứ 6, Ca 1 (07:30 - 09:50)',
-      '22': 'Thứ 3 & Thứ 6, Ca 2 (09:50 - 12:10)',
-      '23': 'Thứ 3 & Thứ 6, Ca 3 (12:50 - 15:10)',
-      '24': 'Thứ 3 & Thứ 6, Ca 4 (15:20 - 17:40)',
-      '31': 'Thứ 4 & Thứ 7, Ca 1 (07:30 - 09:50)',
-      '32': 'Thứ 4 & Thứ 7, Ca 2 (09:50 - 12:10)'
+    var normalized = String(code || '');
+    var weekdayMap = {
+      '1': 'Thứ 2 & Thứ 5',
+      '2': 'Thứ 3 & Thứ 6',
+      '3': 'Thứ 4 & Thứ 7'
     };
-    return map[String(code)] || ('Mã lịch ' + code);
+    var timeMap = {
+      '1': '07:00 - 09:15',
+      '2': '09:30 - 11:45',
+      '3': '12:30 - 14:45',
+      '4': '15:00 - 17:15',
+      '5': '17:45 - 19:15'
+    };
+    if (!weekdayMap[normalized.charAt(0)] || !timeMap[normalized.charAt(1)]) {
+      return 'Mã lịch ' + normalized;
+    }
+    return weekdayMap[normalized.charAt(0)] + ', Ca ' + normalized.charAt(1) + ' (' + timeMap[normalized.charAt(1)] + ')';
   },
 
   getColumnLetter: function (colIndex) {
