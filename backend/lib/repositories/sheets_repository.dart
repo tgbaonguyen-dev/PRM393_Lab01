@@ -24,42 +24,68 @@ class SheetsRepository {
       };
     }
 
-    // Apps Script accepts the POST, performs the write, then answers with a
-    // 302 to googleusercontent.com. Disable automatic redirects so that the
-    // second request is explicitly a GET. Otherwise the HTTP client can
-    // resend POST data to the echo URL, receive an HTML error and make the
-    // desktop stop after saving only the first class.
-    final request = http.Request('POST', Uri.parse(gatewayUrl))
-      ..followRedirects = false
-      ..maxRedirects = 0
-      ..headers['Content-Type'] = 'application/json'
-      ..body = jsonEncode({
-        'action': action,
-        'payload': payload,
-      });
-    var response = await http.Response.fromStream(await _client.send(request));
+    // Apps Script writes first, then redirects to googleusercontent.com for
+    // the JSON response. That echo URL can occasionally return a transient
+    // Drive 404 under a burst of sequential class saves. All M1 writes are
+    // idempotent (upsert by classId), so retrying the complete request is safe.
+    Object? lastError;
+    for (var attempt = 0; attempt < 3; attempt++) {
+      try {
+        final request = http.Request('POST', Uri.parse(gatewayUrl))
+          ..followRedirects = false
+          ..maxRedirects = 0
+          ..headers['Content-Type'] = 'application/json'
+          ..body = jsonEncode({
+            'action': action,
+            'payload': payload,
+          });
+        var response =
+            await http.Response.fromStream(await _client.send(request));
 
-    // Google Apps Script Web App trả về mã 302 Redirect sang googleusercontent.com/echo.
-    if (response.statusCode == 302 ||
-        response.statusCode == 301 ||
-        response.statusCode == 303 ||
-        response.statusCode == 307) {
-      final redirectUrl = response.headers['location'];
-      if (redirectUrl != null && redirectUrl.isNotEmpty) {
-        response = await _client.get(Uri.parse(redirectUrl));
+        if (response.statusCode == 302 ||
+            response.statusCode == 301 ||
+            response.statusCode == 303 ||
+            response.statusCode == 307) {
+          final redirectUrl = response.headers['location'];
+          if (redirectUrl == null || redirectUrl.isEmpty) {
+            throw StateError('Data Gateway không trả URL chuyển hướng.');
+          }
+          response = await _client.get(Uri.parse(redirectUrl));
+        }
+
+        if (response.statusCode == 200) {
+          final dynamic decoded = jsonDecode(response.body);
+          if (decoded is Map<String, dynamic>) return decoded;
+          return {'success': true, 'data': decoded};
+        }
+
+        if (_isTransientGoogleEcho404(response) && attempt < 2) {
+          await Future<void>.delayed(Duration(seconds: attempt + 1));
+          continue;
+        }
+        throw StateError(
+          'Data Gateway trả về HTTP ${response.statusCode}. '
+          'Vui lòng thử lại; dữ liệu đã lưu trước đó vẫn được giữ.',
+        );
+      } on StateError {
+        rethrow;
+      } catch (error) {
+        lastError = error;
+        if (attempt < 2) {
+          await Future<void>.delayed(Duration(seconds: attempt + 1));
+          continue;
+        }
       }
     }
+    throw StateError('Không thể đọc phản hồi Data Gateway: $lastError');
+  }
 
-    if (response.statusCode != 200) {
-      throw Exception(
-          'Data Gateway trả về HTTP ${response.statusCode}: ${response.body}');
-    }
-
-    final dynamic decoded = jsonDecode(response.body);
-    if (decoded is Map<String, dynamic>) {
-      return decoded;
-    }
-    return {'success': true, 'data': decoded};
+  bool _isTransientGoogleEcho404(http.Response response) {
+    if (response.statusCode != 404) return false;
+    final body = response.body.toLowerCase();
+    return body.contains('google drive') ||
+        body.contains('không tìm thấy trang') ||
+        body.contains('not found');
   }
 
   /// Đồng bộ toàn bộ danh sách lớp học và tạo tab riêng cho từng lớp (kèm Tab Overview)
