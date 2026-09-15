@@ -1,15 +1,30 @@
 import 'dart:convert';
+import 'dart:io';
+
+import 'package:crypto/crypto.dart';
 import 'package:shelf/shelf.dart';
 import 'package:shelf_router/shelf_router.dart';
+import '../repositories/sheets_repository.dart';
 import '../services/attendance_service.dart';
+import '../services/auth_service.dart';
 
 // Controller tiếp nhận Request liên quan đến Điểm danh & Sửa kết quả
 
 class AttendanceController {
   final AttendanceService _attendanceService;
+  final AuthService _authService;
+  final SheetsRepository _sheetsRepository;
+  final String? _qrSecret;
 
-  AttendanceController({AttendanceService? attendanceService})
-      : _attendanceService = attendanceService ?? AttendanceService();
+  AttendanceController({
+    AttendanceService? attendanceService,
+    AuthService? authService,
+    SheetsRepository? sheetsRepository,
+    String? qrSecret,
+  })  : _attendanceService = attendanceService ?? AttendanceService(),
+        _authService = authService ?? AuthService(),
+        _sheetsRepository = sheetsRepository ?? SheetsRepository(),
+        _qrSecret = qrSecret;
 
   Router get router {
     final router = Router();
@@ -20,6 +35,8 @@ class AttendanceController {
     //2 endpoint: phục vụ sửa A/P thủ công từ Desktop
     router.post(
         '/session/<sessionId>/attendances/manual-override', _handleManualEdit);
+    router.post('/manual-edit', _handleManualEdit);
+    router.post('/checkin', _handleCheckIn);
 
     return router;
   }
@@ -117,5 +134,156 @@ class AttendanceController {
         headers: {'Content-Type': 'application/json'},
       );
     }
+  }
+
+  Future<Response> _handleCheckIn(Request request) async {
+    try {
+      final body = jsonDecode(await request.readAsString());
+      if (body is! Map<String, dynamic>) {
+        return _jsonError(400, 'BAD_REQUEST', 'Request body không hợp lệ.');
+      }
+
+      final idToken = _requiredString(body['idToken']);
+      final qrToken = _requiredString(body['qrToken'] ?? body['token']);
+      final sessionId = _requiredString(body['sessionId']);
+      final classId = _requiredString(body['classId']);
+      if ([idToken, qrToken, sessionId, classId]
+          .any((value) => value.isEmpty)) {
+        return _jsonError(400, 'BAD_REQUEST',
+            'Cần có idToken, qrToken, sessionId và classId.');
+      }
+
+      final identity = await _authService.verifyGoogleIdToken(idToken);
+      if (identity == null) {
+        return _jsonError(401, 'AUTH_FAILED',
+            'Google ID Token không hợp lệ hoặc đã hết hạn.');
+      }
+
+      final qr = _verifyQrToken(qrToken);
+      if (qr == null ||
+          qr['sessionId'] != sessionId ||
+          qr['classId'] != classId) {
+        return _jsonError(400, 'QR_EXPIRED',
+            'Mã QR không hợp lệ hoặc đã hết hạn. Vui lòng quét mã mới nhất.');
+      }
+
+      final isInClass = await _sheetsRepository.isStudentInClass(
+        classId: classId,
+        email: identity.email,
+      );
+      if (!isInClass) {
+        return _jsonError(403, 'NOT_IN_ROSTER',
+            'Email Google này không thuộc danh sách lớp học phần.');
+      }
+
+      final activeWindow = await _sheetsRepository.getActiveWindow(sessionId);
+      if (activeWindow == null || activeWindow['isOpen'] != true) {
+        return _jsonError(409, 'SESSION_CLOSED',
+            'Phiên điểm danh đã đóng hoặc chưa được mở.');
+      }
+
+      final result = await _sheetsRepository.recordCheckIn(
+        sessionId,
+        identity.email,
+      );
+      final data = result['data'] is Map<String, dynamic>
+          ? result['data'] as Map<String, dynamic>
+          : <String, dynamic>{};
+      final gatewayStatus =
+          (result['status'] ?? data['status'])?.toString().toUpperCase();
+      if (gatewayStatus == 'ALREADY_CHECKED_IN' ||
+          result['alreadyRecorded'] == true) {
+        return _jsonResponse(200, false, 'ALREADY_CHECKED_IN',
+            'Bạn đã được điểm danh trước đó.', {
+          'email': identity.email,
+          'status': 'P',
+        });
+      }
+
+      if (result['success'] != true || data['success'] == false) {
+        final error = (result['error'] ?? data['error'])?.toString() ??
+            'Không thể lưu kết quả điểm danh.';
+        if (error.toLowerCase().contains('không tìm thấy sinh viên')) {
+          return _jsonError(403, 'NOT_IN_ROSTER',
+              'Email Google này không thuộc danh sách lớp học phần.');
+        }
+        return _jsonError(502, 'PERSISTENCE_ERROR', error);
+      }
+
+      return _jsonResponse(200, true, 'SUCCESS', 'Điểm danh thành công.', {
+        'email': identity.email,
+        'studentName': identity.name,
+        'status': 'P',
+      });
+    } on FormatException {
+      return _jsonError(400, 'BAD_REQUEST', 'JSON request không hợp lệ.');
+    } catch (_) {
+      return _jsonError(502, 'PERSISTENCE_ERROR',
+          'Không thể lưu kết quả điểm danh. Vui lòng thử lại.');
+    }
+  }
+
+  Map<String, dynamic>? _verifyQrToken(String token) {
+    final secret =
+        (_qrSecret ?? Platform.environment['QR_HMAC_SECRET'])?.trim() ?? '';
+    if (secret.isEmpty) return null;
+
+    final parts = token.split('.');
+    if (parts.length != 2) return null;
+    final payloadBytes = _decodeBase64Url(parts[0]);
+    final signatureBytes = _decodeBase64Url(parts[1]);
+    if (payloadBytes == null || signatureBytes == null) return null;
+
+    final expected = Hmac(sha256, utf8.encode(secret)).convert(payloadBytes);
+    if (!_constantTimeEquals(expected.bytes, signatureBytes)) return null;
+
+    final payload = jsonDecode(utf8.decode(payloadBytes));
+    if (payload is! Map<String, dynamic>) return null;
+    final expiry = int.tryParse(payload['expiresAt']?.toString() ?? '');
+    if (expiry == null || expiry <= DateTime.now().millisecondsSinceEpoch) {
+      return null;
+    }
+    return payload;
+  }
+
+  List<int>? _decodeBase64Url(String value) {
+    try {
+      return base64Url.decode(base64Url.normalize(value));
+    } catch (_) {
+      return null;
+    }
+  }
+
+  bool _constantTimeEquals(List<int> left, List<int> right) {
+    if (left.length != right.length) return false;
+    var difference = 0;
+    for (var index = 0; index < left.length; index++) {
+      difference |= left[index] ^ right[index];
+    }
+    return difference == 0;
+  }
+
+  String _requiredString(dynamic value) => value is String ? value.trim() : '';
+
+  Response _jsonError(int code, String status, String message) =>
+      _jsonResponse(code, false, status, message, null);
+
+  Response _jsonResponse(
+    int code,
+    bool success,
+    String status,
+    String message,
+    Map<String, dynamic>? data,
+  ) {
+    return Response(
+      code,
+      body: jsonEncode({
+        'success': success,
+        'status': status,
+        'message': message,
+        if (data != null) 'data': data,
+      }),
+      headers: {'content-type': 'application/json; charset=utf-8'},
+    );
   }
 }
