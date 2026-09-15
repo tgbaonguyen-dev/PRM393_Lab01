@@ -10,11 +10,13 @@ void main() {
       'sequenceNumber': 1,
       'date': 'Mon Sep 07 2026 00:00:00 GMT+0700 (Giờ Đông Dương)',
       'dailySlot': 1,
-      'startTime': '07:00',
-      'endTime': '09:15',
+      'startTime': 'Sat Dec 30 1899 07:14:42 GMT+0706 (Giờ Đông Dương)',
+      'endTime': 'Sat Dec 30 1899 09:29:42 GMT+0706 (Giờ Đông Dương)',
     });
 
     expect(lesson.date, DateTime(2026, 9, 7));
+    expect(lesson.startTime, '07:00');
+    expect(lesson.endTime, '09:15');
   });
 
   test('parses schedule code 12', () {

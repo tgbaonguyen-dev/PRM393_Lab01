@@ -60,15 +60,18 @@ class ClassLesson {
     'isAdjusted': isAdjusted,
   };
 
-  factory ClassLesson.fromJson(Map<String, dynamic> json) => ClassLesson(
-    lessonId: json['lessonId'] as String? ?? '',
-    sequenceNumber: json['sequenceNumber'] as int? ?? 0,
-    date: _parseDate(json['date']),
-    dailySlot: json['dailySlot'] as int? ?? 0,
-    startTime: json['startTime'] as String? ?? '',
-    endTime: json['endTime'] as String? ?? '',
-    isAdjusted: json['isAdjusted'] == true,
-  );
+  factory ClassLesson.fromJson(Map<String, dynamic> json) {
+    final dailySlot = json['dailySlot'] as int? ?? 0;
+    return ClassLesson(
+      lessonId: json['lessonId'] as String? ?? '',
+      sequenceNumber: json['sequenceNumber'] as int? ?? 0,
+      date: _parseDate(json['date']),
+      dailySlot: dailySlot,
+      startTime: _parseTime(json['startTime'], dailySlot, isStart: true),
+      endTime: _parseTime(json['endTime'], dailySlot, isStart: false),
+      isAdjusted: json['isAdjusted'] == true,
+    );
+  }
 
   static String _dateOnly(DateTime value) =>
       '${value.year.toString().padLeft(4, '0')}-'
@@ -109,6 +112,31 @@ class ClassLesson {
       );
     }
     throw FormatException('Invalid date format: $raw');
+  }
+
+  static const _slotTimes = <int, (String, String)>{
+    1: ('07:00', '09:15'),
+    2: ('09:30', '11:45'),
+    3: ('12:30', '14:45'),
+    4: ('15:00', '17:15'),
+    5: ('17:45', '19:15'),
+  };
+
+  static String _parseTime(
+    Object? rawValue,
+    int dailySlot, {
+    required bool isStart,
+  }) {
+    final raw = rawValue?.toString().trim() ?? '';
+    if (RegExp(r'^([01]?\d|2[0-3]):[0-5]\d$').hasMatch(raw)) {
+      return raw.padLeft(5, '0');
+    }
+    // Sheets stores a time-only cell as a Date object on 30/12/1899. Its
+    // String representation is not a teaching time and may have a historical
+    // timezone offset, so slot time is the reliable source of truth.
+    final slotTime = _slotTimes[dailySlot];
+    if (slotTime != null) return isStart ? slotTime.$1 : slotTime.$2;
+    return raw;
   }
 }
 

@@ -113,6 +113,17 @@ function asDateText(value) {
   return /^\d{4}-\d{2}-\d{2}/.test(text) ? text.substring(0, 10) : text;
 }
 
+// Time-only cells are also read back as a Date object (30/12/1899). Always
+// serialize the contract expected by the desktop client, e.g. `17:45`.
+function asTimeText(value) {
+  if (Object.prototype.toString.call(value) === '[object Date]' && !isNaN(value.getTime())) {
+    return Utilities.formatDate(value, Session.getScriptTimeZone(), 'HH:mm');
+  }
+  var text = asText(value);
+  var match = /^(\d{1,2}):(\d{2})/.exec(text);
+  return match ? ('0' + match[1]).slice(-2) + ':' + match[2] : text;
+}
+
 function requireText(value, label) {
   var text = asText(value);
   if (!text) throw new Error('Thiếu ' + label + '.');
@@ -216,7 +227,7 @@ function getSchedule(classId) {
     .map(function(row) {
       return {
         lessonId: asText(row[0]), sequenceNumber: Number(row[2]), date: asDateText(row[3]),
-        dailySlot: Number(row[4]), startTime: asText(row[5]), endTime: asText(row[6]),
+        dailySlot: Number(row[4]), startTime: asTimeText(row[5]), endTime: asTimeText(row[6]),
         isAdjusted: row[7] === true, status: asText(row[8]) || 'scheduled'
       };
     })
