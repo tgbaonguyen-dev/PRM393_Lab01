@@ -24,16 +24,22 @@ class SheetsRepository {
       };
     }
 
-    var response = await _client.post(
-      Uri.parse(gatewayUrl),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
+    // Apps Script accepts the POST, performs the write, then answers with a
+    // 302 to googleusercontent.com. Disable automatic redirects so that the
+    // second request is explicitly a GET. Otherwise the HTTP client can
+    // resend POST data to the echo URL, receive an HTML error and make the
+    // desktop stop after saving only the first class.
+    final request = http.Request('POST', Uri.parse(gatewayUrl))
+      ..followRedirects = false
+      ..maxRedirects = 0
+      ..headers['Content-Type'] = 'application/json'
+      ..body = jsonEncode({
         'action': action,
         'payload': payload,
-      }),
-    );
+      });
+    var response = await http.Response.fromStream(await _client.send(request));
 
-    // Google Apps Script Web App trả về mã 302 Redirect sang googleusercontent.com/echo
+    // Google Apps Script Web App trả về mã 302 Redirect sang googleusercontent.com/echo.
     if (response.statusCode == 302 ||
         response.statusCode == 301 ||
         response.statusCode == 303 ||
