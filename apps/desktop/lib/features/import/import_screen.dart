@@ -22,7 +22,6 @@ class _ImportScreenState extends State<ImportScreen> {
   final _lessonCountController = TextEditingController(text: '20');
   WorkbookImportResult? _result;
   final Map<String, ImportedClass> _editedClasses = {};
-  final Set<String> _specialLessonCountSheets = {};
   int _selectedIndex = 0;
   String? _hoveredSheetName;
   bool _isLoading = false;
@@ -45,14 +44,12 @@ class _ImportScreenState extends State<ImportScreen> {
   }
 
   Future<void> _pickFile() async {
-    await _pickAndLoad(singleClassOnly: false);
+    await _pickAndLoad();
   }
 
-  Future<void> _pickSingleClassFile() async {
-    await _pickAndLoad(singleClassOnly: true);
-  }
-
-  Future<void> _pickAndLoad({required bool singleClassOnly}) async {
+  /// A Markbook may have one class sheet or many sheets.  The same import
+  /// action handles both cases; lesson counts are editable per detected class.
+  Future<void> _pickAndLoad() async {
     _storeSelectedMetadata();
     final selection = await FilePicker.platform.pickFiles(
       type: FileType.custom,
@@ -67,57 +64,21 @@ class _ImportScreenState extends State<ImportScreen> {
     try {
       final result = await _parser.parseFile(File(path));
       if (!mounted) return;
-      if (singleClassOnly && result.classes.length != 1) {
-        throw const FormatException(
-          'Tệp thêm riêng phải chứa đúng 1 sheet/lớp.',
-        );
-      }
-      final existing = _result?.classes ?? const <ImportedClass>[];
-      if (singleClassOnly &&
-          existing.any((item) {
-            final incoming = result.classes.single;
-            return item.sourceSheetName == incoming.sourceSheetName ||
-                (item.subjectCode == incoming.subjectCode &&
-                    item.classCode == incoming.classCode);
-          })) {
-        throw const FormatException(
-          'Lớp này đã tồn tại trong danh sách import.',
-        );
-      }
-      final combined = singleClassOnly && _result != null
-          ? WorkbookImportResult(
-              sourceFileName:
-                  '${_result!.sourceFileName}, ${result.sourceFileName}',
-              classes: [...existing, ...result.classes],
-            )
-          : result;
       setState(() {
-        _result = combined;
-        final previousEdits = singleClassOnly
-            ? Map<String, ImportedClass>.of(_editedClasses)
-            : <String, ImportedClass>{};
-        final previousSpecialSheets = singleClassOnly
-            ? Set<String>.of(_specialLessonCountSheets)
-            : <String>{};
+        _result = result;
         _editedClasses
           ..clear()
           ..addEntries(
-            combined.classes.map(
+            result.classes.map(
               (item) => MapEntry(
                 item.sourceSheetName,
-                previousEdits[item.sourceSheetName] ?? item,
+                item,
               ),
             ),
           );
-        _specialLessonCountSheets
-          ..clear()
-          ..addAll(previousSpecialSheets);
-        if (singleClassOnly) {
-          _specialLessonCountSheets.add(result.classes.single.sourceSheetName);
-        }
-        _selectedIndex = singleClassOnly ? combined.classes.length - 1 : 0;
-        if (combined.classes.isNotEmpty) {
-          _loadMetadata(combined.classes[_selectedIndex]);
+        _selectedIndex = 0;
+        if (result.classes.isNotEmpty) {
+          _loadMetadata(result.classes.first);
         }
       });
     } catch (error) {
@@ -146,7 +107,6 @@ class _ImportScreenState extends State<ImportScreen> {
     final remaining = List<ImportedClass>.of(result.classes)..removeAt(index);
     setState(() {
       _editedClasses.remove(removed.sourceSheetName);
-      _specialLessonCountSheets.remove(removed.sourceSheetName);
       _hoveredSheetName = null;
       if (remaining.isEmpty) {
         _result = null;
@@ -182,16 +142,9 @@ class _ImportScreenState extends State<ImportScreen> {
       scheduleCode: _scheduleCodeController.text.trim(),
       subjectCode: _subjectCodeController.text.trim().toUpperCase(),
       classCode: _classCodeController.text.trim().toUpperCase(),
-      lessonCount: _isSpecialLessonCountClass(importedClass)
-          ? int.tryParse(_lessonCountController.text.trim()) ?? 0
-          : ImportedClass.defaultLessonCountFor(
-              _subjectCodeController.text.trim(),
-            ),
+      lessonCount: int.tryParse(_lessonCountController.text.trim()) ?? 0,
     );
   }
-
-  bool _isSpecialLessonCountClass(ImportedClass importedClass) =>
-      _specialLessonCountSheets.contains(importedClass.sourceSheetName);
 
   ImportedClass _validateClassMetadata(ImportedClass importedClass) {
     const metadataIssueCodes = {
@@ -243,11 +196,10 @@ class _ImportScreenState extends State<ImportScreen> {
         'ClassCode',
       );
     }
-    if (_isSpecialLessonCountClass(importedClass) &&
-        (importedClass.lessonCount < 1 || importedClass.lessonCount > 60)) {
+    if (importedClass.lessonCount < 1 || importedClass.lessonCount > 60) {
       addError(
         'invalid_lesson_count',
-        'Số buổi đặc biệt phải từ 1 đến 60.',
+        'Số buổi phải từ 1 đến 60.',
         'LessonCount',
       );
     }
@@ -300,7 +252,7 @@ class _ImportScreenState extends State<ImportScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'Còn $invalidCount lớp chưa hợp lệ. Hãy kiểm tra mã lịch, metadata, dữ liệu và số buổi môn đặc biệt (1–60).',
+            'Còn $invalidCount lớp chưa hợp lệ. Hãy kiểm tra mã lịch, metadata, dữ liệu và số buổi (1–60).',
           ),
         ),
       );
@@ -435,11 +387,6 @@ class _ImportScreenState extends State<ImportScreen> {
                       : const Icon(Icons.upload_file),
                   label: Text(_isLoading ? 'Đang đọc...' : 'Chọn Markbook'),
                 ),
-                OutlinedButton.icon(
-                  onPressed: _isLoading ? null : _pickSingleClassFile,
-                  icon: const Icon(Icons.playlist_add),
-                  label: const Text('Thêm môn đặc biệt'),
-                ),
               ],
             );
             if (constraints.maxWidth < 900) {
@@ -554,7 +501,6 @@ class _ImportScreenState extends State<ImportScreen> {
   }
 
   Widget _preview(ImportedClass importedClass) {
-    final isSpecialLessonCount = _isSpecialLessonCountClass(importedClass);
     return Card(
       elevation: 0,
       child: Padding(
@@ -572,12 +518,11 @@ class _ImportScreenState extends State<ImportScreen> {
                       _metadataField('Mã lịch', _scheduleCodeController, 105),
                       _metadataField('Môn', _subjectCodeController, 125),
                       _metadataField('Lớp', _classCodeController, 125),
-                      if (isSpecialLessonCount)
-                        _metadataField(
-                          'Số buổi đặc biệt',
-                          _lessonCountController,
-                          145,
-                        ),
+                      _metadataField(
+                        'Số buổi',
+                        _lessonCountController,
+                        120,
+                      ),
                     ],
                   ),
                 ),
@@ -599,15 +544,13 @@ class _ImportScreenState extends State<ImportScreen> {
               const SizedBox(height: 12),
               _issues(importedClass.issues),
             ],
-            if (isSpecialLessonCount) ...[
-              const SizedBox(height: 8),
-              Text(
-                'Môn này được thêm riêng nên có thể đặt số buổi khác mặc định. Mã PRN mặc định 22 buổi, môn khác mặc định 20 buổi.',
-                style: TextStyle(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
+            const SizedBox(height: 8),
+            Text(
+              'Mã PRN mặc định 22 buổi, môn khác mặc định 20 buổi. Có thể điều chỉnh số buổi từ 1 đến 60 cho từng lớp.',
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
-            ],
+            ),
             const SizedBox(height: 12),
             Text(
               'Xem trước ${importedClass.students.length} sinh viên',

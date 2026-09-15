@@ -72,8 +72,8 @@ class ImportedClass {
   bool get isReady => !hasErrors;
 
   /// FPT projects with a PRN subject code normally have 22 meetings; all
-  /// other regular subjects have 20. A different count is only entered for
-  /// an individually added special subject.
+  /// other subjects normally have 20. Lecturers may override this per class
+  /// after the Markbook has been imported.
   static int defaultLessonCountFor(String subjectCode) =>
       subjectCode.trim().toUpperCase().contains('PRN') ? 22 : 20;
 

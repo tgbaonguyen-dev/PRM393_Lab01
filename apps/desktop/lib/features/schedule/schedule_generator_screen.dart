@@ -113,6 +113,50 @@ class _ScheduleGeneratorScreenState extends State<ScheduleGeneratorScreen> {
     });
   }
 
+  Future<void> _changeSelectedLessonDate() async {
+    final selected = _selectedLesson;
+    if (selected == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Hãy chọn một buổi học trên lịch trước.')),
+      );
+      return;
+    }
+
+    final newDate = await showDatePicker(
+      context: context,
+      helpText: 'Chọn ngày học bù hoặc ngày được đổi lịch',
+      confirmText: 'Đổi lịch',
+      initialDate: selected.lesson.date,
+      firstDate: DateTime(widget.semesterStart.year - 1),
+      lastDate: DateTime(widget.semesterStart.year + 2, 12, 31),
+    );
+    if (newDate == null || !mounted) return;
+
+    try {
+      final key = selected.importedClass.sourceSheetName;
+      final updated = ScheduleGenerator.replaceLessonDate(
+        lessons: _schedules[key]!,
+        sequenceNumber: selected.lesson.sequenceNumber,
+        newDate: newDate,
+      );
+      setState(() {
+        _schedules[key] = updated;
+        _weekStart = ScheduleOverview.startOfWeek(newDate);
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Đã đổi Buổi ${selected.lesson.sequenceNumber} sang ${DateFormat('dd/MM/yyyy').format(newDate)}. Nhấn Lưu lịch học khi backend được ghép.',
+          ),
+        ),
+      );
+    } on ArgumentError catch (error) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.message?.toString() ?? 'Không thể đổi lịch.')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -120,6 +164,20 @@ class _ScheduleGeneratorScreenState extends State<ScheduleGeneratorScreen> {
         title: const Text('Lịch giảng dạy'),
         backgroundColor: const Color(0xFFE0F2FE),
         foregroundColor: const Color(0xFF1D4ED8),
+        actions: [
+          Tooltip(
+            message:
+                'Chức năng lưu xuống hệ thống sẽ được ghép cùng Backend M1.',
+            child: Padding(
+              padding: const EdgeInsets.only(right: 12),
+              child: FilledButton.icon(
+                onPressed: null,
+                icon: const Icon(Icons.save_outlined),
+                label: const Text('Lưu lịch học • Chờ backend'),
+              ),
+            ),
+          ),
+        ],
       ),
       body: Padding(
         padding: const EdgeInsets.all(20),
@@ -260,10 +318,15 @@ class _ScheduleGeneratorScreenState extends State<ScheduleGeneratorScreen> {
             ),
             const SizedBox(height: 10),
             Wrap(
-              alignment: WrapAlignment.end,
+              alignment: WrapAlignment.spaceBetween,
               spacing: 8,
               runSpacing: 8,
               children: [
+                OutlinedButton.icon(
+                  onPressed: selected == null ? null : _changeSelectedLessonDate,
+                  icon: const Icon(Icons.edit_calendar_outlined),
+                  label: const Text('Đổi lịch buổi đã chọn'),
+                ),
                 Tooltip(
                   message:
                       'Thành viên 2 sẽ gắn màn hình mở phiên và QR vào buổi bạn đã chọn.',
