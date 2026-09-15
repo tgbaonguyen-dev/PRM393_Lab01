@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 
 import '../schedule/schedule_generator_screen.dart';
 import '../schedule/services/schedule_api_client.dart';
+import '../../shared/m1_snackbar.dart';
 import 'models/import_models.dart';
 import 'services/markbook_parser.dart';
 
@@ -76,9 +77,7 @@ class _ImportScreenState extends State<ImportScreen> {
       final saved = await _scheduleApiClient.loadSavedSchedules();
       if (!mounted) return;
       if (saved.classes.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Chưa có lịch nào được lưu.')),
-        );
+        M1SnackBar.show(context, 'Chưa có lịch nào được lưu.');
         return;
       }
       await Navigator.of(context).push(
@@ -93,9 +92,7 @@ class _ImportScreenState extends State<ImportScreen> {
       if (mounted) _refreshSavedScheduleCount();
     } catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Không thể tải lịch đã lưu: $error')),
-        );
+        M1SnackBar.show(context, 'Không thể tải lịch đã lưu: $error');
       }
     } finally {
       if (mounted) setState(() => _isLoadingSavedSchedules = false);
@@ -302,14 +299,11 @@ class _ImportScreenState extends State<ImportScreen> {
       _loadMetadata(validated);
     });
     final errorCount = validated.issues.where((issue) => issue.isError).length;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          errorCount == 0
-              ? 'Đã xác nhận ${validated.subjectCode} - ${validated.classCode}. Có thể sinh lịch.'
-              : 'Lớp này còn $errorCount lỗi. Hãy sửa các ô được báo rồi xác nhận lại.',
-        ),
-      ),
+    M1SnackBar.show(
+      context,
+      errorCount == 0
+          ? 'Đã xác nhận ${validated.subjectCode} - ${validated.classCode}. Có thể sinh lịch.'
+          : 'Lớp này còn $errorCount lỗi. Hãy sửa các ô được báo rồi xác nhận lại.',
     );
   }
 
@@ -335,12 +329,9 @@ class _ImportScreenState extends State<ImportScreen> {
           item.issues.any((issue) => issue.isError);
     }).length;
     if (invalidCount > 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Còn $invalidCount lớp chưa hợp lệ. Hãy kiểm tra mã lịch, metadata, dữ liệu và số buổi (1–60).',
-          ),
-        ),
+      M1SnackBar.show(
+        context,
+        'Còn $invalidCount lớp chưa hợp lệ. Hãy kiểm tra mã lịch, metadata, dữ liệu và số buổi (1–60).',
       );
       return null;
     }

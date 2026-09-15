@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../import/models/import_models.dart';
+import '../../shared/m1_snackbar.dart';
 import 'models/schedule_models.dart';
 import 'services/schedule_code_parser.dart';
 import 'services/schedule_api_client.dart';
@@ -121,16 +122,10 @@ class _ScheduleGeneratorScreenState extends State<ScheduleGeneratorScreen> {
         );
       }
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Đã lưu ${_classes.length} lớp vào Google Sheets.'),
-        ),
-      );
+      M1SnackBar.show(context, 'Đã lưu ${_classes.length} lớp vào Google Sheets.');
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Không thể lưu lịch: $error')));
+      M1SnackBar.show(context, 'Không thể lưu lịch: $error');
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
@@ -151,9 +146,7 @@ class _ScheduleGeneratorScreenState extends State<ScheduleGeneratorScreen> {
   Future<void> _changeSelectedLessonDate() async {
     final selected = _selectedLesson;
     if (selected == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Hãy chọn một buổi học trên lịch trước.')),
-      );
+      M1SnackBar.show(context, 'Hãy chọn một buổi học trên lịch trước.');
       return;
     }
 
@@ -182,18 +175,14 @@ class _ScheduleGeneratorScreenState extends State<ScheduleGeneratorScreen> {
         _schedules[key] = updated;
         _weekStart = ScheduleOverview.startOfWeek(newDate);
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Đã đổi Buổi ${selected.lesson.sequenceNumber} sang ${DateFormat('dd/MM/yyyy').format(newDate)}, Slot $newSlot. Nhấn Lưu lịch học để ghi nhận thay đổi.',
-          ),
-        ),
+      M1SnackBar.show(
+        context,
+        'Đã đổi Buổi ${selected.lesson.sequenceNumber} sang ${DateFormat('dd/MM/yyyy').format(newDate)}, Slot $newSlot. Nhấn Lưu lịch học để ghi nhận thay đổi.',
       );
     } on ArgumentError catch (error) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(error.message?.toString() ?? 'Không thể đổi lịch.'),
-        ),
+      M1SnackBar.show(
+        context,
+        error.message?.toString() ?? 'Không thể đổi lịch.',
       );
     }
   }
