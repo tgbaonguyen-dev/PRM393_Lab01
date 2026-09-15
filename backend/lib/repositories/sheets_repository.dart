@@ -90,11 +90,21 @@ class SheetsRepository {
       'roster': roster,
       'lessons': lessons,
     });
+    if (res['success'] != true) {
+      throw StateError(
+        res['error']?.toString() ?? 'Data Gateway từ chối lưu lịch.',
+      );
+    }
     return res['success'] == true;
   }
 
   Future<List<Map<String, dynamic>>> listSchedules() async {
     final res = await _postToGateway('listSchedules', {});
+    if (res['success'] != true) {
+      throw StateError(
+        res['error']?.toString() ?? 'Data Gateway không trả danh sách lịch.',
+      );
+    }
     final data = res['data'];
     if (data is! List) return const [];
     return data.whereType<Map>().map(Map<String, dynamic>.from).toList();
@@ -102,6 +112,11 @@ class SheetsRepository {
 
   Future<Map<String, dynamic>?> getSchedule(String classId) async {
     final res = await _postToGateway('getSchedule', {'classId': classId});
+    if (res['success'] != true) {
+      throw StateError(
+        res['error']?.toString() ?? 'Data Gateway không trả lịch lớp.',
+      );
+    }
     final data = res['data'];
     return data is Map ? Map<String, dynamic>.from(data) : null;
   }
