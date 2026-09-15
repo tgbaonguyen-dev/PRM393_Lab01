@@ -44,6 +44,22 @@ void main() {
 
     expect(() => service.saveSchedule(_validPayload()), throwsStateError);
   });
+
+  test('accepts an adjusted lesson moved to slot 5', () async {
+    final payload = _validPayload();
+    final lesson = (payload['lessons'] as List).first as Map<String, dynamic>;
+    lesson
+      ..['dailySlot'] = 5
+      ..['startTime'] = '17:45'
+      ..['endTime'] = '19:15'
+      ..['isAdjusted'] = true;
+
+    final result = await ScheduleService(
+      repository: _FakeScheduleRepository(),
+    ).saveSchedule(payload);
+
+    expect((result['lessons'] as List).first['dailySlot'], 5);
+  });
 }
 
 class _FakeScheduleRepository implements ScheduleRepository {

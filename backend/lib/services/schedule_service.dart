@@ -193,13 +193,13 @@ class ScheduleService {
     DateTime? previousDate;
     final normalized = <Map<String, dynamic>>[];
     final expectedSlot = int.parse(scheduleCode[1]);
-    final expectedTimes = const <int, (String, String)>{
+    final slotTimes = const <int, (String, String)>{
       1: ('07:00', '09:15'),
       2: ('09:30', '11:45'),
       3: ('12:30', '14:45'),
       4: ('15:00', '17:15'),
       5: ('17:45', '19:15'),
-    }[expectedSlot]!;
+    };
     final expectedWeekdays = switch (scheduleCode[0]) {
       '1' => const [DateTime.monday, DateTime.thursday],
       '2' => const [DateTime.tuesday, DateTime.friday],
@@ -240,7 +240,13 @@ class ScheduleService {
           'Các buổi phải theo thứ tự thời gian.',
         );
       }
-      if (slot != expectedSlot) {
+      final expectedTimes = slot is int ? slotTimes[slot] : null;
+      if (expectedTimes == null) {
+        throw ScheduleValidationException(
+          'Ca học của buổi $expectedSequence phải từ Slot 1 đến Slot 5.',
+        );
+      }
+      if (!isAdjusted && slot != expectedSlot) {
         throw ScheduleValidationException(
           'Ca học của buổi $expectedSequence không khớp mã lịch $scheduleCode.',
         );

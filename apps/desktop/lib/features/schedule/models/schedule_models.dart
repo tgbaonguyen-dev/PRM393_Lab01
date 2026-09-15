@@ -33,13 +33,19 @@ class ClassLesson {
     this.isAdjusted = false,
   });
 
-  ClassLesson copyWith({DateTime? date, bool? isAdjusted}) => ClassLesson(
+  ClassLesson copyWith({
+    DateTime? date,
+    int? dailySlot,
+    String? startTime,
+    String? endTime,
+    bool? isAdjusted,
+  }) => ClassLesson(
     lessonId: lessonId,
     sequenceNumber: sequenceNumber,
     date: date ?? this.date,
-    dailySlot: dailySlot,
-    startTime: startTime,
-    endTime: endTime,
+    dailySlot: dailySlot ?? this.dailySlot,
+    startTime: startTime ?? this.startTime,
+    endTime: endTime ?? this.endTime,
     isAdjusted: isAdjusted ?? this.isAdjusted,
   );
 

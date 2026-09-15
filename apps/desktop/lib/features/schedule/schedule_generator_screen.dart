@@ -167,12 +167,16 @@ class _ScheduleGeneratorScreenState extends State<ScheduleGeneratorScreen> {
     );
     if (newDate == null || !mounted) return;
 
+    final newSlot = await _pickReplacementSlot(selected.lesson.dailySlot);
+    if (newSlot == null || !mounted) return;
+
     try {
       final key = selected.importedClass.sourceSheetName;
       final updated = ScheduleGenerator.replaceLessonDate(
         lessons: _schedules[key]!,
         sequenceNumber: selected.lesson.sequenceNumber,
         newDate: newDate,
+        newDailySlot: newSlot,
       );
       setState(() {
         _schedules[key] = updated;
@@ -181,7 +185,7 @@ class _ScheduleGeneratorScreenState extends State<ScheduleGeneratorScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'Đã đổi Buổi ${selected.lesson.sequenceNumber} sang ${DateFormat('dd/MM/yyyy').format(newDate)}. Nhấn Lưu lịch học để ghi nhận thay đổi.',
+            'Đã đổi Buổi ${selected.lesson.sequenceNumber} sang ${DateFormat('dd/MM/yyyy').format(newDate)}, Slot $newSlot. Nhấn Lưu lịch học để ghi nhận thay đổi.',
           ),
         ),
       );
@@ -192,6 +196,43 @@ class _ScheduleGeneratorScreenState extends State<ScheduleGeneratorScreen> {
         ),
       );
     }
+  }
+
+  Future<int?> _pickReplacementSlot(int currentSlot) async {
+    var selectedSlot = currentSlot;
+    return showDialog<int>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Chọn slot học'),
+          content: DropdownButtonFormField<int>(
+            initialValue: selectedSlot,
+            decoration: const InputDecoration(labelText: 'Slot mới'),
+            items: List.generate(5, (index) {
+              final slot = index + 1;
+              final time = ScheduleCodeParser.slotTimes[slot]!;
+              return DropdownMenuItem(
+                value: slot,
+                child: Text('Slot $slot (${time.$1}–${time.$2})'),
+              );
+            }),
+            onChanged: (value) {
+              if (value != null) setDialogState(() => selectedSlot = value);
+            },
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Hủy'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(context).pop(selectedSlot),
+              child: const Text('Xác nhận'),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   @override

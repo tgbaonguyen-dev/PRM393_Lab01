@@ -101,6 +101,15 @@ void main() {
 
     expect(adjusted[1].date, DateTime(2026, 9, 11));
     expect(adjusted[1].isAdjusted, isTrue);
+    final movedToEvening = ScheduleGenerator.replaceLessonDate(
+      lessons: lessons,
+      sequenceNumber: 1,
+      newDate: DateTime(2026, 9, 7),
+      newDailySlot: 5,
+    );
+    expect(movedToEvening.first.dailySlot, 5);
+    expect(movedToEvening.first.startTime, '17:45');
+    expect(movedToEvening.first.endTime, '19:15');
     expect(
       () => ScheduleGenerator.replaceLessonDate(
         lessons: lessons,
