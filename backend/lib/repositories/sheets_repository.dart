@@ -97,8 +97,9 @@ class SheetsRepository {
       'lessons': lessons,
     });
     if (res['success'] != true) {
+      final detail = res['error'] ?? res['data'] ?? jsonEncode(res);
       throw StateError(
-        res['error']?.toString() ?? 'Data Gateway từ chối lưu lịch.',
+        'Data Gateway từ chối lưu lịch: $detail',
       );
     }
     return res['success'] == true;

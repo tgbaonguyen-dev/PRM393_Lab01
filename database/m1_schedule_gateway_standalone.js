@@ -43,7 +43,11 @@ function doPost(e) {
     var result = dispatchAction(request.action, request.payload || {});
     return jsonResponse({success: true, data: result});
   } catch (error) {
-    return jsonResponse({success: false, error: String(error)});
+    Logger.log('M1 gateway error: ' + error);
+    return jsonResponse({
+      success: false,
+      error: error && error.message ? error.message : String(error)
+    });
   } finally {
     if (lock.hasLock()) lock.releaseLock();
   }
@@ -96,6 +100,17 @@ function writeRows(sheet, headers, rows) {
 
 function asText(value) {
   return value === null || value === undefined ? '' : String(value).trim();
+}
+
+// Google Sheets automatically converts yyyy-MM-dd cells into Date values.
+// Sending String(date) back to Dart produced e.g. "Mon Sep 07 2026 ...",
+// which DateTime.parse rightly rejects. The desktop contract is always ISO.
+function asDateText(value) {
+  if (Object.prototype.toString.call(value) === '[object Date]' && !isNaN(value.getTime())) {
+    return Utilities.formatDate(value, Session.getScriptTimeZone(), 'yyyy-MM-dd');
+  }
+  var text = asText(value);
+  return /^\d{4}-\d{2}-\d{2}/.test(text) ? text.substring(0, 10) : text;
 }
 
 function requireText(value, label) {
@@ -200,7 +215,7 @@ function getSchedule(classId) {
     .filter(function(row) { return sameId(row[1], classId); })
     .map(function(row) {
       return {
-        lessonId: asText(row[0]), sequenceNumber: Number(row[2]), date: asText(row[3]),
+        lessonId: asText(row[0]), sequenceNumber: Number(row[2]), date: asDateText(row[3]),
         dailySlot: Number(row[4]), startTime: asText(row[5]), endTime: asText(row[6]),
         isAdjusted: row[7] === true, status: asText(row[8]) || 'scheduled'
       };
