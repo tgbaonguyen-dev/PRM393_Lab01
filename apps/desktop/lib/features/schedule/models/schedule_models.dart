@@ -127,15 +127,13 @@ class ClassLesson {
     int dailySlot, {
     required bool isStart,
   }) {
+    final slotTime = _slotTimes[dailySlot];
+    if (slotTime != null) return isStart ? slotTime.$1 : slotTime.$2;
+
     final raw = rawValue?.toString().trim() ?? '';
     if (RegExp(r'^([01]?\d|2[0-3]):[0-5]\d$').hasMatch(raw)) {
       return raw.padLeft(5, '0');
     }
-    // Sheets stores a time-only cell as a Date object on 30/12/1899. Its
-    // String representation is not a teaching time and may have a historical
-    // timezone offset, so slot time is the reliable source of truth.
-    final slotTime = _slotTimes[dailySlot];
-    if (slotTime != null) return isStart ? slotTime.$1 : slotTime.$2;
     return raw;
   }
 }

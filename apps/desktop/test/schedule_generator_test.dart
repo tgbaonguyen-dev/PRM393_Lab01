@@ -19,6 +19,31 @@ void main() {
     expect(lesson.endTime, '09:15');
   });
 
+  test('uses Vietnam slot times when stored times have a timezone offset', () {
+    const expected = {
+      1: ('07:00', '09:15'),
+      2: ('09:30', '11:45'),
+      3: ('12:30', '14:45'),
+      4: ('15:00', '17:15'),
+      5: ('17:45', '19:15'),
+    };
+
+    for (final entry in expected.entries) {
+      final lesson = ClassLesson.fromJson({
+        'lessonId': 'lesson-${entry.key}',
+        'sequenceNumber': entry.key,
+        'date': '2026-09-07',
+        'dailySlot': entry.key,
+        'startTime': '07:24',
+        'endTime': '09:39',
+        'isAdjusted': false,
+      });
+
+      expect(lesson.startTime, entry.value.$1);
+      expect(lesson.endTime, entry.value.$2);
+    }
+  });
+
   test('parses schedule code 12', () {
     final rule = ScheduleCodeParser.parse('12');
 
@@ -131,6 +156,66 @@ void main() {
         lessons: lessons,
         sequenceNumber: 2,
         newDate: lessons.first.date,
+      ),
+      throwsArgumentError,
+    );
+  });
+
+  test('keeps lesson sequence even when both dates are in the past', () {
+    final lessons = <ClassLesson>[
+      ClassLesson(
+        lessonId: 'lesson-1',
+        sequenceNumber: 1,
+        date: DateTime(2026, 9, 9),
+        dailySlot: 2,
+        startTime: '09:30',
+        endTime: '11:45',
+      ),
+      ClassLesson(
+        lessonId: 'lesson-2',
+        sequenceNumber: 2,
+        date: DateTime(2026, 9, 10),
+        dailySlot: 2,
+        startTime: '09:30',
+        endTime: '11:45',
+      ),
+    ];
+
+    expect(
+      () => ScheduleGenerator.replaceLessonDate(
+        lessons: lessons,
+        sequenceNumber: 1,
+        newDate: DateTime(2026, 9, 11),
+      ),
+      throwsArgumentError,
+    );
+  });
+
+  test('keeps sequence validation for dates today or in the future', () {
+    final lessons = <ClassLesson>[
+      ClassLesson(
+        lessonId: 'lesson-1',
+        sequenceNumber: 1,
+        date: DateTime(2026, 9, 16),
+        dailySlot: 2,
+        startTime: '09:30',
+        endTime: '11:45',
+      ),
+      ClassLesson(
+        lessonId: 'lesson-2',
+        sequenceNumber: 2,
+        date: DateTime(2026, 9, 17),
+        dailySlot: 2,
+        startTime: '09:30',
+        endTime: '11:45',
+      ),
+    ];
+
+    expect(
+      () => ScheduleGenerator.replaceLessonDate(
+        lessons: lessons,
+        sequenceNumber: 1,
+        newDate: DateTime(2026, 9, 18),
       ),
       throwsArgumentError,
     );

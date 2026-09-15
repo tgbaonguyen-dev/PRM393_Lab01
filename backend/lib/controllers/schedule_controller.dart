@@ -31,11 +31,41 @@ class ScheduleController {
           .whereType<Map>()
           .map(Map<String, dynamic>.from)
           .toList(growable: false);
-      final saved = await _service.saveSchedules(schedules);
+      Set<String>? activeClassIds;
+      if (decoded.containsKey('activeClassIds')) {
+        if (decoded['activeClassIds'] is! List) {
+          return _json(400, {
+            'success': false,
+            'error': 'activeClassIds không hợp lệ.',
+          });
+        }
+        activeClassIds = (decoded['activeClassIds'] as List)
+            .whereType<String>()
+            .map((value) => value.trim())
+            .where((value) => value.isNotEmpty)
+            .toSet();
+      }
+      final saved = await _service.saveSchedules(
+        schedules,
+        activeClassIds: activeClassIds,
+      );
+      final skippedCount = schedules.length - saved.length;
+      final message = saved.isEmpty && activeClassIds != null
+          ? 'Đã cập nhật phạm vi ${activeClassIds.length} lớp; nội dung lịch không thay đổi.'
+          : skippedCount == 0
+              ? 'Đã lưu ${saved.length} lớp.'
+              : saved.isEmpty
+                  ? 'Không có lớp mới hoặc thay đổi; giữ nguyên ${schedules.length} lớp.'
+                  : 'Đã lưu ${saved.length} lớp mới hoặc có thay đổi; bỏ qua $skippedCount lớp không đổi.';
       return _json(200, {
         'success': true,
-        'message': 'Đã lưu ${saved.length} lớp.',
-        'data': {'classCount': saved.length},
+        'message': message,
+        'data': {
+          'requestedCount': schedules.length,
+          'savedCount': saved.length,
+          'skippedCount': skippedCount,
+          'activeClassCount': activeClassIds?.length ?? schedules.length,
+        },
       });
     } on FormatException catch (error) {
       return _json(400, {'success': false, 'error': error.message});
@@ -109,7 +139,8 @@ class ScheduleController {
     } on StateError catch (error) {
       return _json(502, {'success': false, 'error': error.message});
     } catch (_) {
-      return _json(502, const {'success': false, 'error': 'Không thể tải lịch.'});
+      return _json(
+          502, const {'success': false, 'error': 'Không thể tải lịch.'});
     }
   }
 

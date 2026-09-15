@@ -7,10 +7,11 @@
  */
 
 var SPREADSHEET_ID = '1102ggK2ZECoywxAh6HgNB-Rln3iFsqnjCEeF7hNjQyw';
+var VIETNAM_TIME_ZONE = 'Asia/Ho_Chi_Minh';
 
 var CLASS_HEADERS = [
   'classId', 'classCode', 'subjectCode', 'semester', 'scheduleCode',
-  'sourceSheetName', 'lessonCount', 'updatedAt'
+  'sourceSheetName', 'lessonCount', 'updatedAt', 'active'
 ];
 var STUDENT_HEADERS = [
   'recordKey', 'classId', 'classCode', 'rollNumber', 'fullName',
@@ -59,12 +60,16 @@ function dispatchAction(action, payload) {
       return saveClassOffering(payload.offering, payload.roster, payload.lessons);
     case 'saveClassOfferings':
       return saveClassOfferings(payload.items);
+    case 'syncActiveClassIds':
+      return syncActiveClassIds(payload.activeClassIds);
     case 'listSchedules':
       return listSchedules();
     case 'getSchedule':
       return getSchedule(payload.classId);
     case 'getAllSchedules':
       return getAllSchedules();
+    case 'repairLessonTimes':
+      return repairLessonTimes();
     case 'ping':
       return {message: 'M1 gateway is ready'};
     default:
@@ -90,6 +95,29 @@ function ensureSheet(name, headers) {
   return sheet;
 }
 
+function activeValue(value) {
+  if (value === '' || value === null || value === undefined) return true;
+  if (value === true || value === 1) return true;
+  return String(value).trim().toLowerCase() === 'true' || String(value).trim() === '1';
+}
+
+function normalizeClassRow(row) {
+  var normalized = row.slice(0, CLASS_HEADERS.length);
+  while (normalized.length < CLASS_HEADERS.length) normalized.push('');
+  normalized[8] = activeValue(normalized[8]);
+  return normalized;
+}
+
+function ensureClassSheet() {
+  var sheet = ensureSheet('Classes', CLASS_HEADERS);
+  var header = sheet.getRange(1, 1, 1, Math.max(sheet.getLastColumn(), CLASS_HEADERS.length)).getValues()[0];
+  if (asText(header[8]) !== 'active' || sheet.getLastColumn() < CLASS_HEADERS.length) {
+    var rows = readRows(sheet).map(normalizeClassRow);
+    writeRows(sheet, CLASS_HEADERS, rows);
+  }
+  return sheet;
+}
+
 function readRows(sheet) {
   if (sheet.getLastRow() <= 1) return [];
   return sheet.getRange(2, 1, sheet.getLastRow() - 1, sheet.getLastColumn()).getValues();
@@ -106,12 +134,16 @@ function asText(value) {
   return value === null || value === undefined ? '' : String(value).trim();
 }
 
+function vietnamTimestamp() {
+  return Utilities.formatDate(new Date(), VIETNAM_TIME_ZONE, 'dd/MM/yyyy HH:mm:ss');
+}
+
 // Google Sheets automatically converts yyyy-MM-dd cells into Date values.
 // Sending String(date) back to Dart produced e.g. "Mon Sep 07 2026 ...",
 // which DateTime.parse rightly rejects. The desktop contract is always ISO.
 function asDateText(value) {
   if (Object.prototype.toString.call(value) === '[object Date]' && !isNaN(value.getTime())) {
-    return Utilities.formatDate(value, Session.getScriptTimeZone(), 'yyyy-MM-dd');
+    return Utilities.formatDate(value, VIETNAM_TIME_ZONE, 'yyyy-MM-dd');
   }
   var text = asText(value);
   return /^\d{4}-\d{2}-\d{2}/.test(text) ? text.substring(0, 10) : text;
@@ -121,11 +153,41 @@ function asDateText(value) {
 // serialize the contract expected by the desktop client, e.g. `17:45`.
 function asTimeText(value) {
   if (Object.prototype.toString.call(value) === '[object Date]' && !isNaN(value.getTime())) {
-    return Utilities.formatDate(value, Session.getScriptTimeZone(), 'HH:mm');
+    return Utilities.formatDate(value, VIETNAM_TIME_ZONE, 'HH:mm');
   }
   var text = asText(value);
   var match = /^(\d{1,2}):(\d{2})/.exec(text);
   return match ? ('0' + match[1]).slice(-2) + ':' + match[2] : text;
+}
+
+function canonicalSlotTimes(dailySlot) {
+  var times = {
+    1: ['07:00', '09:15'],
+    2: ['09:30', '11:45'],
+    3: ['12:30', '14:45'],
+    4: ['15:00', '17:15'],
+    5: ['17:45', '19:15']
+  };
+  return times[Number(dailySlot)] || null;
+}
+
+function canonicalLessonTime(value, dailySlot, isStart) {
+  var times = canonicalSlotTimes(dailySlot);
+  return times ? times[isStart ? 0 : 1] : asTimeText(value);
+}
+
+function lessonFromRow(row) {
+  var dailySlot = Number(row[4]);
+  return {
+    lessonId: asText(row[0]),
+    sequenceNumber: Number(row[2]),
+    date: asDateText(row[3]),
+    dailySlot: dailySlot,
+    startTime: canonicalLessonTime(row[5], dailySlot, true),
+    endTime: canonicalLessonTime(row[6], dailySlot, false),
+    isAdjusted: row[7] === true,
+    status: asText(row[8]) || 'scheduled'
+  };
 }
 
 function requireText(value, label) {
@@ -165,10 +227,10 @@ function saveClassOfferings(items) {
     replacements[classId] = {offering: offering, roster: roster, lessons: lessons};
   });
 
-  var classes = ensureSheet('Classes', CLASS_HEADERS);
+  var classes = ensureClassSheet();
   var students = ensureSheet('Students', STUDENT_HEADERS);
   var lessonsSheet = ensureSheet('Lessons', LESSON_HEADERS);
-  var classRows = readRows(classes).filter(function(row) { return !ids[asText(row[0])]; });
+  var classRows = readRows(classes).map(normalizeClassRow).filter(function(row) { return !ids[asText(row[0])]; });
   var studentRows = readRows(students).filter(function(row) { return !ids[asText(row[1])]; });
   var lessonRows = readRows(lessonsSheet).filter(function(row) { return !ids[asText(row[1])]; });
 
@@ -183,7 +245,8 @@ function saveClassOfferings(items) {
       asText(offering.scheduleCode),
       asText(offering.sourceSheetName),
       Number(offering.lessonCount) || 20,
-      new Date().toISOString()
+      vietnamTimestamp(),
+      true
     ]);
     item.roster.forEach(function(student) {
       var rollNumber = asText(student.rollNumber).toUpperCase();
@@ -195,10 +258,13 @@ function saveClassOfferings(items) {
       ]);
     });
     item.lessons.forEach(function(lesson) {
+      var dailySlot = Number(lesson.dailySlot);
       lessonRows.push([
         requireText(lesson.lessonId, 'lessonId'), classId,
         Number(lesson.sequenceNumber), asText(lesson.date),
-        Number(lesson.dailySlot), asText(lesson.startTime), asText(lesson.endTime),
+        dailySlot,
+        canonicalLessonTime(lesson.startTime, dailySlot, true),
+        canonicalLessonTime(lesson.endTime, dailySlot, false),
         lesson.isAdjusted === true, asText(lesson.status) || 'scheduled'
       ]);
     });
@@ -211,6 +277,59 @@ function saveClassOfferings(items) {
   return {savedClassIds: Object.keys(replacements), classCount: items.length};
 }
 
+function syncActiveClassIds(activeClassIds) {
+  if (!Array.isArray(activeClassIds) || activeClassIds.length === 0) {
+    throw new Error('activeClassIds phải là danh sách không rỗng.');
+  }
+  var active = {};
+  activeClassIds.forEach(function(classId) {
+    var normalized = asText(classId);
+    if (normalized) active[normalized] = true;
+  });
+  var sheet = ensureClassSheet();
+  var rows = readRows(sheet).map(normalizeClassRow);
+  var activeCount = 0;
+  var inactiveCount = 0;
+  rows.forEach(function(row) {
+    var classId = asText(row[0]);
+    if (!classId) return;
+    row[8] = active[classId] === true;
+    if (row[8]) activeCount++; else inactiveCount++;
+  });
+  writeRows(sheet, CLASS_HEADERS, rows);
+  SpreadsheetApp.flush();
+  return {
+    activeClassIds: Object.keys(active),
+    activeCount: activeCount,
+    inactiveCount: inactiveCount
+  };
+}
+
+function repairLessonTimes() {
+  var sheet = getSpreadsheet().getSheetByName('Lessons');
+  if (!sheet || sheet.getLastRow() <= 1) {
+    return {updatedRows: 0};
+  }
+
+  var values = sheet.getRange(2, 1, sheet.getLastRow() - 1, sheet.getLastColumn()).getValues();
+  var updatedRows = 0;
+  values.forEach(function(row) {
+    var dailySlot = Number(row[4]);
+    var times = canonicalSlotTimes(dailySlot);
+    if (!times) return;
+    if (asText(row[5]) !== times[0] || asText(row[6]) !== times[1]) {
+      row[5] = times[0];
+      row[6] = times[1];
+      updatedRows++;
+    }
+  });
+  if (updatedRows > 0) {
+    sheet.getRange(2, 1, values.length, values[0].length).setValues(values);
+    SpreadsheetApp.flush();
+  }
+  return {updatedRows: updatedRows};
+}
+
 /* Legacy single-class implementation retained below only as historical
  * reference. It is unreachable because saveClassOffering delegates to the
  * batch operation above. */
@@ -220,7 +339,7 @@ function saveClassOfferingLegacy(offering, roster, lessons) {
   if (!Array.isArray(lessons)) throw new Error('lessons không hợp lệ.');
 
   var classId = requireText(offering.classId, 'classId');
-  var classes = ensureSheet('Classes', CLASS_HEADERS);
+  var classes = ensureClassSheet();
   var students = ensureSheet('Students', STUDENT_HEADERS);
   var lessonsSheet = ensureSheet('Lessons', LESSON_HEADERS);
 
@@ -234,7 +353,8 @@ function saveClassOfferingLegacy(offering, roster, lessons) {
     asText(offering.scheduleCode),
     asText(offering.sourceSheetName),
     Number(offering.lessonCount) || 20,
-    new Date().toISOString()
+    vietnamTimestamp(),
+    true
   ]);
   writeRows(classes, CLASS_HEADERS, classRows);
 
@@ -278,13 +398,13 @@ function saveClassOfferingLegacy(offering, roster, lessons) {
 function listSchedules() {
   var sheet = getSpreadsheet().getSheetByName('Classes');
   return readRows(sheet || ensureSheet('Classes', CLASS_HEADERS))
-    .filter(function(row) { return asText(row[0]); })
+    .filter(function(row) { return asText(row[0]) && activeValue(row[8]); })
     .map(function(row) {
       return {
         classId: asText(row[0]), classCode: asText(row[1]),
         subjectCode: asText(row[2]), semester: asText(row[3]),
         scheduleCode: asText(row[4]), sourceSheetName: asText(row[5]),
-        lessonCount: Number(row[6])
+        lessonCount: Number(row[6]), active: true
       };
     });
 }
@@ -304,13 +424,7 @@ function getSchedule(classId) {
     });
   var lessons = readRows(lessonSheet || ensureSheet('Lessons', LESSON_HEADERS))
     .filter(function(row) { return sameId(row[1], classId); })
-    .map(function(row) {
-      return {
-        lessonId: asText(row[0]), sequenceNumber: Number(row[2]), date: asDateText(row[3]),
-        dailySlot: Number(row[4]), startTime: asTimeText(row[5]), endTime: asTimeText(row[6]),
-        isAdjusted: row[7] === true, status: asText(row[8]) || 'scheduled'
-      };
-    })
+    .map(lessonFromRow)
     .sort(function(a, b) { return a.sequenceNumber - b.sequenceNumber; });
   return {classOffering: offering, students: students, lessons: lessons};
 }
@@ -344,11 +458,7 @@ function getAllSchedules() {
   readRows(lessonSheet || ensureSheet('Lessons', LESSON_HEADERS)).forEach(function(row) {
     var target = byId[asText(row[1])];
     if (!target) return;
-    target.lessons.push({
-      lessonId: asText(row[0]), sequenceNumber: Number(row[2]), date: asDateText(row[3]),
-      dailySlot: Number(row[4]), startTime: asTimeText(row[5]), endTime: asTimeText(row[6]),
-      isAdjusted: row[7] === true, status: asText(row[8]) || 'scheduled'
-    });
+    target.lessons.push(lessonFromRow(row));
   });
 
   return offerings.map(function(offering) {

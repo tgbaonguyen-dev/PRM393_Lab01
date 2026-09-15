@@ -30,6 +30,8 @@ class _ImportScreenState extends State<ImportScreen> {
   bool _isLoading = false;
   bool _isLoadingSavedSchedules = true;
   int? _savedScheduleCount;
+  bool _savedScheduleCheckFailed = false;
+  String? _savedScheduleCheckError;
   String? _loadError;
 
   ImportedClass? get _selectedClass {
@@ -59,13 +61,32 @@ class _ImportScreenState extends State<ImportScreen> {
   }
 
   Future<void> _refreshSavedScheduleCount() async {
+    if (mounted) {
+      setState(() {
+        _isLoadingSavedSchedules = true;
+        _savedScheduleCheckFailed = false;
+        _savedScheduleCheckError = null;
+      });
+    }
     try {
       final schedules = await _scheduleApiClient.listSchedules();
-      if (mounted) setState(() => _savedScheduleCount = schedules.length);
-    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _savedScheduleCount = schedules.length;
+          _savedScheduleCheckFailed = false;
+          _savedScheduleCheckError = null;
+        });
+      }
+    } catch (error) {
       // A first-time installation or an offline backend simply has no saved
       // schedule entry point yet. The Markbook import remains available.
-      if (mounted) setState(() => _savedScheduleCount = null);
+      if (mounted) {
+        setState(() {
+          _savedScheduleCount = null;
+          _savedScheduleCheckFailed = true;
+          _savedScheduleCheckError = error.toString();
+        });
+      }
     } finally {
       if (mounted) setState(() => _isLoadingSavedSchedules = false);
     }
@@ -77,7 +98,7 @@ class _ImportScreenState extends State<ImportScreen> {
       final saved = await _scheduleApiClient.loadSavedSchedules();
       if (!mounted) return;
       if (saved.classes.isEmpty) {
-        M1SnackBar.show(context, 'Chưa có lịch nào được lưu.');
+        M1SnackBar.show(context, 'Chưa có lịch nào được lưu.', isError: true);
         return;
       }
       await Navigator.of(context).push(
@@ -92,7 +113,11 @@ class _ImportScreenState extends State<ImportScreen> {
       if (mounted) _refreshSavedScheduleCount();
     } catch (error) {
       if (mounted) {
-        M1SnackBar.show(context, 'Không thể tải lịch đã lưu: $error');
+        M1SnackBar.show(
+          context,
+          'Không thể tải lịch đã lưu: $error',
+          isError: true,
+        );
       }
     } finally {
       if (mounted) setState(() => _isLoadingSavedSchedules = false);
@@ -124,8 +149,6 @@ class _ImportScreenState extends State<ImportScreen> {
         final existingClasses = current?.classes ?? const <ImportedClass>[];
         final mergedClasses = <ImportedClass>[];
 
-        // Keep an existing position where a sheet is refreshed, retain every
-        // non-overlapping sheet, then append genuinely new sheets.
         for (final existing in existingClasses) {
           final replacement = incomingBySheet.remove(existing.sourceSheetName);
           mergedClasses.add(replacement ?? existing);
@@ -304,6 +327,7 @@ class _ImportScreenState extends State<ImportScreen> {
       errorCount == 0
           ? 'Đã xác nhận ${validated.subjectCode} - ${validated.classCode}. Có thể sinh lịch.'
           : 'Lớp này còn $errorCount lỗi. Hãy sửa các ô được báo rồi xác nhận lại.',
+      isError: errorCount > 0,
     );
   }
 
@@ -332,6 +356,7 @@ class _ImportScreenState extends State<ImportScreen> {
       M1SnackBar.show(
         context,
         'Còn $invalidCount lớp chưa hợp lệ. Hãy kiểm tra mã lịch, metadata, dữ liệu và số buổi (1–60).',
+        isError: true,
       );
       return null;
     }
@@ -464,7 +489,16 @@ class _ImportScreenState extends State<ImportScreen> {
                       : const Icon(Icons.upload_file),
                   label: Text(_isLoading ? 'Đang đọc...' : 'Chọn Markbook'),
                 ),
-                if ((_savedScheduleCount ?? 0) > 0)
+                if (_isLoadingSavedSchedules)
+                  OutlinedButton.icon(
+                    onPressed: null,
+                    icon: const SizedBox.square(
+                      dimension: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                    label: const Text('Đang kiểm tra lịch đã lưu...'),
+                  )
+                else if ((_savedScheduleCount ?? 0) > 0)
                   OutlinedButton.icon(
                     onPressed: _isLoadingSavedSchedules
                         ? null
@@ -474,6 +508,17 @@ class _ImportScreenState extends State<ImportScreen> {
                       _isLoadingSavedSchedules
                           ? 'Đang tải lịch...'
                           : 'Mở lịch đã lưu ($_savedScheduleCount lớp)',
+                    ),
+                  )
+                else if (_savedScheduleCheckFailed)
+                  Tooltip(
+                    message:
+                        _savedScheduleCheckError ??
+                        'Backend không phản hồi tại 127.0.0.1:8080.',
+                    child: OutlinedButton.icon(
+                      onPressed: _refreshSavedScheduleCount,
+                      icon: const Icon(Icons.refresh),
+                      label: const Text('Backend lỗi — thử kiểm tra lại'),
                     ),
                   ),
               ],

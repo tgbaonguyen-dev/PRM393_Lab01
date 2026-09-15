@@ -5,6 +5,45 @@
  * Cập nhật Realtime trực tiếp vào từng ô Slot của sinh viên với LockService chống đua.
  */
 
+var VIETNAM_TIME_ZONE = 'Asia/Ho_Chi_Minh';
+
+function vietnamTimestamp() {
+  return Utilities.formatDate(new Date(), VIETNAM_TIME_ZONE, 'dd/MM/yyyy HH:mm:ss');
+}
+
+function canonicalSlotTimes(dailySlot) {
+  var times = {
+    1: ['07:00', '09:15'],
+    2: ['09:30', '11:45'],
+    3: ['12:30', '14:45'],
+    4: ['15:00', '17:15'],
+    5: ['17:45', '19:15']
+  };
+  return times[Number(dailySlot)] || null;
+}
+
+function canonicalLessonTime(value, dailySlot, isStart) {
+  var times = canonicalSlotTimes(dailySlot);
+  if (times) return times[isStart ? 0 : 1];
+  return value instanceof Date
+    ? Utilities.formatDate(value, VIETNAM_TIME_ZONE, 'HH:mm')
+    : String(value || '').trim();
+}
+
+function lessonFromRow(row) {
+  var dailySlot = Number(row[4]);
+  return {
+    lessonId: row[0],
+    sequenceNumber: Number(row[2]),
+    date: row[3],
+    dailySlot: dailySlot,
+    startTime: canonicalLessonTime(row[5], dailySlot, true),
+    endTime: canonicalLessonTime(row[6], dailySlot, false),
+    isAdjusted: row[7] === true,
+    status: row[8] || 'scheduled'
+  };
+}
+
 function doPost(e) {
   try {
     var contents = JSON.parse(e.postData.contents);
@@ -57,10 +96,18 @@ function dispatchAction(action, payload) {
       return DatabaseService.syncAllClassesFromDesktop(payload.classes, payload.startDate);
     case 'saveClassOffering':
       return DatabaseService.saveClassOffering(payload.offering, payload.roster, payload.lessons);
+    case 'saveClassOfferings':
+      return DatabaseService.saveClassOfferings(payload.items);
+    case 'syncActiveClassIds':
+      return DatabaseService.syncActiveClassIds(payload.activeClassIds);
     case 'listSchedules':
       return DatabaseService.listSchedules();
     case 'getSchedule':
       return DatabaseService.getSchedule(payload.classId);
+    case 'getAllSchedules':
+      return DatabaseService.getAllSchedules();
+    case 'repairLessonTimes':
+      return DatabaseService.repairLessonTimes();
     case 'setupDatabase':
       return DatabaseService.setupDatabase();
     case 'openAttendanceWindow':
@@ -97,6 +144,15 @@ var DatabaseService = {
     var sheet = ss.getSheetByName(name);
     if (!sheet) sheet = ss.insertSheet(name);
     if (sheet.getLastRow() === 0) sheet.appendRow(headers);
+    if (name === 'Classes' && sheet.getLastColumn() < headers.length) {
+      var values = sheet.getDataRange().getValues();
+      values[0] = headers.slice();
+      for (var rowIndex = 1; rowIndex < values.length; rowIndex++) {
+        while (values[rowIndex].length < headers.length) values[rowIndex].push(true);
+      }
+      sheet.clearContents();
+      sheet.getRange(1, 1, values.length, headers.length).setValues(values);
+    }
     return sheet;
   },
 
@@ -115,7 +171,7 @@ var DatabaseService = {
     if (!offering || !offering.classId) throw new Error('classOffering thiếu classId');
     var classes = this.ensureDataSheet('Classes', [
       'classId', 'classCode', 'subjectCode', 'semester', 'scheduleCode',
-      'sourceSheetName', 'lessonCount', 'updatedAt'
+      'sourceSheetName', 'lessonCount', 'updatedAt', 'active'
     ]);
     var students = this.ensureDataSheet('Students', [
       'recordKey', 'classId', 'classCode', 'rollNumber', 'fullName',
@@ -129,7 +185,7 @@ var DatabaseService = {
     this.upsertRow(classes, offering.classId, [
       offering.classId, offering.classCode || '', offering.subjectCode || '',
       offering.semester || '', offering.scheduleCode || '', offering.sourceSheetName || '',
-      offering.lessonCount || 20, new Date().toISOString()
+       offering.lessonCount || 20, vietnamTimestamp(), true
     ]);
     (roster || []).forEach(function (student) {
       var recordKey = offering.classId + '|' + String(student.rollNumber || '').toUpperCase();
@@ -140,9 +196,12 @@ var DatabaseService = {
       ]);
     });
     (lessons || []).forEach(function (lesson) {
+      var dailySlot = Number(lesson.dailySlot);
       DatabaseService.upsertRow(lessonRows, lesson.lessonId, [
         lesson.lessonId, offering.classId, lesson.sequenceNumber, lesson.date,
-        lesson.dailySlot, lesson.startTime, lesson.endTime,
+        dailySlot,
+        canonicalLessonTime(lesson.startTime, dailySlot, true),
+        canonicalLessonTime(lesson.endTime, dailySlot, false),
         lesson.isAdjusted === true, lesson.status || 'scheduled'
       ]);
     });
@@ -150,14 +209,63 @@ var DatabaseService = {
     return { classId: offering.classId, saved: true };
   },
 
+  saveClassOfferings: function (items) {
+    if (!Array.isArray(items) || items.length === 0) {
+      throw new Error('items phải là danh sách lớp không rỗng.');
+    }
+    var results = [];
+    for (var i = 0; i < items.length; i++) {
+      var item = items[i] || {};
+      results.push(this.saveClassOffering(item.offering, item.roster, item.lessons));
+    }
+    return { savedClassIds: results.map(function (item) { return item.classId; }), classCount: results.length };
+  },
+
+  syncActiveClassIds: function (activeClassIds) {
+    if (!Array.isArray(activeClassIds) || activeClassIds.length === 0) {
+      throw new Error('activeClassIds phải là danh sách không rỗng.');
+    }
+    var active = {};
+    activeClassIds.forEach(function (classId) {
+      var normalized = String(classId || '').trim();
+      if (normalized) active[normalized] = true;
+    });
+    var sheet = this.getSpreadsheet().getSheetByName('Classes');
+    if (!sheet || sheet.getLastRow() <= 1) return { activeCount: 0, inactiveCount: 0 };
+    var values = sheet.getDataRange().getValues();
+    while (values[0].length < 9) values[0].push('');
+    for (var rowIndex = 1; rowIndex < values.length; rowIndex++) {
+      while (values[rowIndex].length < 9) values[rowIndex].push(true);
+    }
+    var header = values[0];
+    if (String(header[8] || '').trim() !== 'active') {
+      header[8] = 'active';
+      sheet.clearContents();
+      sheet.getRange(1, 1, values.length, values[0].length).setValues(values);
+    }
+    var activeCount = 0;
+    var inactiveCount = 0;
+    for (var i = 1; i < values.length; i++) {
+      var classId = String(values[i][0] || '').trim();
+      if (!classId) continue;
+      values[i][8] = active[classId] === true;
+      if (values[i][8]) activeCount++; else inactiveCount++;
+    }
+    sheet.getRange(1, 1, values.length, values[0].length).setValues(values);
+    SpreadsheetApp.flush();
+    return { activeClassIds: Object.keys(active), activeCount: activeCount, inactiveCount: inactiveCount };
+  },
+
   listSchedules: function () {
     var sheet = this.getSpreadsheet().getSheetByName('Classes');
     if (!sheet || sheet.getLastRow() <= 1) return [];
     var rows = sheet.getDataRange().getValues();
-    return rows.slice(1).filter(function (row) { return row[0]; }).map(function (row) {
+    return rows.slice(1).filter(function (row) {
+      return row[0] && (row[8] === undefined || row[8] === '' || row[8] === true || String(row[8]).toLowerCase() === 'true');
+    }).map(function (row) {
       return {
         classId: row[0], classCode: row[1], subjectCode: row[2], semester: row[3],
-        scheduleCode: row[4], sourceSheetName: row[5], lessonCount: Number(row[6])
+        scheduleCode: row[4], sourceSheetName: row[5], lessonCount: Number(row[6]), active: true
       };
     });
   },
@@ -174,9 +282,42 @@ var DatabaseService = {
         }) : [];
     var lessons = lessonsSheet && lessonsSheet.getLastRow() > 1
       ? lessonsSheet.getDataRange().getValues().slice(1).filter(function (row) { return row[1] === classId; }).map(function (row) {
-          return { lessonId: row[0], sequenceNumber: Number(row[2]), date: row[3], dailySlot: Number(row[4]), startTime: row[5], endTime: row[6], isAdjusted: row[7] === true, status: row[8] || 'scheduled' };
+          return lessonFromRow(row);
         }).sort(function (left, right) { return left.sequenceNumber - right.sequenceNumber; }) : [];
     return { classOffering: offerings[0], students: students, lessons: lessons };
+  },
+
+  getAllSchedules: function () {
+    var schedules = [];
+    var offerings = this.listSchedules();
+    for (var i = 0; i < offerings.length; i++) {
+      var schedule = this.getSchedule(offerings[i].classId);
+      if (schedule) schedules.push(schedule);
+    }
+    return schedules;
+  },
+
+  repairLessonTimes: function () {
+    var sheet = this.getSpreadsheet().getSheetByName('Lessons');
+    if (!sheet || sheet.getLastRow() <= 1) return { updatedRows: 0 };
+
+    var values = sheet.getRange(2, 1, sheet.getLastRow() - 1, sheet.getLastColumn()).getValues();
+    var updatedRows = 0;
+    values.forEach(function (row) {
+      var dailySlot = Number(row[4]);
+      var times = canonicalSlotTimes(dailySlot);
+      if (!times) return;
+      if (String(row[5] || '').trim() !== times[0] || String(row[6] || '').trim() !== times[1]) {
+        row[5] = times[0];
+        row[6] = times[1];
+        updatedRows++;
+      }
+    });
+    if (updatedRows > 0) {
+      sheet.getRange(2, 1, values.length, values[0].length).setValues(values);
+      SpreadsheetApp.flush();
+    }
+    return { updatedRows: updatedRows };
   },
 
   /**

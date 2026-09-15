@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
@@ -5,13 +6,15 @@ import 'package:http/http.dart' as http;
 /// Tầng Repository kết nối trực tiếp với Google Apps Script Data Gateway qua HTTPS
 /// Tuân thủ quy ước kiến trúc 3 lớp (SRS v4.0 & docs/architecture.md)
 class SheetsRepository {
+  static const _gatewayTimeout = Duration(seconds: 60);
+
   final String gatewayUrl;
   final http.Client _client;
 
   SheetsRepository({String? gatewayUrl, http.Client? client})
       : gatewayUrl = gatewayUrl ??
             Platform.environment['APPS_SCRIPT_GATEWAY_URL'] ??
-            'https://script.google.com/macros/s/AKfycbxuAV49xcKSzJHeiyRZ96LEj_qwLLP_omiJu5XTXbCo-xdRg0G7KhE9SNZI_y28r21ftw/exec',
+            'https://script.google.com/macros/s/AKfycbxcLHop2Gkp5zHtfdxRotjnIT45NIXnBIIZnlelWJ3aCaIy03zzQM3miOi6tAHZo6g/exec',
         _client = client ?? http.Client();
 
   /// Gửi POST Request đến Google Apps Script Gateway và xử lý 302 Redirect
@@ -39,8 +42,9 @@ class SheetsRepository {
             'action': action,
             'payload': payload,
           });
-        var response =
-            await http.Response.fromStream(await _client.send(request));
+        var response = await http.Response.fromStream(
+          await _client.send(request).timeout(_gatewayTimeout),
+        );
 
         if (response.statusCode == 302 ||
             response.statusCode == 301 ||
@@ -50,7 +54,9 @@ class SheetsRepository {
           if (redirectUrl == null || redirectUrl.isEmpty) {
             throw StateError('Data Gateway không trả URL chuyển hướng.');
           }
-          response = await _client.get(Uri.parse(redirectUrl));
+          response = await _client
+              .get(Uri.parse(redirectUrl))
+              .timeout(_gatewayTimeout);
         }
 
         if (response.statusCode == 200) {
@@ -174,13 +180,30 @@ class SheetsRepository {
     for (final item in items) {
       await saveClassOffering(
         offering: Map<String, dynamic>.from(item['offering'] as Map),
-        roster: (item['roster'] as List).whereType<Map>().map(
-          (row) => Map<String, dynamic>.from(row),
-        ).toList(),
-        lessons: (item['lessons'] as List).whereType<Map>().map(
-          (row) => Map<String, dynamic>.from(row),
-        ).toList(),
+        roster: (item['roster'] as List)
+            .whereType<Map>()
+            .map(
+              (row) => Map<String, dynamic>.from(row),
+            )
+            .toList(),
+        lessons: (item['lessons'] as List)
+            .whereType<Map>()
+            .map(
+              (row) => Map<String, dynamic>.from(row),
+            )
+            .toList(),
       );
+    }
+    return true;
+  }
+
+  Future<bool> syncActiveClassIds(Set<String> activeClassIds) async {
+    final res = await _postToGateway('syncActiveClassIds', {
+      'activeClassIds': activeClassIds.toList(growable: false),
+    });
+    if (res['success'] != true) {
+      final detail = res['error'] ?? res['data'] ?? jsonEncode(res);
+      throw StateError('Data Gateway từ chối đồng bộ trạng thái lớp: $detail');
     }
     return true;
   }
@@ -213,16 +236,14 @@ class SheetsRepository {
       final res = await _postToGateway('getAllSchedules', {});
       if (res['success'] == true) {
         final data = res['data'];
-        if (data is! List) return const [];
-        return data.whereType<Map>().map(Map<String, dynamic>.from).toList();
+        if (data is List) {
+          return data.whereType<Map>().map(Map<String, dynamic>.from).toList();
+        }
       }
-      if (!res['error'].toString().contains('Unknown action')) {
-        throw StateError(
-          res['error']?.toString() ?? 'Data Gateway không trả toàn bộ lịch.',
-        );
-      }
-    } on StateError catch (error) {
-      if (!error.toString().contains('Unknown action')) rethrow;
+    } catch (_) {
+      // The aggregate read is an optimization. A transient gateway failure,
+      // an old deployment, or a malformed aggregate response must not prevent
+      // restoring the same classes one at a time.
     }
     final summaries = await listSchedules();
     final schedules = <Map<String, dynamic>>[];

@@ -115,15 +115,15 @@ class _ScheduleGeneratorScreenState extends State<ScheduleGeneratorScreen> {
   Future<void> _saveSchedules() async {
     setState(() => _isSaving = true);
     try {
-      await _apiClient.saveSchedules(
+      final message = await _apiClient.saveSchedules(
         importedClasses: _classes,
         schedules: _schedules,
       );
       if (!mounted) return;
-      M1SnackBar.show(context, 'Đã lưu ${_classes.length} lớp vào Google Sheets.');
+      M1SnackBar.show(context, message);
     } catch (error) {
       if (!mounted) return;
-      M1SnackBar.show(context, 'Không thể lưu lịch: $error');
+      M1SnackBar.show(context, 'Không thể lưu lịch: $error', isError: true);
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
@@ -144,7 +144,11 @@ class _ScheduleGeneratorScreenState extends State<ScheduleGeneratorScreen> {
   Future<void> _changeSelectedLessonDate() async {
     final selected = _selectedLesson;
     if (selected == null) {
-      M1SnackBar.show(context, 'Hãy chọn một buổi học trên lịch trước.');
+      M1SnackBar.show(
+        context,
+        'Hãy chọn một buổi học trên lịch trước.',
+        isError: true,
+      );
       return;
     }
 
@@ -181,6 +185,7 @@ class _ScheduleGeneratorScreenState extends State<ScheduleGeneratorScreen> {
       M1SnackBar.show(
         context,
         error.message?.toString() ?? 'Không thể đổi lịch.',
+        isError: true,
       );
     }
   }
