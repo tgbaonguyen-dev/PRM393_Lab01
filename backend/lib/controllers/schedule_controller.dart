@@ -41,10 +41,13 @@ class ScheduleController {
       return _json(400, {'success': false, 'error': error.message});
     } on StateError catch (error) {
       return _json(502, {'success': false, 'error': error.message});
-    } catch (_) {
-      return _json(500, const {
+    } catch (error) {
+      // M1 is still being integrated with a separately deployed gateway.
+      // Preserve the actual error so an invalid imported class can be fixed
+      // instead of making every failure look like a server outage.
+      return _json(500, {
         'success': false,
-        'error': 'Không thể lưu lịch do lỗi máy chủ.',
+        'error': 'Không thể lưu lịch do lỗi máy chủ: $error',
       });
     }
   }
