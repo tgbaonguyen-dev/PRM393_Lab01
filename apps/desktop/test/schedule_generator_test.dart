@@ -1,8 +1,22 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:prm393_desktop/features/schedule/models/schedule_models.dart';
 import 'package:prm393_desktop/features/schedule/services/schedule_code_parser.dart';
 import 'package:prm393_desktop/features/schedule/services/schedule_generator.dart';
 
 void main() {
+  test('restores a Google Sheets date string returned by Apps Script', () {
+    final lesson = ClassLesson.fromJson({
+      'lessonId': 'lesson-1',
+      'sequenceNumber': 1,
+      'date': 'Mon Sep 07 2026 00:00:00 GMT+0700 (Giờ Đông Dương)',
+      'dailySlot': 1,
+      'startTime': '07:00',
+      'endTime': '09:15',
+    });
+
+    expect(lesson.date, DateTime(2026, 9, 7));
+  });
+
   test('parses schedule code 12', () {
     final rule = ScheduleCodeParser.parse('12');
 

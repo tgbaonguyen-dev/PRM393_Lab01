@@ -63,7 +63,7 @@ class ClassLesson {
   factory ClassLesson.fromJson(Map<String, dynamic> json) => ClassLesson(
     lessonId: json['lessonId'] as String? ?? '',
     sequenceNumber: json['sequenceNumber'] as int? ?? 0,
-    date: DateTime.parse(json['date'] as String),
+    date: _parseDate(json['date']),
     dailySlot: json['dailySlot'] as int? ?? 0,
     startTime: json['startTime'] as String? ?? '',
     endTime: json['endTime'] as String? ?? '',
@@ -74,6 +74,42 @@ class ClassLesson {
       '${value.year.toString().padLeft(4, '0')}-'
       '${value.month.toString().padLeft(2, '0')}-'
       '${value.day.toString().padLeft(2, '0')}';
+
+  /// Google Sheets may serialize a date as either `2026-09-07` or as
+  /// `Mon Sep 07 2026 00:00:00 GMT+0700 (...)`. Accept both formats so a
+  /// saved schedule can always be restored after reopening the app.
+  static DateTime _parseDate(Object? rawValue) {
+    final raw = rawValue?.toString().trim() ?? '';
+    final isoDate = DateTime.tryParse(raw);
+    if (isoDate != null) return isoDate;
+
+    final match = RegExp(
+      r'^[A-Za-z]{3}\s+([A-Za-z]{3})\s+(\d{1,2})\s+(\d{4})',
+    ).firstMatch(raw);
+    const months = {
+      'jan': 1,
+      'feb': 2,
+      'mar': 3,
+      'apr': 4,
+      'may': 5,
+      'jun': 6,
+      'jul': 7,
+      'aug': 8,
+      'sep': 9,
+      'oct': 10,
+      'nov': 11,
+      'dec': 12,
+    };
+    final month = match == null ? null : months[match.group(1)!.toLowerCase()];
+    if (match != null && month != null) {
+      return DateTime(
+        int.parse(match.group(3)!),
+        month,
+        int.parse(match.group(2)!),
+      );
+    }
+    throw FormatException('Invalid date format: $raw');
+  }
 }
 
 class ClassSchedule {
