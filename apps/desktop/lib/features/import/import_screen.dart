@@ -120,15 +120,51 @@ class _ImportScreenState extends State<ImportScreen> {
       final result = await _parser.parseFile(File(path));
       if (!mounted) return;
       setState(() {
-        _result = result;
+        final current = _result;
+        final incomingBySheet = {
+          for (final item in result.classes) item.sourceSheetName: item,
+        };
+        final existingClasses = current?.classes ?? const <ImportedClass>[];
+        final mergedClasses = <ImportedClass>[];
+
+        // Keep an existing position where a sheet is refreshed, retain every
+        // non-overlapping sheet, then append genuinely new sheets.
+        for (final existing in existingClasses) {
+          final replacement = incomingBySheet.remove(existing.sourceSheetName);
+          mergedClasses.add(replacement ?? existing);
+        }
+        mergedClasses.addAll(incomingBySheet.values);
+
+        final incomingSheetNames = result.classes
+            .map((item) => item.sourceSheetName)
+            .toSet();
+        final sourceNames = <String>{
+          if (current != null) ...current.sourceFileName.split(', '),
+          result.sourceFileName,
+        };
+        _result = WorkbookImportResult(
+          sourceFileName: sourceNames.join(', '),
+          classes: mergedClasses,
+        );
+        final previousEdits = Map<String, ImportedClass>.of(_editedClasses);
         _editedClasses
           ..clear()
           ..addEntries(
-            result.classes.map((item) => MapEntry(item.sourceSheetName, item)),
+            mergedClasses.map(
+              (item) => MapEntry(
+                item.sourceSheetName,
+                incomingSheetNames.contains(item.sourceSheetName)
+                    ? item
+                    : previousEdits[item.sourceSheetName] ?? item,
+              ),
+            ),
           );
-        _selectedIndex = 0;
-        if (result.classes.isNotEmpty) {
-          _loadMetadata(result.classes.first);
+        _selectedIndex = mergedClasses.indexWhere(
+          (item) => incomingSheetNames.contains(item.sourceSheetName),
+        );
+        if (_selectedIndex < 0) _selectedIndex = 0;
+        if (mergedClasses.isNotEmpty) {
+          _loadMetadata(mergedClasses[_selectedIndex]);
         }
       });
     } catch (error) {
