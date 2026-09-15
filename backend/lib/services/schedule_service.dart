@@ -6,6 +6,9 @@ abstract class ScheduleRepository {
     required List<Map<String, dynamic>> students,
     required List<Map<String, dynamic>> lessons,
   });
+
+  Future<List<Map<String, dynamic>>> list();
+  Future<Map<String, dynamic>?> get(String classId);
 }
 
 class SheetsScheduleRepository implements ScheduleRepository {
@@ -26,6 +29,13 @@ class SheetsScheduleRepository implements ScheduleRepository {
       lessons: lessons,
     );
   }
+
+  @override
+  Future<List<Map<String, dynamic>>> list() => _repository.listSchedules();
+
+  @override
+  Future<Map<String, dynamic>?> get(String classId) =>
+      _repository.getSchedule(classId);
 }
 
 class ScheduleValidationException implements Exception {
@@ -81,7 +91,14 @@ class ScheduleService {
     return schedule;
   }
 
-  Map<String, dynamic>? getSchedule(String classId) => _cache[classId.trim()];
+  Future<Map<String, dynamic>?> getSchedule(String classId) async {
+    final key = classId.trim();
+    final stored = await _repository.get(key);
+    if (stored != null) _cache[key] = stored;
+    return stored ?? _cache[key];
+  }
+
+  Future<List<Map<String, dynamic>>> listSchedules() => _repository.list();
 
   Map<String, dynamic> _normalizeOffering(Map<String, dynamic> input) {
     final fields = <String, String>{
@@ -181,6 +198,7 @@ class ScheduleService {
       2: ('09:30', '11:45'),
       3: ('12:30', '14:45'),
       4: ('15:00', '17:15'),
+      5: ('17:45', '19:15'),
     }[expectedSlot]!;
     final expectedWeekdays = switch (scheduleCode[0]) {
       '1' => const [DateTime.monday, DateTime.thursday],

@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import '../import/models/import_models.dart';
 import 'models/schedule_models.dart';
 import 'services/schedule_code_parser.dart';
+import 'services/schedule_api_client.dart';
 import 'services/schedule_generator.dart';
 import 'services/schedule_overview.dart';
 
@@ -11,12 +12,14 @@ class ScheduleGeneratorScreen extends StatefulWidget {
   final List<ImportedClass> importedClasses;
   final DateTime semesterStart;
   final int initialClassIndex;
+  final Map<String, List<ClassLesson>>? initialSchedules;
 
   const ScheduleGeneratorScreen({
     super.key,
     required this.importedClasses,
     required this.semesterStart,
     this.initialClassIndex = 0,
+    this.initialSchedules,
   }) : assert(importedClasses.length > 0);
 
   @override
@@ -42,6 +45,8 @@ class _ScheduleGeneratorScreenState extends State<ScheduleGeneratorScreen> {
   String _filter = _allClasses;
   String? _selectedKey;
   String? _suggestedKey;
+  bool _isSaving = false;
+  final _apiClient = ScheduleApiClient();
 
   ScheduledLessonView? get _selectedLesson => ScheduleOverview.findByKey(
     key: _selectedKey,
@@ -88,6 +93,11 @@ class _ScheduleGeneratorScreenState extends State<ScheduleGeneratorScreen> {
 
   void _generateAllSchedules() {
     for (final importedClass in _classes) {
+      final stored = widget.initialSchedules?[importedClass.sourceSheetName];
+      if (stored != null && stored.isNotEmpty) {
+        _schedules[importedClass.sourceSheetName] = List.of(stored);
+        continue;
+      }
       final firstDate = ScheduleGenerator.firstTeachingDateOnOrAfter(
         scheduleCode: importedClass.scheduleCode,
         semesterStart: widget.semesterStart,
@@ -98,6 +108,31 @@ class _ScheduleGeneratorScreenState extends State<ScheduleGeneratorScreen> {
         firstDate: firstDate,
         lessonCount: importedClass.lessonCount,
       );
+    }
+  }
+
+  Future<void> _saveSchedules() async {
+    setState(() => _isSaving = true);
+    try {
+      for (final importedClass in _classes) {
+        await _apiClient.saveSchedule(
+          importedClass: importedClass,
+          lessons: _schedules[importedClass.sourceSheetName]!,
+        );
+      }
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Đã lưu ${_classes.length} lớp vào Google Sheets.'),
+        ),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Không thể lưu lịch: $error')));
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
     }
   }
 
@@ -146,13 +181,15 @@ class _ScheduleGeneratorScreenState extends State<ScheduleGeneratorScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'Đã đổi Buổi ${selected.lesson.sequenceNumber} sang ${DateFormat('dd/MM/yyyy').format(newDate)}. Nhấn Lưu lịch học khi backend được ghép.',
+            'Đã đổi Buổi ${selected.lesson.sequenceNumber} sang ${DateFormat('dd/MM/yyyy').format(newDate)}. Nhấn Lưu lịch học để ghi nhận thay đổi.',
           ),
         ),
       );
     } on ArgumentError catch (error) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.message?.toString() ?? 'Không thể đổi lịch.')),
+        SnackBar(
+          content: Text(error.message?.toString() ?? 'Không thể đổi lịch.'),
+        ),
       );
     }
   }
@@ -167,13 +204,13 @@ class _ScheduleGeneratorScreenState extends State<ScheduleGeneratorScreen> {
         actions: [
           Tooltip(
             message:
-                'Chức năng lưu xuống hệ thống sẽ được ghép cùng Backend M1.',
+                'Lưu lớp, danh sách sinh viên và lịch đã điều chỉnh vào hệ thống.',
             child: Padding(
               padding: const EdgeInsets.only(right: 12),
               child: FilledButton.icon(
-                onPressed: null,
+                onPressed: _isSaving ? null : _saveSchedules,
                 icon: const Icon(Icons.save_outlined),
-                label: const Text('Lưu lịch học • Chờ backend'),
+                label: Text(_isSaving ? 'Đang lưu...' : 'Lưu lịch học'),
               ),
             ),
           ),
@@ -323,7 +360,9 @@ class _ScheduleGeneratorScreenState extends State<ScheduleGeneratorScreen> {
               runSpacing: 8,
               children: [
                 OutlinedButton.icon(
-                  onPressed: selected == null ? null : _changeSelectedLessonDate,
+                  onPressed: selected == null
+                      ? null
+                      : _changeSelectedLessonDate,
                   icon: const Icon(Icons.edit_calendar_outlined),
                   label: const Text('Đổi lịch buổi đã chọn'),
                 ),

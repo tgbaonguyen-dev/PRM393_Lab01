@@ -15,9 +15,13 @@ class SheetsRepository {
         _client = client ?? http.Client();
 
   /// Gửi POST Request đến Google Apps Script Gateway và xử lý 302 Redirect
-  Future<Map<String, dynamic>> _postToGateway(String action, Map<String, dynamic> payload) async {
+  Future<Map<String, dynamic>> _postToGateway(
+      String action, Map<String, dynamic> payload) async {
     if (gatewayUrl.isEmpty) {
-      return {'success': false, 'error': 'Chưa cấu hình APPS_SCRIPT_GATEWAY_URL'};
+      return {
+        'success': false,
+        'error': 'Chưa cấu hình APPS_SCRIPT_GATEWAY_URL'
+      };
     }
 
     var response = await _client.post(
@@ -41,7 +45,8 @@ class SheetsRepository {
     }
 
     if (response.statusCode != 200) {
-      throw Exception('Data Gateway trả về HTTP ${response.statusCode}: ${response.body}');
+      throw Exception(
+          'Data Gateway trả về HTTP ${response.statusCode}: ${response.body}');
     }
 
     final dynamic decoded = jsonDecode(response.body);
@@ -88,6 +93,19 @@ class SheetsRepository {
     return res['success'] == true;
   }
 
+  Future<List<Map<String, dynamic>>> listSchedules() async {
+    final res = await _postToGateway('listSchedules', {});
+    final data = res['data'];
+    if (data is! List) return const [];
+    return data.whereType<Map>().map(Map<String, dynamic>.from).toList();
+  }
+
+  Future<Map<String, dynamic>?> getSchedule(String classId) async {
+    final res = await _postToGateway('getSchedule', {'classId': classId});
+    final data = res['data'];
+    return data is Map ? Map<String, dynamic>.from(data) : null;
+  }
+
   /// Mở ca điểm danh (FR-09, FR-10)
   Future<Map<String, dynamic>?> openAttendanceWindow(String sessionId) async {
     final res = await _postToGateway('openAttendanceWindow', {
@@ -108,7 +126,8 @@ class SheetsRepository {
   }
 
   /// Ghi nhận sinh viên check-in (FR-17, FR-19, FR-20, AC-10)
-  Future<Map<String, dynamic>> recordCheckIn(String sessionId, String studentEmail) async {
+  Future<Map<String, dynamic>> recordCheckIn(
+      String sessionId, String studentEmail) async {
     final res = await _postToGateway('saveCheckIn', {
       'sessionId': sessionId,
       'studentEmail': studentEmail,
@@ -117,7 +136,8 @@ class SheetsRepository {
   }
 
   /// Giảng viên sửa thủ công A <-> P (FR-14)
-  Future<bool> recordManualOverride(String sessionId, String studentEmail, String status) async {
+  Future<bool> recordManualOverride(
+      String sessionId, String studentEmail, String status) async {
     final res = await _postToGateway('saveManualOverride', {
       'sessionId': sessionId,
       'studentEmail': studentEmail,
@@ -127,7 +147,8 @@ class SheetsRepository {
   }
 
   /// Lấy danh sách kết quả điểm danh phục vụ Polling 5s (FR-11)
-  Future<List<Map<String, dynamic>>> getAttendanceResults(String sessionId) async {
+  Future<List<Map<String, dynamic>>> getAttendanceResults(
+      String sessionId) async {
     final res = await _postToGateway('getAttendanceResults', {
       'sessionId': sessionId,
     });

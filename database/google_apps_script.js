@@ -55,6 +55,12 @@ function dispatchAction(action, payload) {
   switch (action) {
     case 'syncAllClasses':
       return DatabaseService.syncAllClassesFromDesktop(payload.classes, payload.startDate);
+    case 'saveClassOffering':
+      return DatabaseService.saveClassOffering(payload.offering, payload.roster, payload.lessons);
+    case 'listSchedules':
+      return DatabaseService.listSchedules();
+    case 'getSchedule':
+      return DatabaseService.getSchedule(payload.classId);
     case 'setupDatabase':
       return DatabaseService.setupDatabase();
     case 'openAttendanceWindow':
@@ -82,6 +88,95 @@ function dispatchAction(action, payload) {
 var DatabaseService = {
   getSpreadsheet: function () {
     return SpreadsheetApp.getActiveSpreadsheet();
+  },
+
+  // Canonical M1 storage. These tabs are append/upsert based; unlike the old
+  // syncAllClasses demo action, they never clear another class or attendance.
+  ensureDataSheet: function (name, headers) {
+    var ss = this.getSpreadsheet();
+    var sheet = ss.getSheetByName(name);
+    if (!sheet) sheet = ss.insertSheet(name);
+    if (sheet.getLastRow() === 0) sheet.appendRow(headers);
+    return sheet;
+  },
+
+  upsertRow: function (sheet, key, row) {
+    var values = sheet.getDataRange().getValues();
+    for (var index = 1; index < values.length; index++) {
+      if (String(values[index][0]) === String(key)) {
+        sheet.getRange(index + 1, 1, 1, row.length).setValues([row]);
+        return;
+      }
+    }
+    sheet.appendRow(row);
+  },
+
+  saveClassOffering: function (offering, roster, lessons) {
+    if (!offering || !offering.classId) throw new Error('classOffering thiếu classId');
+    var classes = this.ensureDataSheet('Classes', [
+      'classId', 'classCode', 'subjectCode', 'semester', 'scheduleCode',
+      'sourceSheetName', 'lessonCount', 'updatedAt'
+    ]);
+    var students = this.ensureDataSheet('Students', [
+      'recordKey', 'classId', 'classCode', 'rollNumber', 'fullName',
+      'email', 'memberCode', 'active'
+    ]);
+    var lessonRows = this.ensureDataSheet('Lessons', [
+      'lessonId', 'classId', 'sequenceNumber', 'date', 'dailySlot',
+      'startTime', 'endTime', 'isAdjusted', 'status'
+    ]);
+
+    this.upsertRow(classes, offering.classId, [
+      offering.classId, offering.classCode || '', offering.subjectCode || '',
+      offering.semester || '', offering.scheduleCode || '', offering.sourceSheetName || '',
+      offering.lessonCount || 20, new Date().toISOString()
+    ]);
+    (roster || []).forEach(function (student) {
+      var recordKey = offering.classId + '|' + String(student.rollNumber || '').toUpperCase();
+      DatabaseService.upsertRow(students, recordKey, [
+        recordKey, offering.classId, student.classCode || offering.classCode || '',
+        student.rollNumber || '', student.fullName || '', String(student.email || '').toLowerCase(),
+        student.memberCode || '', true
+      ]);
+    });
+    (lessons || []).forEach(function (lesson) {
+      DatabaseService.upsertRow(lessonRows, lesson.lessonId, [
+        lesson.lessonId, offering.classId, lesson.sequenceNumber, lesson.date,
+        lesson.dailySlot, lesson.startTime, lesson.endTime,
+        lesson.isAdjusted === true, lesson.status || 'scheduled'
+      ]);
+    });
+    SpreadsheetApp.flush();
+    return { classId: offering.classId, saved: true };
+  },
+
+  listSchedules: function () {
+    var sheet = this.getSpreadsheet().getSheetByName('Classes');
+    if (!sheet || sheet.getLastRow() <= 1) return [];
+    var rows = sheet.getDataRange().getValues();
+    return rows.slice(1).filter(function (row) { return row[0]; }).map(function (row) {
+      return {
+        classId: row[0], classCode: row[1], subjectCode: row[2], semester: row[3],
+        scheduleCode: row[4], sourceSheetName: row[5], lessonCount: Number(row[6])
+      };
+    });
+  },
+
+  getSchedule: function (classId) {
+    var offerings = this.listSchedules().filter(function (item) { return item.classId === classId; });
+    if (offerings.length === 0) return null;
+    var ss = this.getSpreadsheet();
+    var studentsSheet = ss.getSheetByName('Students');
+    var lessonsSheet = ss.getSheetByName('Lessons');
+    var students = studentsSheet && studentsSheet.getLastRow() > 1
+      ? studentsSheet.getDataRange().getValues().slice(1).filter(function (row) { return row[1] === classId; }).map(function (row) {
+          return { classCode: row[2], rollNumber: row[3], fullName: row[4], email: row[5], memberCode: row[6] };
+        }) : [];
+    var lessons = lessonsSheet && lessonsSheet.getLastRow() > 1
+      ? lessonsSheet.getDataRange().getValues().slice(1).filter(function (row) { return row[1] === classId; }).map(function (row) {
+          return { lessonId: row[0], sequenceNumber: Number(row[2]), date: row[3], dailySlot: Number(row[4]), startTime: row[5], endTime: row[6], isAdjusted: row[7] === true, status: row[8] || 'scheduled' };
+        }).sort(function (left, right) { return left.sequenceNumber - right.sequenceNumber; }) : [];
+    return { classOffering: offerings[0], students: students, lessons: lessons };
   },
 
   /**

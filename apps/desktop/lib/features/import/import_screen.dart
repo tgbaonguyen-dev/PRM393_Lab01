@@ -4,6 +4,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
 import '../schedule/schedule_generator_screen.dart';
+import '../schedule/services/schedule_api_client.dart';
 import 'models/import_models.dart';
 import 'services/markbook_parser.dart';
 
@@ -16,6 +17,7 @@ class ImportScreen extends StatefulWidget {
 
 class _ImportScreenState extends State<ImportScreen> {
   final _parser = MarkbookParser();
+  final _scheduleApiClient = ScheduleApiClient();
   final _scheduleCodeController = TextEditingController();
   final _subjectCodeController = TextEditingController();
   final _classCodeController = TextEditingController();
@@ -25,6 +27,8 @@ class _ImportScreenState extends State<ImportScreen> {
   int _selectedIndex = 0;
   String? _hoveredSheetName;
   bool _isLoading = false;
+  bool _isLoadingSavedSchedules = true;
+  int? _savedScheduleCount;
   String? _loadError;
 
   ImportedClass? get _selectedClass {
@@ -45,6 +49,57 @@ class _ImportScreenState extends State<ImportScreen> {
 
   Future<void> _pickFile() async {
     await _pickAndLoad();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _refreshSavedScheduleCount();
+  }
+
+  Future<void> _refreshSavedScheduleCount() async {
+    try {
+      final schedules = await _scheduleApiClient.listSchedules();
+      if (mounted) setState(() => _savedScheduleCount = schedules.length);
+    } catch (_) {
+      // A first-time installation or an offline backend simply has no saved
+      // schedule entry point yet. The Markbook import remains available.
+      if (mounted) setState(() => _savedScheduleCount = null);
+    } finally {
+      if (mounted) setState(() => _isLoadingSavedSchedules = false);
+    }
+  }
+
+  Future<void> _openSavedSchedules() async {
+    setState(() => _isLoadingSavedSchedules = true);
+    try {
+      final saved = await _scheduleApiClient.loadSavedSchedules();
+      if (!mounted) return;
+      if (saved.classes.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Chưa có lịch nào được lưu.')),
+        );
+        return;
+      }
+      await Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => ScheduleGeneratorScreen(
+            importedClasses: saved.classes,
+            initialSchedules: saved.schedules,
+            semesterStart: saved.firstLessonDate,
+          ),
+        ),
+      );
+      if (mounted) _refreshSavedScheduleCount();
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Không thể tải lịch đã lưu: $error')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoadingSavedSchedules = false);
+    }
   }
 
   /// A Markbook may have one class sheet or many sheets.  The same import
@@ -69,12 +124,7 @@ class _ImportScreenState extends State<ImportScreen> {
         _editedClasses
           ..clear()
           ..addEntries(
-            result.classes.map(
-              (item) => MapEntry(
-                item.sourceSheetName,
-                item,
-              ),
-            ),
+            result.classes.map((item) => MapEntry(item.sourceSheetName, item)),
           );
         _selectedIndex = 0;
         if (result.classes.isNotEmpty) {
@@ -387,6 +437,18 @@ class _ImportScreenState extends State<ImportScreen> {
                       : const Icon(Icons.upload_file),
                   label: Text(_isLoading ? 'Đang đọc...' : 'Chọn Markbook'),
                 ),
+                if ((_savedScheduleCount ?? 0) > 0)
+                  OutlinedButton.icon(
+                    onPressed: _isLoadingSavedSchedules
+                        ? null
+                        : _openSavedSchedules,
+                    icon: const Icon(Icons.calendar_month_outlined),
+                    label: Text(
+                      _isLoadingSavedSchedules
+                          ? 'Đang tải lịch...'
+                          : 'Mở lịch đã lưu ($_savedScheduleCount lớp)',
+                    ),
+                  ),
               ],
             );
             if (constraints.maxWidth < 900) {
@@ -518,11 +580,7 @@ class _ImportScreenState extends State<ImportScreen> {
                       _metadataField('Mã lịch', _scheduleCodeController, 105),
                       _metadataField('Môn', _subjectCodeController, 125),
                       _metadataField('Lớp', _classCodeController, 125),
-                      _metadataField(
-                        'Số buổi',
-                        _lessonCountController,
-                        120,
-                      ),
+                      _metadataField('Số buổi', _lessonCountController, 120),
                     ],
                   ),
                 ),

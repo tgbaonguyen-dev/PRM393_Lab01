@@ -45,6 +45,15 @@ class ImportedStudent {
     'email': normalizedEmail,
     'memberCode': memberCode,
   };
+
+  factory ImportedStudent.fromJson(Map<String, dynamic> json) =>
+      ImportedStudent(
+        classCode: json['classCode'] as String? ?? '',
+        rollNumber: json['rollNumber'] as String? ?? '',
+        fullName: json['fullName'] as String? ?? '',
+        email: json['email'] as String? ?? '',
+        memberCode: json['memberCode'] as String? ?? '',
+      );
 }
 
 class ImportedClass {
@@ -99,6 +108,20 @@ class ImportedClass {
     lessonCount: lessonCount ?? this.lessonCount,
     students: students,
     issues: issues ?? this.issues,
+  );
+
+  factory ImportedClass.fromStorage(
+    Map<String, dynamic> offering,
+    List<ImportedStudent> students,
+  ) => ImportedClass(
+    sourceSheetName: offering['sourceSheetName'] as String? ?? '',
+    scheduleCode: offering['scheduleCode'] as String? ?? '',
+    subjectCode: offering['subjectCode'] as String? ?? '',
+    classCode: offering['classCode'] as String? ?? '',
+    semester: offering['semester'] as String? ?? '',
+    lessonCount: offering['lessonCount'] as int? ?? 20,
+    students: students,
+    issues: const [],
   );
 }
 

@@ -31,7 +31,7 @@ void main() {
     expect(find.text('Mở điểm danh • Chờ M2'), findsOneWidget);
     expect(find.text('Đổi lịch buổi đã chọn'), findsOneWidget);
     expect(find.text('Xác nhận buổi'), findsNothing);
-    expect(find.text('Lưu lịch học • Chờ backend'), findsOneWidget);
+    expect(find.text('Lưu lịch học'), findsOneWidget);
   });
 
   testWidgets('shows only slots used by the imported class schedules', (

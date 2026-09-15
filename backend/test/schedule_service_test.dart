@@ -10,7 +10,7 @@ void main() {
 
     expect(repository.saveCount, 1);
     expect((result['lessons'] as List), hasLength(20));
-    expect(service.getSchedule('PRM393_SE1917_FA26'), isNotNull);
+    expect(await service.getSchedule('PRM393_SE1917_FA26'), isNotNull);
   });
 
   test('rejects a schedule that does not contain 20 lessons', () async {
@@ -61,6 +61,12 @@ class _FakeScheduleRepository implements ScheduleRepository {
     saveCount++;
     return shouldSave;
   }
+
+  @override
+  Future<Map<String, dynamic>?> get(String classId) async => null;
+
+  @override
+  Future<List<Map<String, dynamic>>> list() async => const [];
 }
 
 Map<String, dynamic> _validPayload({int lessonCount = 20}) {

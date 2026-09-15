@@ -9,11 +9,12 @@ class ScheduleController {
   final ScheduleService _service;
 
   ScheduleController({ScheduleService? service})
-    : _service = service ?? ScheduleService();
+      : _service = service ?? ScheduleService();
 
   Router get router {
     final router = Router();
     router.post('/save', _save);
+    router.get('/', _list);
     router.get('/<classId>', _get);
     return router;
   }
@@ -48,8 +49,18 @@ class ScheduleController {
     }
   }
 
-  Response _get(Request request, String classId) {
-    final schedule = _service.getSchedule(Uri.decodeComponent(classId));
+  Future<Response> _list(Request request) async {
+    try {
+      final schedules = await _service.listSchedules();
+      return _json(200, {'success': true, 'data': schedules});
+    } catch (_) {
+      return _json(
+          502, const {'success': false, 'error': 'Không thể tải lịch đã lưu.'});
+    }
+  }
+
+  Future<Response> _get(Request request, String classId) async {
+    final schedule = await _service.getSchedule(Uri.decodeComponent(classId));
     if (schedule == null) {
       return _json(404, {
         'success': false,
@@ -60,8 +71,8 @@ class ScheduleController {
   }
 
   static Response _json(int statusCode, Map<String, dynamic> body) => Response(
-    statusCode,
-    body: jsonEncode(body),
-    headers: const {'content-type': 'application/json; charset=utf-8'},
-  );
+        statusCode,
+        body: jsonEncode(body),
+        headers: const {'content-type': 'application/json; charset=utf-8'},
+      );
 }

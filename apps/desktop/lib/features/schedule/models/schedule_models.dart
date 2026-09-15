@@ -54,6 +54,16 @@ class ClassLesson {
     'isAdjusted': isAdjusted,
   };
 
+  factory ClassLesson.fromJson(Map<String, dynamic> json) => ClassLesson(
+    lessonId: json['lessonId'] as String? ?? '',
+    sequenceNumber: json['sequenceNumber'] as int? ?? 0,
+    date: DateTime.parse(json['date'] as String),
+    dailySlot: json['dailySlot'] as int? ?? 0,
+    startTime: json['startTime'] as String? ?? '',
+    endTime: json['endTime'] as String? ?? '',
+    isAdjusted: json['isAdjusted'] == true,
+  );
+
   static String _dateOnly(DateTime value) =>
       '${value.year.toString().padLeft(4, '0')}-'
       '${value.month.toString().padLeft(2, '0')}-'
