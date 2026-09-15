@@ -117,11 +117,34 @@ class SheetsRepository {
     required List<Map<String, dynamic>> roster,
     required List<Map<String, dynamic>> lessons,
   }) async {
-    final res = await _postToGateway('saveClassOffering', {
+    final requestPayload = {
       'offering': offering,
       'roster': roster,
       'lessons': lessons,
-    });
+    };
+    Map<String, dynamic> res;
+    try {
+      res = await _postToGateway('saveClassOffering', requestPayload);
+    } on StateError catch (error) {
+      // A GAS Web App performs the spreadsheet write before it redirects to
+      // googleusercontent.com. If that short-lived redirect responds 404,
+      // verify the upsert through a fresh request instead of reporting a
+      // false failure to the desktop app.
+      if (!error.toString().contains('HTTP 404')) rethrow;
+      final classId = offering['classId']?.toString() ?? '';
+      if (classId.isEmpty) rethrow;
+      try {
+        final persisted = await _postToGateway('getSchedule', {
+          'classId': classId,
+        });
+        if (persisted['success'] == true && persisted['data'] is Map) {
+          return true;
+        }
+      } catch (_) {
+        // Keep the original save error; it is more useful to the caller.
+      }
+      rethrow;
+    }
     if (res['success'] != true) {
       final detail = res['error'] ?? res['data'] ?? jsonEncode(res);
       throw StateError(

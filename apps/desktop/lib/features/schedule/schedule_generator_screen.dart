@@ -114,18 +114,30 @@ class _ScheduleGeneratorScreenState extends State<ScheduleGeneratorScreen> {
 
   Future<void> _saveSchedules() async {
     setState(() => _isSaving = true);
+    final failedClasses = <String>[];
     try {
       for (final importedClass in _classes) {
-        await _apiClient.saveSchedule(
-          importedClass: importedClass,
-          lessons: _schedules[importedClass.sourceSheetName]!,
-        );
+        try {
+          await _apiClient.saveSchedule(
+            importedClass: importedClass,
+            lessons: _schedules[importedClass.sourceSheetName]!,
+          );
+        } catch (_) {
+          // Each class is an independent upsert. Continue so one temporary
+          // Google Apps Script error cannot prevent the remaining classes
+          // from being saved.
+          failedClasses.add(
+            '${importedClass.subjectCode} - ${importedClass.classCode}',
+          );
+        }
       }
       if (!mounted) return;
-      M1SnackBar.show(context, 'Đã lưu ${_classes.length} lớp vào Google Sheets.');
-    } catch (error) {
-      if (!mounted) return;
-      M1SnackBar.show(context, 'Không thể lưu lịch: $error');
+      final savedCount = _classes.length - failedClasses.length;
+      final message = failedClasses.isEmpty
+          ? 'Đã lưu $savedCount lớp vào Google Sheets.'
+          : 'Đã lưu $savedCount/${_classes.length} lớp. Chưa lưu: '
+              '${failedClasses.join(', ')}. Hãy bấm Lưu lịch học để thử lại.';
+      M1SnackBar.show(context, message);
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
