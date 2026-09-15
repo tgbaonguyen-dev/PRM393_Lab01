@@ -6,9 +6,11 @@ abstract class ScheduleRepository {
     required List<Map<String, dynamic>> students,
     required List<Map<String, dynamic>> lessons,
   });
+  Future<bool> saveAll(List<Map<String, dynamic>> schedules);
 
   Future<List<Map<String, dynamic>>> list();
   Future<Map<String, dynamic>?> get(String classId);
+  Future<List<Map<String, dynamic>>> getAll();
 }
 
 class SheetsScheduleRepository implements ScheduleRepository {
@@ -31,11 +33,18 @@ class SheetsScheduleRepository implements ScheduleRepository {
   }
 
   @override
+  Future<bool> saveAll(List<Map<String, dynamic>> schedules) =>
+      _repository.saveClassOfferings(schedules);
+
+  @override
   Future<List<Map<String, dynamic>>> list() => _repository.listSchedules();
 
   @override
   Future<Map<String, dynamic>?> get(String classId) =>
       _repository.getSchedule(classId);
+
+  @override
+  Future<List<Map<String, dynamic>>> getAll() => _repository.getAllSchedules();
 }
 
 class ScheduleValidationException implements Exception {
@@ -57,6 +66,39 @@ class ScheduleService {
   Future<Map<String, dynamic>> saveSchedule(
     Map<String, dynamic> payload,
   ) async {
+    final schedule = _prepareSchedule(payload);
+    final saved = await _repository.save(
+      classOffering: schedule['classOffering'] as Map<String, dynamic>,
+      students: schedule['students'] as List<Map<String, dynamic>>,
+      lessons: schedule['lessons'] as List<Map<String, dynamic>>,
+    );
+    if (!saved) {
+      throw StateError('Repository không lưu được lịch.');
+    }
+    _cache[schedule['classOffering']['classId'] as String] = schedule;
+    return schedule;
+  }
+
+  Future<List<Map<String, dynamic>>> saveSchedules(
+    List<Map<String, dynamic>> payloads,
+  ) async {
+    if (payloads.isEmpty) {
+      throw const ScheduleValidationException('Cần có ít nhất một lớp để lưu.');
+    }
+    final schedules = payloads.map(_prepareSchedule).toList(growable: false);
+    final saved = await _repository.saveAll(schedules.map((schedule) => {
+      'offering': schedule['classOffering'],
+      'roster': schedule['students'],
+      'lessons': schedule['lessons'],
+    }).toList(growable: false));
+    if (!saved) throw StateError('Repository không lưu được lịch.');
+    for (final schedule in schedules) {
+      _cache[schedule['classOffering']['classId'] as String] = schedule;
+    }
+    return schedules;
+  }
+
+  Map<String, dynamic> _prepareSchedule(Map<String, dynamic> payload) {
     final classOffering = _map(payload['classOffering'], 'classOffering');
     final students = _mapList(payload['students'], 'students');
     final lessons = _mapList(payload['lessons'], 'lessons');
@@ -71,24 +113,11 @@ class ScheduleService {
       normalizedOffering['scheduleCode'] as String,
       normalizedOffering['lessonCount'] as int,
     );
-    final classId = normalizedOffering['classId'] as String;
-
-    final saved = await _repository.save(
-      classOffering: normalizedOffering,
-      students: normalizedStudents,
-      lessons: normalizedLessons,
-    );
-    if (!saved) {
-      throw StateError('Repository không lưu được lịch.');
-    }
-
-    final schedule = <String, dynamic>{
+    return <String, dynamic>{
       'classOffering': normalizedOffering,
       'students': normalizedStudents,
       'lessons': normalizedLessons,
     };
-    _cache[classId] = schedule;
-    return schedule;
   }
 
   Future<Map<String, dynamic>?> getSchedule(String classId) async {
@@ -99,6 +128,17 @@ class ScheduleService {
   }
 
   Future<List<Map<String, dynamic>>> listSchedules() => _repository.list();
+
+  Future<List<Map<String, dynamic>>> getAllSchedules() async {
+    final schedules = await _repository.getAll();
+    for (final schedule in schedules) {
+      final offering = schedule['classOffering'];
+      if (offering is Map && offering['classId'] is String) {
+        _cache[offering['classId'] as String] = schedule;
+      }
+    }
+    return schedules;
+  }
 
   Map<String, dynamic> _normalizeOffering(Map<String, dynamic> input) {
     final fields = <String, String>{

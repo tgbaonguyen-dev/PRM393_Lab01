@@ -57,10 +57,14 @@ function dispatchAction(action, payload) {
   switch (action) {
     case 'saveClassOffering':
       return saveClassOffering(payload.offering, payload.roster, payload.lessons);
+    case 'saveClassOfferings':
+      return saveClassOfferings(payload.items);
     case 'listSchedules':
       return listSchedules();
     case 'getSchedule':
       return getSchedule(payload.classId);
+    case 'getAllSchedules':
+      return getAllSchedules();
     case 'ping':
       return {message: 'M1 gateway is ready'};
     default:
@@ -135,6 +139,82 @@ function sameId(left, right) {
 }
 
 function saveClassOffering(offering, roster, lessons) {
+  return saveClassOfferings([{offering: offering, roster: roster, lessons: lessons}]);
+}
+
+// Batch upsert reads each canonical tab once and writes it once. This is much
+// faster than repeatedly clearing and rewriting the entire spreadsheet for
+// every class in a Markbook import.
+function saveClassOfferings(items) {
+  if (!Array.isArray(items) || items.length === 0) {
+    throw new Error('items phải là danh sách lớp không rỗng.');
+  }
+  var replacements = {};
+  var ids = {};
+  items.forEach(function(item) {
+    if (!item || typeof item !== 'object') throw new Error('Dữ liệu lớp không hợp lệ.');
+    var offering = item.offering;
+    var roster = item.roster;
+    var lessons = item.lessons;
+    if (!offering || typeof offering !== 'object') throw new Error('offering không hợp lệ.');
+    if (!Array.isArray(roster)) throw new Error('roster không hợp lệ.');
+    if (!Array.isArray(lessons)) throw new Error('lessons không hợp lệ.');
+    var classId = requireText(offering.classId, 'classId');
+    if (ids[classId]) throw new Error('Trùng classId trong lượt lưu: ' + classId + '.');
+    ids[classId] = true;
+    replacements[classId] = {offering: offering, roster: roster, lessons: lessons};
+  });
+
+  var classes = ensureSheet('Classes', CLASS_HEADERS);
+  var students = ensureSheet('Students', STUDENT_HEADERS);
+  var lessonsSheet = ensureSheet('Lessons', LESSON_HEADERS);
+  var classRows = readRows(classes).filter(function(row) { return !ids[asText(row[0])]; });
+  var studentRows = readRows(students).filter(function(row) { return !ids[asText(row[1])]; });
+  var lessonRows = readRows(lessonsSheet).filter(function(row) { return !ids[asText(row[1])]; });
+
+  Object.keys(replacements).forEach(function(classId) {
+    var item = replacements[classId];
+    var offering = item.offering;
+    classRows.push([
+      classId,
+      asText(offering.classCode).toUpperCase(),
+      asText(offering.subjectCode).toUpperCase(),
+      asText(offering.semester).toUpperCase(),
+      asText(offering.scheduleCode),
+      asText(offering.sourceSheetName),
+      Number(offering.lessonCount) || 20,
+      new Date().toISOString()
+    ]);
+    item.roster.forEach(function(student) {
+      var rollNumber = asText(student.rollNumber).toUpperCase();
+      studentRows.push([
+        classId + '|' + rollNumber, classId,
+        asText(student.classCode || offering.classCode).toUpperCase(), rollNumber,
+        asText(student.fullName), asText(student.email).toLowerCase(),
+        asText(student.memberCode), true
+      ]);
+    });
+    item.lessons.forEach(function(lesson) {
+      lessonRows.push([
+        requireText(lesson.lessonId, 'lessonId'), classId,
+        Number(lesson.sequenceNumber), asText(lesson.date),
+        Number(lesson.dailySlot), asText(lesson.startTime), asText(lesson.endTime),
+        lesson.isAdjusted === true, asText(lesson.status) || 'scheduled'
+      ]);
+    });
+  });
+
+  writeRows(classes, CLASS_HEADERS, classRows);
+  writeRows(students, STUDENT_HEADERS, studentRows);
+  writeRows(lessonsSheet, LESSON_HEADERS, lessonRows);
+  SpreadsheetApp.flush();
+  return {savedClassIds: Object.keys(replacements), classCount: items.length};
+}
+
+/* Legacy single-class implementation retained below only as historical
+ * reference. It is unreachable because saveClassOffering delegates to the
+ * batch operation above. */
+function saveClassOfferingLegacy(offering, roster, lessons) {
   if (!offering || typeof offering !== 'object') throw new Error('offering không hợp lệ.');
   if (!Array.isArray(roster)) throw new Error('roster không hợp lệ.');
   if (!Array.isArray(lessons)) throw new Error('lessons không hợp lệ.');
@@ -233,4 +313,47 @@ function getSchedule(classId) {
     })
     .sort(function(a, b) { return a.sequenceNumber - b.sequenceNumber; });
   return {classOffering: offering, students: students, lessons: lessons};
+}
+
+// Returns every saved class with roster and lessons using only three Sheet
+// reads. The desktop uses this when reopening a Markbook instead of making
+// one HTTPS/App Script request per class.
+function getAllSchedules() {
+  var spreadsheet = getSpreadsheet();
+  var offerings = listSchedules();
+  var byId = {};
+  offerings.forEach(function(offering) {
+    byId[offering.classId] = {
+      classOffering: offering,
+      students: [],
+      lessons: []
+    };
+  });
+
+  var studentSheet = spreadsheet.getSheetByName('Students');
+  readRows(studentSheet || ensureSheet('Students', STUDENT_HEADERS)).forEach(function(row) {
+    var target = byId[asText(row[1])];
+    if (!target) return;
+    target.students.push({
+      classCode: asText(row[2]), rollNumber: asText(row[3]),
+      fullName: asText(row[4]), email: asText(row[5]), memberCode: asText(row[6])
+    });
+  });
+
+  var lessonSheet = spreadsheet.getSheetByName('Lessons');
+  readRows(lessonSheet || ensureSheet('Lessons', LESSON_HEADERS)).forEach(function(row) {
+    var target = byId[asText(row[1])];
+    if (!target) return;
+    target.lessons.push({
+      lessonId: asText(row[0]), sequenceNumber: Number(row[2]), date: asDateText(row[3]),
+      dailySlot: Number(row[4]), startTime: asTimeText(row[5]), endTime: asTimeText(row[6]),
+      isAdjusted: row[7] === true, status: asText(row[8]) || 'scheduled'
+    });
+  });
+
+  return offerings.map(function(offering) {
+    var schedule = byId[offering.classId];
+    schedule.lessons.sort(function(a, b) { return a.sequenceNumber - b.sequenceNumber; });
+    return schedule;
+  });
 }

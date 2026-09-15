@@ -14,9 +14,38 @@ class ScheduleController {
   Router get router {
     final router = Router();
     router.post('/save', _save);
+    router.post('/save-all', _saveAll);
+    router.get('/all', _getAll);
     router.get('/', _list);
     router.get('/<classId>', _get);
     return router;
+  }
+
+  Future<Response> _saveAll(Request request) async {
+    try {
+      final decoded = jsonDecode(await request.readAsString());
+      if (decoded is! Map || decoded['schedules'] is! List) {
+        return _json(400, {'error': 'Danh sách schedules không hợp lệ.'});
+      }
+      final schedules = (decoded['schedules'] as List)
+          .whereType<Map>()
+          .map(Map<String, dynamic>.from)
+          .toList(growable: false);
+      final saved = await _service.saveSchedules(schedules);
+      return _json(200, {
+        'success': true,
+        'message': 'Đã lưu ${saved.length} lớp.',
+        'data': {'classCount': saved.length},
+      });
+    } on FormatException catch (error) {
+      return _json(400, {'success': false, 'error': error.message});
+    } on ScheduleValidationException catch (error) {
+      return _json(400, {'success': false, 'error': error.message});
+    } on StateError catch (error) {
+      return _json(502, {'success': false, 'error': error.message});
+    } catch (error) {
+      return _json(500, {'success': false, 'error': '$error'});
+    }
   }
 
   Future<Response> _save(Request request) async {
@@ -71,6 +100,17 @@ class ScheduleController {
       });
     }
     return _json(200, {'success': true, 'data': schedule});
+  }
+
+  Future<Response> _getAll(Request request) async {
+    try {
+      final schedules = await _service.getAllSchedules();
+      return _json(200, {'success': true, 'data': schedules});
+    } on StateError catch (error) {
+      return _json(502, {'success': false, 'error': error.message});
+    } catch (_) {
+      return _json(502, const {'success': false, 'error': 'Không thể tải lịch.'});
+    }
   }
 
   static Response _json(int statusCode, Map<String, dynamic> body) => Response(

@@ -49,6 +49,40 @@ class ScheduleApiClient {
     return body['message'] as String? ?? 'Đã lưu lịch thành công.';
   }
 
+  Future<String> saveSchedules({
+    required List<ImportedClass> importedClasses,
+    required Map<String, List<ClassLesson>> schedules,
+  }) async {
+    final response = await _client.post(
+      Uri.parse('$baseUrl/schedule/save-all'),
+      headers: const {'content-type': 'application/json'},
+      body: jsonEncode({
+        'schedules': importedClasses.map((importedClass) => {
+          'classOffering': {
+            'classId': importedClass.offeringId,
+            'classCode': importedClass.classCode,
+            'subjectCode': importedClass.subjectCode,
+            'semester': importedClass.semester,
+            'scheduleCode': importedClass.scheduleCode,
+            'sourceSheetName': importedClass.sourceSheetName,
+            'lessonCount': importedClass.lessonCount,
+          },
+          'students': importedClass.students
+              .map((student) => student.toJson())
+              .toList(),
+          'lessons': (schedules[importedClass.sourceSheetName] ?? const [])
+              .map((lesson) => lesson.toJson())
+              .toList(),
+        }).toList(),
+      }),
+    );
+    final body = _decode(response);
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw Exception(body['error'] ?? 'Không thể lưu lịch.');
+    }
+    return body['message'] as String? ?? 'Đã lưu lịch thành công.';
+  }
+
   Future<List<Map<String, dynamic>>> listSchedules() async {
     final response = await _client.get(Uri.parse('$baseUrl/schedule/'));
     final body = _decode(response);
@@ -62,29 +96,29 @@ class ScheduleApiClient {
   }
 
   Future<SavedSchedules> loadSavedSchedules() async {
-    final summaries = await listSchedules();
+    final response = await _client.get(Uri.parse('$baseUrl/schedule/all'));
+    final body = _decode(response);
+    if (response.statusCode != 200 || body['data'] is! List) {
+      throw Exception(body['error'] ?? 'Không thể tải lịch đã lưu.');
+    }
+    return _savedSchedulesFromData(body['data'] as List);
+  }
+
+  SavedSchedules _savedSchedulesFromData(List data) {
     final classes = <ImportedClass>[];
     final schedules = <String, List<ClassLesson>>{};
-    for (final summary in summaries) {
-      final classId = summary['classId'] as String?;
-      if (classId == null || classId.isEmpty) continue;
-      final response = await _client.get(
-        Uri.parse('$baseUrl/schedule/${Uri.encodeComponent(classId)}'),
-      );
-      final body = _decode(response);
-      if (response.statusCode != 200 || body['data'] is! Map) {
-        throw Exception(body['error'] ?? 'Không thể tải lịch $classId.');
-      }
-      final data = Map<String, dynamic>.from(body['data'] as Map);
-      final offering = Map<String, dynamic>.from(data['classOffering'] as Map);
-      final students = (data['students'] as List? ?? const [])
+    for (final rawSchedule in data.whereType<Map>()) {
+      final schedule = Map<String, dynamic>.from(rawSchedule);
+      if (schedule['classOffering'] is! Map) continue;
+      final offering = Map<String, dynamic>.from(schedule['classOffering'] as Map);
+      final students = (schedule['students'] as List? ?? const [])
           .whereType<Map>()
           .map(
             (item) => ImportedStudent.fromJson(Map<String, dynamic>.from(item)),
           )
           .toList();
       final importedClass = ImportedClass.fromStorage(offering, students);
-      final lessons = (data['lessons'] as List? ?? const [])
+      final lessons = (schedule['lessons'] as List? ?? const [])
           .whereType<Map>()
           .map((item) => ClassLesson.fromJson(Map<String, dynamic>.from(item)))
           .toList();

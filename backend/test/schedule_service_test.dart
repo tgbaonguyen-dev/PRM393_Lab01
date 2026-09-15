@@ -79,10 +79,19 @@ class _FakeScheduleRepository implements ScheduleRepository {
   }
 
   @override
+  Future<bool> saveAll(List<Map<String, dynamic>> schedules) async {
+    saveCount += schedules.length;
+    return shouldSave;
+  }
+
+  @override
   Future<Map<String, dynamic>?> get(String classId) async => null;
 
   @override
   Future<List<Map<String, dynamic>>> list() async => const [];
+
+  @override
+  Future<List<Map<String, dynamic>>> getAll() async => const [];
 }
 
 Map<String, dynamic> _validPayload({int lessonCount = 20}) {

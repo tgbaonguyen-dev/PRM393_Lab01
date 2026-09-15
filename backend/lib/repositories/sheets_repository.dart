@@ -154,6 +154,37 @@ class SheetsRepository {
     return res['success'] == true;
   }
 
+  /// Batch version of [saveClassOffering]. The gateway reads and writes each
+  /// canonical Sheet tab once for the full Markbook, rather than once/class.
+  Future<bool> saveClassOfferings(
+    List<Map<String, dynamic>> items,
+  ) async {
+    try {
+      final res = await _postToGateway('saveClassOfferings', {'items': items});
+      if (res['success'] == true) return true;
+      final detail = res['error'] ?? res['data'] ?? jsonEncode(res);
+      if (!detail.toString().contains('Unknown action')) {
+        throw StateError('Data Gateway từ chối lưu lịch: $detail');
+      }
+    } on StateError catch (error) {
+      if (!error.toString().contains('Unknown action')) rethrow;
+    }
+    // Compatibility for an older deployed gateway. It remains functional but
+    // is slower until the standalone Code.gs is redeployed with batch actions.
+    for (final item in items) {
+      await saveClassOffering(
+        offering: Map<String, dynamic>.from(item['offering'] as Map),
+        roster: (item['roster'] as List).whereType<Map>().map(
+          (row) => Map<String, dynamic>.from(row),
+        ).toList(),
+        lessons: (item['lessons'] as List).whereType<Map>().map(
+          (row) => Map<String, dynamic>.from(row),
+        ).toList(),
+      );
+    }
+    return true;
+  }
+
   Future<List<Map<String, dynamic>>> listSchedules() async {
     final res = await _postToGateway('listSchedules', {});
     if (res['success'] != true) {
@@ -175,6 +206,32 @@ class SheetsRepository {
     }
     final data = res['data'];
     return data is Map ? Map<String, dynamic>.from(data) : null;
+  }
+
+  Future<List<Map<String, dynamic>>> getAllSchedules() async {
+    try {
+      final res = await _postToGateway('getAllSchedules', {});
+      if (res['success'] == true) {
+        final data = res['data'];
+        if (data is! List) return const [];
+        return data.whereType<Map>().map(Map<String, dynamic>.from).toList();
+      }
+      if (!res['error'].toString().contains('Unknown action')) {
+        throw StateError(
+          res['error']?.toString() ?? 'Data Gateway không trả toàn bộ lịch.',
+        );
+      }
+    } on StateError catch (error) {
+      if (!error.toString().contains('Unknown action')) rethrow;
+    }
+    final summaries = await listSchedules();
+    final schedules = <Map<String, dynamic>>[];
+    for (final summary in summaries) {
+      final classId = summary['classId']?.toString() ?? '';
+      final schedule = classId.isEmpty ? null : await getSchedule(classId);
+      if (schedule != null) schedules.add(schedule);
+    }
+    return schedules;
   }
 
   /// Mở ca điểm danh (FR-09, FR-10)
