@@ -3,10 +3,12 @@ import 'dart:convert';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:qr_flutter/qr_flutter.dart';
 
 import '../../config.dart';
+import '../../shared/m1_snackbar.dart';
 
 enum _SessionViewState { idle, opening, open, closing, closed }
 
@@ -311,6 +313,57 @@ class _QrDisplayScreenState extends State<QrDisplayScreen> {
                                 color: colorScheme.onSurfaceVariant,
                               ),
                             ),
+                            if (_qrUrl != null && _qrUrl!.isNotEmpty) ...[
+                              const SizedBox(height: 16),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 14,
+                                  vertical: 8,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFF1F5F9),
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(
+                                    color: const Color(0xFFCBD5E1),
+                                  ),
+                                ),
+                                child: Row(
+                                  children: [
+                                    const Icon(
+                                      Icons.link,
+                                      size: 18,
+                                      color: Color(0xFF2563EB),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: SelectableText(
+                                        _qrUrl!,
+                                        maxLines: 1,
+                                        style: const TextStyle(
+                                          fontSize: 12,
+                                          fontFamily: 'monospace',
+                                          color: Color(0xFF334155),
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 10),
+                                    FilledButton.tonalIcon(
+                                      onPressed: () {
+                                        Clipboard.setData(
+                                          ClipboardData(text: _qrUrl!),
+                                        );
+                                        M1SnackBar.show(
+                                          context,
+                                          'Đã sao chép link điểm danh vào bộ nhớ tạm!',
+                                        );
+                                      },
+                                      icon: const Icon(Icons.copy, size: 16),
+                                      label: const Text('Sao chép link'),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
                           ] else
                             Text(
                               _viewState == _SessionViewState.closed

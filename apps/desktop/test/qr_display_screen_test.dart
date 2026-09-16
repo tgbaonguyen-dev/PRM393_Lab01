@@ -117,6 +117,12 @@ void main() {
     // Verify QR code is rendered and close session button is visible
     expect(find.byType(QrImageView), findsOneWidget);
     expect(find.text('Đóng phiên'), findsOneWidget);
+    expect(find.text('Sao chép link'), findsOneWidget);
+
+    // Tap copy link button
+    await tester.tap(find.text('Sao chép link'));
+    await tester.pumpAndSettle();
+    expect(find.text('Đã sao chép link điểm danh vào bộ nhớ tạm!'), findsOneWidget);
 
     // Tap close session
     await tester.tap(find.text('Đóng phiên'));
