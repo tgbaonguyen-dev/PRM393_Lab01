@@ -54,13 +54,15 @@ class _ImportScreenState extends State<ImportScreen> {
     await _pickAndLoad();
   }
 
+  bool _hasAutoLoadedSavedSchedules = false;
+
   @override
   void initState() {
     super.initState();
-    _refreshSavedScheduleCount();
+    _refreshSavedScheduleCount(autoOpen: true);
   }
 
-  Future<void> _refreshSavedScheduleCount() async {
+  Future<void> _refreshSavedScheduleCount({bool autoOpen = false}) async {
     if (mounted) {
       setState(() {
         _isLoadingSavedSchedules = true;
@@ -76,6 +78,10 @@ class _ImportScreenState extends State<ImportScreen> {
           _savedScheduleCheckFailed = false;
           _savedScheduleCheckError = null;
         });
+        if (autoOpen && !_hasAutoLoadedSavedSchedules && schedules.isNotEmpty) {
+          _hasAutoLoadedSavedSchedules = true;
+          _openSavedSchedules();
+        }
       }
     } catch (error) {
       // A first-time installation or an offline backend simply has no saved

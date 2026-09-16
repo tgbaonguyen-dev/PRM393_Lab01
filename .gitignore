@@ -27,3 +27,7 @@ Thumbs.db
 *.log
 
 # Application dependency lockfiles should be committed.
+
+# Local database storage
+backend/data/*.json
+backend/data/*.tmp

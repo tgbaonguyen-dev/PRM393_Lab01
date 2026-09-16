@@ -167,8 +167,39 @@ var DatabaseService = {
     sheet.appendRow(row);
   },
 
+  upsertRowsBatch: function (sheet, keyColIndex, newRows) {
+    if (!newRows || newRows.length === 0) return;
+    var values = sheet.getDataRange().getValues();
+    if (values.length <= 1) {
+      sheet.getRange(2, 1, newRows.length, newRows[0].length).setValues(newRows);
+      return;
+    }
+    var keyMap = {};
+    for (var i = 1; i < values.length; i++) {
+      var key = String(values[i][keyColIndex] || '');
+      if (key) keyMap[key] = i;
+    }
+    for (var j = 0; j < newRows.length; j++) {
+      var row = newRows[j];
+      var rowKey = String(row[keyColIndex] || '');
+      if (rowKey && keyMap[rowKey] !== undefined) {
+        values[keyMap[rowKey]] = row;
+      } else {
+        values.push(row);
+        keyMap[rowKey] = values.length - 1;
+      }
+    }
+    sheet.getRange(1, 1, values.length, values[0].length).setValues(values);
+  },
+
   saveClassOffering: function (offering, roster, lessons) {
-    if (!offering || !offering.classId) throw new Error('classOffering thiếu classId');
+    return this.saveClassOfferings([{ offering: offering, roster: roster, lessons: lessons }]);
+  },
+
+  saveClassOfferings: function (items) {
+    if (!Array.isArray(items) || items.length === 0) {
+      throw new Error('items phải là danh sách lớp không rỗng.');
+    }
     var classes = this.ensureDataSheet('Classes', [
       'classId', 'classCode', 'subjectCode', 'semester', 'scheduleCode',
       'sourceSheetName', 'lessonCount', 'updatedAt', 'active'
@@ -182,43 +213,51 @@ var DatabaseService = {
       'startTime', 'endTime', 'isAdjusted', 'status'
     ]);
 
-    this.upsertRow(classes, offering.classId, [
-      offering.classId, offering.classCode || '', offering.subjectCode || '',
-      offering.semester || '', offering.scheduleCode || '', offering.sourceSheetName || '',
-       offering.lessonCount || 20, vietnamTimestamp(), true
-    ]);
-    (roster || []).forEach(function (student) {
-      var recordKey = offering.classId + '|' + String(student.rollNumber || '').toUpperCase();
-      DatabaseService.upsertRow(students, recordKey, [
-        recordKey, offering.classId, student.classCode || offering.classCode || '',
-        student.rollNumber || '', student.fullName || '', String(student.email || '').toLowerCase(),
-        student.memberCode || '', true
-      ]);
-    });
-    (lessons || []).forEach(function (lesson) {
-      var dailySlot = Number(lesson.dailySlot);
-      DatabaseService.upsertRow(lessonRows, lesson.lessonId, [
-        lesson.lessonId, offering.classId, lesson.sequenceNumber, lesson.date,
-        dailySlot,
-        canonicalLessonTime(lesson.startTime, dailySlot, true),
-        canonicalLessonTime(lesson.endTime, dailySlot, false),
-        lesson.isAdjusted === true, lesson.status || 'scheduled'
-      ]);
-    });
-    SpreadsheetApp.flush();
-    return { classId: offering.classId, saved: true };
-  },
+    var classDataRows = [];
+    var studentDataRows = [];
+    var lessonDataRows = [];
+    var savedClassIds = [];
+    var now = vietnamTimestamp();
 
-  saveClassOfferings: function (items) {
-    if (!Array.isArray(items) || items.length === 0) {
-      throw new Error('items phải là danh sách lớp không rỗng.');
-    }
-    var results = [];
     for (var i = 0; i < items.length; i++) {
       var item = items[i] || {};
-      results.push(this.saveClassOffering(item.offering, item.roster, item.lessons));
+      var offering = item.offering;
+      if (!offering || !offering.classId) continue;
+      savedClassIds.push(offering.classId);
+
+      classDataRows.push([
+        offering.classId, String(offering.classCode || ''), String(offering.subjectCode || ''),
+        String(offering.semester || ''), String(offering.scheduleCode || ''), String(offering.sourceSheetName || ''),
+        offering.lessonCount || 20, now, true
+      ]);
+
+      (item.roster || []).forEach(function (student) {
+        var recordKey = offering.classId + '|' + String(student.rollNumber || '').toUpperCase();
+        studentDataRows.push([
+          recordKey, offering.classId, String(student.classCode || offering.classCode || ''),
+          String(student.rollNumber || ''), String(student.fullName || ''), String(student.email || '').toLowerCase(),
+          String(student.memberCode || ''), true
+        ]);
+      });
+
+      (item.lessons || []).forEach(function (lesson) {
+        var dailySlot = Number(lesson.dailySlot);
+        lessonDataRows.push([
+          String(lesson.lessonId || ''), offering.classId, Number(lesson.sequenceNumber), String(lesson.date || ''),
+          dailySlot,
+          canonicalLessonTime(lesson.startTime, dailySlot, true),
+          canonicalLessonTime(lesson.endTime, dailySlot, false),
+          lesson.isAdjusted === true, String(lesson.status || 'scheduled')
+        ]);
+      });
     }
-    return { savedClassIds: results.map(function (item) { return item.classId; }), classCount: results.length };
+
+    if (classDataRows.length > 0) this.upsertRowsBatch(classes, 0, classDataRows);
+    if (studentDataRows.length > 0) this.upsertRowsBatch(students, 0, studentDataRows);
+    if (lessonDataRows.length > 0) this.upsertRowsBatch(lessonRows, 0, lessonDataRows);
+
+    SpreadsheetApp.flush();
+    return { savedClassIds: savedClassIds, classCount: savedClassIds.length };
   },
 
   syncActiveClassIds: function (activeClassIds) {
@@ -264,8 +303,8 @@ var DatabaseService = {
       return row[0] && (row[8] === undefined || row[8] === '' || row[8] === true || String(row[8]).toLowerCase() === 'true');
     }).map(function (row) {
       return {
-        classId: row[0], classCode: row[1], subjectCode: row[2], semester: row[3],
-        scheduleCode: row[4], sourceSheetName: row[5], lessonCount: Number(row[6]), active: true
+        classId: String(row[0] || ''), classCode: String(row[1] || ''), subjectCode: String(row[2] || ''), semester: String(row[3] || ''),
+        scheduleCode: String(row[4] || ''), sourceSheetName: String(row[5] || ''), lessonCount: Number(row[6]), active: true
       };
     });
   },

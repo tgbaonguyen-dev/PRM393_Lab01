@@ -48,11 +48,11 @@ class ImportedStudent {
 
   factory ImportedStudent.fromJson(Map<String, dynamic> json) =>
       ImportedStudent(
-        classCode: json['classCode'] as String? ?? '',
-        rollNumber: json['rollNumber'] as String? ?? '',
-        fullName: json['fullName'] as String? ?? '',
-        email: json['email'] as String? ?? '',
-        memberCode: json['memberCode'] as String? ?? '',
+        classCode: json['classCode']?.toString() ?? '',
+        rollNumber: json['rollNumber']?.toString() ?? '',
+        fullName: json['fullName']?.toString() ?? '',
+        email: json['email']?.toString() ?? '',
+        memberCode: json['memberCode']?.toString() ?? '',
       );
 }
 
@@ -114,12 +114,14 @@ class ImportedClass {
     Map<String, dynamic> offering,
     List<ImportedStudent> students,
   ) => ImportedClass(
-    sourceSheetName: offering['sourceSheetName'] as String? ?? '',
-    scheduleCode: offering['scheduleCode'] as String? ?? '',
-    subjectCode: offering['subjectCode'] as String? ?? '',
-    classCode: offering['classCode'] as String? ?? '',
-    semester: offering['semester'] as String? ?? '',
-    lessonCount: offering['lessonCount'] as int? ?? 20,
+    sourceSheetName: offering['sourceSheetName']?.toString() ?? '',
+    scheduleCode: offering['scheduleCode']?.toString() ?? '',
+    subjectCode: offering['subjectCode']?.toString() ?? '',
+    classCode: offering['classCode']?.toString() ?? '',
+    semester: offering['semester']?.toString() ?? '',
+    lessonCount: offering['lessonCount'] is num
+        ? (offering['lessonCount'] as num).toInt()
+        : int.tryParse(offering['lessonCount']?.toString() ?? '') ?? 20,
     students: students,
     issues: const [],
   );

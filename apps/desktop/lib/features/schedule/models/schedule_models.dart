@@ -61,10 +61,15 @@ class ClassLesson {
   };
 
   factory ClassLesson.fromJson(Map<String, dynamic> json) {
-    final dailySlot = json['dailySlot'] as int? ?? 0;
+    final dailySlot = json['dailySlot'] is num
+        ? (json['dailySlot'] as num).toInt()
+        : int.tryParse(json['dailySlot']?.toString() ?? '') ?? 0;
+    final sequenceNumber = json['sequenceNumber'] is num
+        ? (json['sequenceNumber'] as num).toInt()
+        : int.tryParse(json['sequenceNumber']?.toString() ?? '') ?? 0;
     return ClassLesson(
-      lessonId: json['lessonId'] as String? ?? '',
-      sequenceNumber: json['sequenceNumber'] as int? ?? 0,
+      lessonId: json['lessonId']?.toString() ?? '',
+      sequenceNumber: sequenceNumber,
       date: _parseDate(json['date']),
       dailySlot: dailySlot,
       startTime: _parseTime(json['startTime'], dailySlot, isStart: true),
