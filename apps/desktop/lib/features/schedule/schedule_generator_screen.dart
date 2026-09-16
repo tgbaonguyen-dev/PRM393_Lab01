@@ -3,6 +3,8 @@ import 'package:intl/intl.dart';
 
 import '../import/models/import_models.dart';
 import '../session/qr_display_screen.dart';
+import '../export/export_dialog.dart';
+import '../attendance/services/attendance_storage_service.dart';
 import '../../shared/m1_snackbar.dart';
 import 'models/schedule_models.dart';
 import 'services/schedule_code_parser.dart';
@@ -147,6 +149,17 @@ class _ScheduleGeneratorScreenState extends State<ScheduleGeneratorScreen> {
   }
 
   void _openQrScreen(ScheduledLessonView item) {
+    final rosterList = item.importedClass.students
+        .map(
+          (s) => {
+            'rollNumber': s.rollNumber,
+            'fullName': s.fullName,
+            'email': s.email,
+            'memberCode': s.memberCode,
+          },
+        )
+        .toList();
+
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => QrDisplayScreen(
@@ -156,6 +169,7 @@ class _ScheduleGeneratorScreenState extends State<ScheduleGeneratorScreen> {
               '${item.importedClass.subjectCode} - ${item.importedClass.classCode}',
           lessonLabel:
               'Buổi ${item.lesson.sequenceNumber}/${item.importedClass.lessonCount}',
+          roster: rosterList,
         ),
       ),
     );
@@ -420,6 +434,14 @@ class _ScheduleGeneratorScreenState extends State<ScheduleGeneratorScreen> {
                   icon: const Icon(Icons.edit_calendar_outlined),
                   label: const Text('Đổi lịch buổi đã chọn'),
                 ),
+                OutlinedButton.icon(
+                  onPressed: _openExportDialogFromSchedule,
+                  icon: const Icon(
+                    Icons.file_download_outlined,
+                    color: Color(0xFF2563EB),
+                  ),
+                  label: const Text('Xuất báo cáo Excel / CSV'),
+                ),
                 FilledButton.icon(
                   onPressed: selected == null
                       ? null
@@ -431,6 +453,84 @@ class _ScheduleGeneratorScreenState extends State<ScheduleGeneratorScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Future<void> _openExportDialogFromSchedule() async {
+    final storage = AttendanceStorageService();
+    final persistentStore = await storage.loadStore();
+
+    final exportOptions = _classes.map((c) {
+      final lessons = _schedules[c.sourceSheetName] ?? [];
+      final lessonDates = <int, String>{};
+      for (final l in lessons) {
+        lessonDates[l.sequenceNumber] = DateFormat('yyyy-MM-dd').format(l.date);
+      }
+      final rosterList = c.students
+          .map(
+            (s) => {
+              'rollNumber': s.rollNumber,
+              'fullName': s.fullName,
+              'email': s.email,
+              'memberCode': s.memberCode,
+            },
+          )
+          .toList();
+
+      // Nạp dữ liệu P/A từ local storage (hoặc từ persistentStore)
+      // QrDisplayScreen lưu với key "${subjectCode} - ${classCode}"
+      final compositeKey = '${c.subjectCode} - ${c.classCode}';
+      final classAttendance =
+          persistentStore[compositeKey] ??
+          persistentStore[c.sourceSheetName] ??
+          persistentStore[c.classCode] ??
+          <int, Map<String, String>>{};
+
+      final attendanceData = <String, Map<int, String>>{};
+      for (final s in c.students) {
+        final emailKey = s.email.toLowerCase();
+        final studentSlotMap = <int, String>{};
+        classAttendance.forEach((slotNum, studentMap) {
+          final status = studentMap[emailKey] ?? '';
+          if (status.isNotEmpty) {
+            studentSlotMap[slotNum] = status;
+          }
+        });
+        attendanceData[emailKey] = studentSlotMap;
+      }
+
+      return ExportClassOption(
+        subjectCode: c.subjectCode,
+        className: c.classCode,
+        semester: 'FA26',
+        roster: rosterList,
+        lessonDates: lessonDates,
+        attendanceData: attendanceData,
+      );
+    }).toList();
+
+    final initialClass = _selectedLesson?.importedClass ?? _classes.first;
+    final initialOption = exportOptions.firstWhere(
+      (o) =>
+          o.subjectCode == initialClass.subjectCode &&
+          o.className == initialClass.classCode,
+      orElse: () => exportOptions.first,
+    );
+
+    if (!mounted) return;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => ExportDialog(
+        subjectCode: initialOption.subjectCode,
+        className: initialOption.className,
+        semester: initialOption.semester,
+        roster: initialOption.roster,
+        lessonDates: initialOption.lessonDates,
+        attendanceData: initialOption.attendanceData,
+        currentLessonSequence: _selectedLesson?.lesson.sequenceNumber,
+        availableClasses: exportOptions,
       ),
     );
   }

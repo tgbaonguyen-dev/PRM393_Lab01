@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 
 import '../schedule/schedule_generator_screen.dart';
 import '../schedule/services/schedule_api_client.dart';
+import '../attendance/services/attendance_storage_service.dart';
 import '../../shared/m1_snackbar.dart';
 import 'models/import_models.dart';
 import 'services/imported_class_validator.dart';
@@ -156,6 +157,9 @@ class _ImportScreenState extends State<ImportScreen> {
         sourceFileName: parsed.sourceFileName,
         classes: validateDistinctClassOfferings(parsed.classes),
       );
+      // Reset dữ liệu điểm danh cũ khi import markbook mới
+      await AttendanceStorageService().resetStore();
+
       setState(() {
         _result = result;
         _editedClasses
