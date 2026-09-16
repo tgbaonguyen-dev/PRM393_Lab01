@@ -1,0 +1,38 @@
+services:
+  # 1. Backend Dart Shelf API
+  - type: web
+    name: prm393-backend
+    runtime: docker
+    plan: free
+    dockerfilePath: backend/Dockerfile
+    dockerContext: backend
+    envVars:
+      - key: PORT
+        value: 8080
+      - key: APPS_SCRIPT_GATEWAY_URL
+        value: https://script.google.com/macros/s/AKfycbxuAV49xcKSzJHeiyRZ96LEj_qwLLP_omiJu5XTXbCo-xdRg0G7KhE9SNZI_y28r21ftw/exec
+      - key: QR_HMAC_SECRET
+        value: dev-secret-key-prm393-attendance
+      - key: NEXT_PUBLIC_GOOGLE_CLIENT_ID
+        value: 270940891066-15h1hrnt25mlaa8u667gooeptev6vhq6.apps.googleusercontent.com
+      - key: ALLOW_MOCK_GOOGLE_TOKEN
+        value: "true"
+
+  # 2. Student Web Check-in (Next.js)
+  - type: web
+    name: prm393-web
+    runtime: node
+    plan: free
+    rootDir: apps/web
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NEXT_PUBLIC_GOOGLE_CLIENT_ID
+        value: 270940891066-15h1hrnt25mlaa8u667gooeptev6vhq6.apps.googleusercontent.com
+      - key: NEXT_PUBLIC_DEMO_GOOGLE
+        value: "false"
+      - key: NEXT_PUBLIC_API_BASE_URL
+        fromService:
+          type: web
+          name: prm393-backend
+          property: host

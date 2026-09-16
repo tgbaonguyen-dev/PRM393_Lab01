@@ -124,7 +124,11 @@ class _ScheduleGeneratorScreenState extends State<ScheduleGeneratorScreen> {
       M1SnackBar.show(context, message);
     } catch (error) {
       if (!mounted) return;
-      M1SnackBar.show(context, 'Không thể lưu lịch: $error', isError: true);
+      M1SnackBar.show(
+        context,
+        'Không thể lưu lịch: $error',
+        type: M1NoticeType.error,
+      );
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
@@ -163,7 +167,7 @@ class _ScheduleGeneratorScreenState extends State<ScheduleGeneratorScreen> {
       M1SnackBar.show(
         context,
         'Hãy chọn một buổi học trên lịch trước.',
-        isError: true,
+        type: M1NoticeType.warning,
       );
       return;
     }
@@ -196,12 +200,13 @@ class _ScheduleGeneratorScreenState extends State<ScheduleGeneratorScreen> {
       M1SnackBar.show(
         context,
         'Đã đổi Buổi ${selected.lesson.sequenceNumber} sang ${DateFormat('dd/MM/yyyy').format(newDate)}, Slot $newSlot. Nhấn Lưu lịch học để ghi nhận thay đổi.',
+        type: M1NoticeType.warning,
       );
     } on ArgumentError catch (error) {
       M1SnackBar.show(
         context,
         error.message?.toString() ?? 'Không thể đổi lịch.',
-        isError: true,
+        type: M1NoticeType.error,
       );
     }
   }

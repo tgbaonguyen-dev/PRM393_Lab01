@@ -61,9 +61,10 @@ Future<void> main() async {
       .addHandler(router.call);
   final port = int.tryParse(env['PORT'] ?? '') ?? 8080;
   final server =
-      await shelf_io.serve(handler, InternetAddress.loopbackIPv4, port);
+      await shelf_io.serve(handler, InternetAddress.anyIPv4, port);
   print(
       'PRM393 backend listening on http://${server.address.host}:${server.port}');
+
 }
 
 Middleware _cors() => (inner) => (request) async {
