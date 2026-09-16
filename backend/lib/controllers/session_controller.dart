@@ -25,6 +25,9 @@ class SessionController {
 
   Router get router {
     final router = Router();
+    router.post('/open', _open);
+    router.post('/close', _close);
+    router.get('/qr', _qr);
     router.post('/session/open', _open);
     router.post('/session/close', _close);
     router.get('/session/qr', _qr);
