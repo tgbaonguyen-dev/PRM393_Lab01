@@ -31,7 +31,39 @@ void main() {
         final snackBar = tester.widget<SnackBar>(find.byType(SnackBar));
         expect(snackBar.duration, const Duration(seconds: 10));
         expect(snackBar.backgroundColor, entry.value);
+
+        await tester.pump(const Duration(seconds: 10));
+        await tester.pumpAndSettle();
       },
     );
   }
+
+  testWidgets('notice closes after ten seconds with accessible navigation', (
+    tester,
+  ) async {
+    late BuildContext pageContext;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: MediaQuery(
+          data: const MediaQueryData(accessibleNavigation: true),
+          child: Scaffold(
+            body: Builder(
+              builder: (context) {
+                pageContext = context;
+                return const SizedBox();
+              },
+            ),
+          ),
+        ),
+      ),
+    );
+
+    M1SnackBar.show(pageContext, 'Thông báo');
+    await tester.pump();
+    expect(find.byType(SnackBar), findsOneWidget);
+
+    await tester.pump(const Duration(seconds: 10));
+    await tester.pumpAndSettle();
+    expect(find.byType(SnackBar), findsNothing);
+  });
 }
