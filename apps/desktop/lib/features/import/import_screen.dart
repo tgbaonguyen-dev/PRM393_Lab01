@@ -7,6 +7,7 @@ import '../schedule/schedule_generator_screen.dart';
 import '../schedule/services/schedule_api_client.dart';
 import '../../shared/m1_snackbar.dart';
 import 'models/import_models.dart';
+import 'services/imported_class_validator.dart';
 import 'services/markbook_parser.dart';
 
 class ImportScreen extends StatefulWidget {
@@ -104,7 +105,11 @@ class _ImportScreenState extends State<ImportScreen> {
       final saved = await _scheduleApiClient.loadSavedSchedules();
       if (!mounted) return;
       if (saved.classes.isEmpty) {
-        M1SnackBar.show(context, 'Chưa có lịch nào được lưu.', isError: true);
+        M1SnackBar.show(
+          context,
+          'Chưa có lịch nào được lưu.',
+          type: M1NoticeType.warning,
+        );
         return;
       }
       await Navigator.of(context).push(
@@ -122,7 +127,7 @@ class _ImportScreenState extends State<ImportScreen> {
         M1SnackBar.show(
           context,
           'Không thể tải lịch đã lưu: $error',
-          isError: true,
+          type: M1NoticeType.error,
         );
       }
     } finally {
@@ -145,8 +150,12 @@ class _ImportScreenState extends State<ImportScreen> {
       _loadError = null;
     });
     try {
-      final result = await _parser.parseFile(File(path));
+      final parsed = await _parser.parseFile(File(path));
       if (!mounted) return;
+      final result = WorkbookImportResult(
+        sourceFileName: parsed.sourceFileName,
+        classes: validateDistinctClassOfferings(parsed.classes),
+      );
       setState(() {
         _result = result;
         _editedClasses
@@ -216,11 +225,15 @@ class _ImportScreenState extends State<ImportScreen> {
   void _storeSelectedMetadata() {
     final importedClass = _selectedClass;
     if (importedClass == null) return;
+    final classCode = _classCodeController.text.trim().toUpperCase();
     _editedClasses[importedClass.sourceSheetName] = importedClass.copyWith(
       scheduleCode: _scheduleCodeController.text.trim(),
       subjectCode: _subjectCodeController.text.trim().toUpperCase(),
-      classCode: _classCodeController.text.trim().toUpperCase(),
+      classCode: classCode,
       lessonCount: int.tryParse(_lessonCountController.text.trim()) ?? 0,
+      students: importedClass.students
+          .map((student) => student.copyWith(classCode: classCode))
+          .toList(growable: false),
     );
   }
 
@@ -288,9 +301,21 @@ class _ImportScreenState extends State<ImportScreen> {
     _storeSelectedMetadata();
     final importedClass = _selectedClass;
     if (importedClass == null) return;
-    final validated = _validateClassMetadata(importedClass);
+    final individuallyValidated = _result!.classes
+        .map((original) {
+          final edited = _editedClasses[original.sourceSheetName] ?? original;
+          return _validateClassMetadata(edited);
+        })
+        .toList(growable: false);
+    final allValidated = validateDistinctClassOfferings(individuallyValidated);
+    final selectedSheetName = importedClass.sourceSheetName;
+    final validated = allValidated.firstWhere(
+      (item) => item.sourceSheetName == selectedSheetName,
+    );
     setState(() {
-      _editedClasses[validated.sourceSheetName] = validated;
+      for (final item in allValidated) {
+        _editedClasses[item.sourceSheetName] = item;
+      }
       _loadMetadata(validated);
     });
     final errorCount = validated.issues.where((issue) => issue.isError).length;
@@ -299,7 +324,7 @@ class _ImportScreenState extends State<ImportScreen> {
       errorCount == 0
           ? 'Đã xác nhận ${validated.subjectCode} - ${validated.classCode}. Có thể sinh lịch.'
           : 'Lớp này còn $errorCount lỗi. Hãy sửa các ô được báo rồi xác nhận lại.',
-      isError: errorCount > 0,
+      type: errorCount > 0 ? M1NoticeType.error : M1NoticeType.warning,
     );
   }
 
@@ -307,12 +332,18 @@ class _ImportScreenState extends State<ImportScreen> {
     _storeSelectedMetadata();
     final result = _result;
     if (result == null) return null;
-    final prepared = result.classes
+    final individuallyValidated = result.classes
         .map((original) {
           final edited = _editedClasses[original.sourceSheetName] ?? original;
           return _validateClassMetadata(edited);
         })
         .toList(growable: false);
+    final prepared = validateDistinctClassOfferings(individuallyValidated);
+    setState(() {
+      for (final item in prepared) {
+        _editedClasses[item.sourceSheetName] = item;
+      }
+    });
 
     final invalidCount = prepared.where((item) {
       final metadataValid =
@@ -328,7 +359,7 @@ class _ImportScreenState extends State<ImportScreen> {
       M1SnackBar.show(
         context,
         'Còn $invalidCount lớp chưa hợp lệ. Hãy kiểm tra mã lịch, metadata, dữ liệu và số buổi (1–60).',
-        isError: true,
+        type: M1NoticeType.error,
       );
       return null;
     }

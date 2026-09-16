@@ -46,6 +46,14 @@ class ImportedStudent {
     'memberCode': memberCode,
   };
 
+  ImportedStudent copyWith({String? classCode}) => ImportedStudent(
+    classCode: classCode ?? this.classCode,
+    rollNumber: rollNumber,
+    fullName: fullName,
+    email: email,
+    memberCode: memberCode,
+  );
+
   factory ImportedStudent.fromJson(Map<String, dynamic> json) =>
       ImportedStudent(
         classCode: json['classCode']?.toString() ?? '',
@@ -98,6 +106,7 @@ class ImportedClass {
     String? classCode,
     String? semester,
     int? lessonCount,
+    List<ImportedStudent>? students,
     List<ImportValidationIssue>? issues,
   }) => ImportedClass(
     sourceSheetName: sourceSheetName,
@@ -106,7 +115,7 @@ class ImportedClass {
     classCode: classCode ?? this.classCode,
     semester: semester ?? this.semester,
     lessonCount: lessonCount ?? this.lessonCount,
-    students: students,
+    students: students ?? this.students,
     issues: issues ?? this.issues,
   );
 
