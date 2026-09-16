@@ -74,6 +74,7 @@ class ScheduleGenerator {
     required List<ClassLesson> lessons,
     required int sequenceNumber,
     required DateTime newDate,
+    int? newDailySlot,
   }) {
     final normalizedDate = DateTime(newDate.year, newDate.month, newDate.day);
     if (lessons.any(
@@ -97,8 +98,14 @@ class ScheduleGenerator {
     }
 
     final updated = List<ClassLesson>.of(lessons);
+    final dailySlot = newDailySlot ?? lessons[index].dailySlot;
+    final times = ScheduleCodeParser.slotTimes[dailySlot];
+    if (times == null) throw ArgumentError('Slot phải từ 1 đến 5.');
     updated[index] = updated[index].copyWith(
       date: normalizedDate,
+      dailySlot: dailySlot,
+      startTime: times.$1,
+      endTime: times.$2,
       isAdjusted: true,
     );
     return updated;

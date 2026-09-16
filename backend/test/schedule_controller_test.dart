@@ -35,4 +35,19 @@ class _ControllerFakeRepository implements ScheduleRepository {
     required List<Map<String, dynamic>> lessons,
   }) async =>
       true;
+
+  @override
+  Future<bool> saveAll(List<Map<String, dynamic>> schedules) async => true;
+
+  @override
+  Future<bool> syncActiveClassIds(Set<String> activeClassIds) async => true;
+
+  @override
+  Future<Map<String, dynamic>?> get(String classId) async => null;
+
+  @override
+  Future<List<Map<String, dynamic>>> list() async => const [];
+
+  @override
+  Future<List<Map<String, dynamic>>> getAll() async => const [];
 }

@@ -106,7 +106,7 @@ All teaching dates and times use Vietnam time, UTC+7 (`Asia/Ho_Chi_Minh`).
 | FR-05 | Generate 20 chronological lessons, including the selected first date, using the weekday pair and daily slot. Show the generated dates for confirmation. |
 | FR-06 | Allow individual lesson dates to be adjusted for holidays or makeup classes. Do not automatically infer holidays. Do not regenerate and overwrite lessons with attendance history. |
 | FR-07 | Suggest the lesson currently taking place using its actual date and time. If none matches, show no current lesson; permit explicit selection and confirmation of another lesson. |
-| FR-08 | On reimport, preview changes and require confirmation. Preserve attendance and existing lesson identity. A roster removal must not erase historical results. Conflicts requiring an unresolved rule must be surfaced rather than guessed. |
+| FR-08 | On reimport, preview changes and require confirmation. Preserve attendance and existing lesson identity. A roster removal must not erase historical results. For an authoritative full-markbook import, class offerings omitted from the submitted file remain stored as inactive history and are excluded from the current timetable; no class, lesson, student, or attendance data is physically deleted. Conflicts requiring an unresolved rule must be surfaced rather than guessed. |
 
 ## 5. Attendance requirements
 

@@ -5,6 +5,45 @@
  * Cập nhật Realtime trực tiếp vào từng ô Slot của sinh viên với LockService chống đua.
  */
 
+var VIETNAM_TIME_ZONE = 'Asia/Ho_Chi_Minh';
+
+function vietnamTimestamp() {
+  return Utilities.formatDate(new Date(), VIETNAM_TIME_ZONE, 'dd/MM/yyyy HH:mm:ss');
+}
+
+function canonicalSlotTimes(dailySlot) {
+  var times = {
+    1: ['07:00', '09:15'],
+    2: ['09:30', '11:45'],
+    3: ['12:30', '14:45'],
+    4: ['15:00', '17:15'],
+    5: ['17:45', '19:15']
+  };
+  return times[Number(dailySlot)] || null;
+}
+
+function canonicalLessonTime(value, dailySlot, isStart) {
+  var times = canonicalSlotTimes(dailySlot);
+  if (times) return times[isStart ? 0 : 1];
+  return value instanceof Date
+    ? Utilities.formatDate(value, VIETNAM_TIME_ZONE, 'HH:mm')
+    : String(value || '').trim();
+}
+
+function lessonFromRow(row) {
+  var dailySlot = Number(row[4]);
+  return {
+    lessonId: row[0],
+    sequenceNumber: Number(row[2]),
+    date: row[3],
+    dailySlot: dailySlot,
+    startTime: canonicalLessonTime(row[5], dailySlot, true),
+    endTime: canonicalLessonTime(row[6], dailySlot, false),
+    isAdjusted: row[7] === true,
+    status: row[8] || 'scheduled'
+  };
+}
+
 function doPost(e) {
   try {
     var contents = JSON.parse(e.postData.contents);
@@ -55,6 +94,20 @@ function dispatchAction(action, payload) {
   switch (action) {
     case 'syncAllClasses':
       return DatabaseService.syncAllClassesFromDesktop(payload.classes, payload.startDate);
+    case 'saveClassOffering':
+      return DatabaseService.saveClassOffering(payload.offering, payload.roster, payload.lessons);
+    case 'saveClassOfferings':
+      return DatabaseService.saveClassOfferings(payload.items);
+    case 'syncActiveClassIds':
+      return DatabaseService.syncActiveClassIds(payload.activeClassIds);
+    case 'listSchedules':
+      return DatabaseService.listSchedules();
+    case 'getSchedule':
+      return DatabaseService.getSchedule(payload.classId);
+    case 'getAllSchedules':
+      return DatabaseService.getAllSchedules();
+    case 'repairLessonTimes':
+      return DatabaseService.repairLessonTimes();
     case 'setupDatabase':
       return DatabaseService.setupDatabase();
     case 'openAttendanceWindow':
@@ -84,15 +137,243 @@ var DatabaseService = {
     return SpreadsheetApp.getActiveSpreadsheet();
   },
 
+  // Canonical M1 storage. These tabs are append/upsert based; unlike the old
+  // syncAllClasses demo action, they never clear another class or attendance.
+  ensureDataSheet: function (name, headers) {
+    var ss = this.getSpreadsheet();
+    var sheet = ss.getSheetByName(name);
+    if (!sheet) sheet = ss.insertSheet(name);
+    if (sheet.getLastRow() === 0) sheet.appendRow(headers);
+    if (name === 'Classes' && sheet.getLastColumn() < headers.length) {
+      var values = sheet.getDataRange().getValues();
+      values[0] = headers.slice();
+      for (var rowIndex = 1; rowIndex < values.length; rowIndex++) {
+        while (values[rowIndex].length < headers.length) values[rowIndex].push(true);
+      }
+      sheet.clearContents();
+      sheet.getRange(1, 1, values.length, headers.length).setValues(values);
+    }
+    return sheet;
+  },
+
+  upsertRow: function (sheet, key, row) {
+    var values = sheet.getDataRange().getValues();
+    for (var index = 1; index < values.length; index++) {
+      if (String(values[index][0]) === String(key)) {
+        sheet.getRange(index + 1, 1, 1, row.length).setValues([row]);
+        return;
+      }
+    }
+    sheet.appendRow(row);
+  },
+
+  upsertRowsBatch: function (sheet, keyColIndex, newRows) {
+    if (!newRows || newRows.length === 0) return;
+    var values = sheet.getDataRange().getValues();
+    if (values.length <= 1) {
+      sheet.getRange(2, 1, newRows.length, newRows[0].length).setValues(newRows);
+      return;
+    }
+    var keyMap = {};
+    for (var i = 1; i < values.length; i++) {
+      var key = String(values[i][keyColIndex] || '');
+      if (key) keyMap[key] = i;
+    }
+    for (var j = 0; j < newRows.length; j++) {
+      var row = newRows[j];
+      var rowKey = String(row[keyColIndex] || '');
+      if (rowKey && keyMap[rowKey] !== undefined) {
+        values[keyMap[rowKey]] = row;
+      } else {
+        values.push(row);
+        keyMap[rowKey] = values.length - 1;
+      }
+    }
+    sheet.getRange(1, 1, values.length, values[0].length).setValues(values);
+  },
+
+  saveClassOffering: function (offering, roster, lessons) {
+    return this.saveClassOfferings([{ offering: offering, roster: roster, lessons: lessons }]);
+  },
+
+  saveClassOfferings: function (items) {
+    if (!Array.isArray(items) || items.length === 0) {
+      throw new Error('items phải là danh sách lớp không rỗng.');
+    }
+    var classes = this.ensureDataSheet('Classes', [
+      'classId', 'classCode', 'subjectCode', 'semester', 'scheduleCode',
+      'sourceSheetName', 'lessonCount', 'updatedAt', 'active'
+    ]);
+    var students = this.ensureDataSheet('Students', [
+      'recordKey', 'classId', 'classCode', 'rollNumber', 'fullName',
+      'email', 'memberCode', 'active'
+    ]);
+    var lessonRows = this.ensureDataSheet('Lessons', [
+      'lessonId', 'classId', 'sequenceNumber', 'date', 'dailySlot',
+      'startTime', 'endTime', 'isAdjusted', 'status'
+    ]);
+
+    var classDataRows = [];
+    var studentDataRows = [];
+    var lessonDataRows = [];
+    var savedClassIds = [];
+    var now = vietnamTimestamp();
+
+    for (var i = 0; i < items.length; i++) {
+      var item = items[i] || {};
+      var offering = item.offering;
+      if (!offering || !offering.classId) continue;
+      savedClassIds.push(offering.classId);
+
+      classDataRows.push([
+        offering.classId, String(offering.classCode || ''), String(offering.subjectCode || ''),
+        String(offering.semester || ''), String(offering.scheduleCode || ''), String(offering.sourceSheetName || ''),
+        offering.lessonCount || 20, now, true
+      ]);
+
+      (item.roster || []).forEach(function (student) {
+        var recordKey = offering.classId + '|' + String(student.rollNumber || '').toUpperCase();
+        studentDataRows.push([
+          recordKey, offering.classId, String(student.classCode || offering.classCode || ''),
+          String(student.rollNumber || ''), String(student.fullName || ''), String(student.email || '').toLowerCase(),
+          String(student.memberCode || ''), true
+        ]);
+      });
+
+      (item.lessons || []).forEach(function (lesson) {
+        var dailySlot = Number(lesson.dailySlot);
+        lessonDataRows.push([
+          String(lesson.lessonId || ''), offering.classId, Number(lesson.sequenceNumber), String(lesson.date || ''),
+          dailySlot,
+          canonicalLessonTime(lesson.startTime, dailySlot, true),
+          canonicalLessonTime(lesson.endTime, dailySlot, false),
+          lesson.isAdjusted === true, String(lesson.status || 'scheduled')
+        ]);
+      });
+    }
+
+    if (classDataRows.length > 0) this.upsertRowsBatch(classes, 0, classDataRows);
+    if (studentDataRows.length > 0) this.upsertRowsBatch(students, 0, studentDataRows);
+    if (lessonDataRows.length > 0) this.upsertRowsBatch(lessonRows, 0, lessonDataRows);
+
+    SpreadsheetApp.flush();
+    return { savedClassIds: savedClassIds, classCount: savedClassIds.length };
+  },
+
+  syncActiveClassIds: function (activeClassIds) {
+    if (!Array.isArray(activeClassIds) || activeClassIds.length === 0) {
+      throw new Error('activeClassIds phải là danh sách không rỗng.');
+    }
+    var active = {};
+    activeClassIds.forEach(function (classId) {
+      var normalized = String(classId || '').trim();
+      if (normalized) active[normalized] = true;
+    });
+    var sheet = this.getSpreadsheet().getSheetByName('Classes');
+    if (!sheet || sheet.getLastRow() <= 1) return { activeCount: 0, inactiveCount: 0 };
+    var values = sheet.getDataRange().getValues();
+    while (values[0].length < 9) values[0].push('');
+    for (var rowIndex = 1; rowIndex < values.length; rowIndex++) {
+      while (values[rowIndex].length < 9) values[rowIndex].push(true);
+    }
+    var header = values[0];
+    if (String(header[8] || '').trim() !== 'active') {
+      header[8] = 'active';
+      sheet.clearContents();
+      sheet.getRange(1, 1, values.length, values[0].length).setValues(values);
+    }
+    var activeCount = 0;
+    var inactiveCount = 0;
+    for (var i = 1; i < values.length; i++) {
+      var classId = String(values[i][0] || '').trim();
+      if (!classId) continue;
+      values[i][8] = active[classId] === true;
+      if (values[i][8]) activeCount++; else inactiveCount++;
+    }
+    sheet.getRange(1, 1, values.length, values[0].length).setValues(values);
+    SpreadsheetApp.flush();
+    return { activeClassIds: Object.keys(active), activeCount: activeCount, inactiveCount: inactiveCount };
+  },
+
+  listSchedules: function () {
+    var sheet = this.getSpreadsheet().getSheetByName('Classes');
+    if (!sheet || sheet.getLastRow() <= 1) return [];
+    var rows = sheet.getDataRange().getValues();
+    return rows.slice(1).filter(function (row) {
+      return row[0] && (row[8] === undefined || row[8] === '' || row[8] === true || String(row[8]).toLowerCase() === 'true');
+    }).map(function (row) {
+      return {
+        classId: String(row[0] || ''), classCode: String(row[1] || ''), subjectCode: String(row[2] || ''), semester: String(row[3] || ''),
+        scheduleCode: String(row[4] || ''), sourceSheetName: String(row[5] || ''), lessonCount: Number(row[6]), active: true
+      };
+    });
+  },
+
+  getSchedule: function (classId) {
+    var offerings = this.listSchedules().filter(function (item) { return item.classId === classId; });
+    if (offerings.length === 0) return null;
+    var ss = this.getSpreadsheet();
+    var studentsSheet = ss.getSheetByName('Students');
+    var lessonsSheet = ss.getSheetByName('Lessons');
+    var students = studentsSheet && studentsSheet.getLastRow() > 1
+      ? studentsSheet.getDataRange().getValues().slice(1).filter(function (row) { return row[1] === classId; }).map(function (row) {
+          return { classCode: row[2], rollNumber: row[3], fullName: row[4], email: row[5], memberCode: row[6] };
+        }) : [];
+    var lessons = lessonsSheet && lessonsSheet.getLastRow() > 1
+      ? lessonsSheet.getDataRange().getValues().slice(1).filter(function (row) { return row[1] === classId; }).map(function (row) {
+          return lessonFromRow(row);
+        }).sort(function (left, right) { return left.sequenceNumber - right.sequenceNumber; }) : [];
+    return { classOffering: offerings[0], students: students, lessons: lessons };
+  },
+
+  getAllSchedules: function () {
+    var schedules = [];
+    var offerings = this.listSchedules();
+    for (var i = 0; i < offerings.length; i++) {
+      var schedule = this.getSchedule(offerings[i].classId);
+      if (schedule) schedules.push(schedule);
+    }
+    return schedules;
+  },
+
+  repairLessonTimes: function () {
+    var sheet = this.getSpreadsheet().getSheetByName('Lessons');
+    if (!sheet || sheet.getLastRow() <= 1) return { updatedRows: 0 };
+
+    var values = sheet.getRange(2, 1, sheet.getLastRow() - 1, sheet.getLastColumn()).getValues();
+    var updatedRows = 0;
+    values.forEach(function (row) {
+      var dailySlot = Number(row[4]);
+      var times = canonicalSlotTimes(dailySlot);
+      if (!times) return;
+      if (String(row[5] || '').trim() !== times[0] || String(row[6] || '').trim() !== times[1]) {
+        row[5] = times[0];
+        row[6] = times[1];
+        updatedRows++;
+      }
+    });
+    if (updatedRows > 0) {
+      sheet.getRange(2, 1, values.length, values[0].length).setValues(values);
+      SpreadsheetApp.flush();
+    }
+    return { updatedRows: updatedRows };
+  },
+
   /**
    * Xóa sạch toàn bộ các sheet cũ để làm mới hoàn toàn
    */
   clearAllDatabase: function () {
     var ss = this.getSpreadsheet();
     var tempSheet = ss.insertSheet('Temp_' + new Date().getTime());
+    // M1 stores canonical schedules here. The legacy presentation reset must
+    // never delete them, otherwise a later demo sync would erase history.
+    var protectedSheets = {
+      'Classes': true, 'Students': true, 'Lessons': true,
+      'Sessions': true, 'Attendances': true
+    };
     var sheets = ss.getSheets();
     for (var i = 0; i < sheets.length; i++) {
-      if (sheets[i].getName() !== tempSheet.getName()) {
+      if (sheets[i].getName() !== tempSheet.getName() && !protectedSheets[sheets[i].getName()]) {
         try {
           ss.deleteSheet(sheets[i]);
         } catch (e) {}
@@ -529,7 +810,8 @@ var DatabaseService = {
     var sheets = ss.getSheets();
     for (var i = 0; i < sheets.length; i++) {
       var sName = sheets[i].getName();
-      if (sName === 'Overview' || sName.indexOf('Temp_') === 0) continue;
+      if (sName === 'Overview' || sName.indexOf('Temp_') === 0 ||
+          sName === 'Classes' || sName === 'Students' || sName === 'Lessons') continue;
       var matchClass = sName.toLowerCase().indexOf(parts.className.toLowerCase()) !== -1;
       var matchSubject = !parts.subjectCode || sName.toLowerCase().indexOf(parts.subjectCode.toLowerCase()) !== -1;
       if (matchClass && matchSubject) {
@@ -544,6 +826,16 @@ var DatabaseService = {
    */
   parseLessonId: function (lessonId) {
     if (!lessonId) return null;
+    // M1 canonical ID: SUBJECT_CLASS_SEMESTER-L01.
+    // Keep the older SUBJECT_CLASS_Lesson_1 form for existing attendance code.
+    var m1Match = lessonId.match(/^([A-Za-z0-9]+)_([A-Za-z0-9]+)(?:_[A-Za-z0-9]+)?-L(\d+)$/i);
+    if (m1Match) {
+      return {
+        subjectCode: m1Match[1],
+        className: m1Match[2],
+        sequenceNumber: parseInt(m1Match[3], 10)
+      };
+    }
     var match = lessonId.match(/^([A-Za-z0-9]+)_([A-Za-z0-9]+)_Lesson_(\d+)/i);
     if (match) {
       return {
@@ -564,17 +856,23 @@ var DatabaseService = {
   },
 
   getScheduleDescription: function (code) {
-    var map = {
-      '12': 'Thứ 2 & Thứ 5, Ca 2 (09:50 - 12:10)',
-      '14': 'Thứ 2 & Thứ 5, Ca 4 (15:20 - 17:40)',
-      '21': 'Thứ 3 & Thứ 6, Ca 1 (07:30 - 09:50)',
-      '22': 'Thứ 3 & Thứ 6, Ca 2 (09:50 - 12:10)',
-      '23': 'Thứ 3 & Thứ 6, Ca 3 (12:50 - 15:10)',
-      '24': 'Thứ 3 & Thứ 6, Ca 4 (15:20 - 17:40)',
-      '31': 'Thứ 4 & Thứ 7, Ca 1 (07:30 - 09:50)',
-      '32': 'Thứ 4 & Thứ 7, Ca 2 (09:50 - 12:10)'
+    var normalized = String(code || '');
+    var weekdayMap = {
+      '1': 'Thứ 2 & Thứ 5',
+      '2': 'Thứ 3 & Thứ 6',
+      '3': 'Thứ 4 & Thứ 7'
     };
-    return map[String(code)] || ('Mã lịch ' + code);
+    var timeMap = {
+      '1': '07:00 - 09:15',
+      '2': '09:30 - 11:45',
+      '3': '12:30 - 14:45',
+      '4': '15:00 - 17:15',
+      '5': '17:45 - 19:15'
+    };
+    if (!weekdayMap[normalized.charAt(0)] || !timeMap[normalized.charAt(1)]) {
+      return 'Mã lịch ' + normalized;
+    }
+    return weekdayMap[normalized.charAt(0)] + ', Ca ' + normalized.charAt(1) + ' (' + timeMap[normalized.charAt(1)] + ')';
   },
 
   getColumnLetter: function (colIndex) {

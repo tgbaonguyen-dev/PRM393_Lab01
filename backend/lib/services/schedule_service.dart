@@ -6,6 +6,12 @@ abstract class ScheduleRepository {
     required List<Map<String, dynamic>> students,
     required List<Map<String, dynamic>> lessons,
   });
+  Future<bool> saveAll(List<Map<String, dynamic>> schedules);
+  Future<bool> syncActiveClassIds(Set<String> activeClassIds);
+
+  Future<List<Map<String, dynamic>>> list();
+  Future<Map<String, dynamic>?> get(String classId);
+  Future<List<Map<String, dynamic>>> getAll();
 }
 
 class SheetsScheduleRepository implements ScheduleRepository {
@@ -26,6 +32,24 @@ class SheetsScheduleRepository implements ScheduleRepository {
       lessons: lessons,
     );
   }
+
+  @override
+  Future<bool> saveAll(List<Map<String, dynamic>> schedules) =>
+      _repository.saveClassOfferings(schedules);
+
+  @override
+  Future<bool> syncActiveClassIds(Set<String> activeClassIds) =>
+      _repository.syncActiveClassIds(activeClassIds);
+
+  @override
+  Future<List<Map<String, dynamic>>> list() => _repository.listSchedules();
+
+  @override
+  Future<Map<String, dynamic>?> get(String classId) =>
+      _repository.getSchedule(classId);
+
+  @override
+  Future<List<Map<String, dynamic>>> getAll() => _repository.getAllSchedules();
 }
 
 class ScheduleValidationException implements Exception {
@@ -47,6 +71,164 @@ class ScheduleService {
   Future<Map<String, dynamic>> saveSchedule(
     Map<String, dynamic> payload,
   ) async {
+    final schedule = _prepareSchedule(payload);
+    final classId = schedule['classOffering']['classId'] as String;
+    final existing = await _repository.get(classId);
+    if (existing != null && _sameSchedule(existing, schedule)) {
+      _cache[classId] = existing;
+      return schedule;
+    }
+    final saved = await _repository.save(
+      classOffering: schedule['classOffering'] as Map<String, dynamic>,
+      students: schedule['students'] as List<Map<String, dynamic>>,
+      lessons: schedule['lessons'] as List<Map<String, dynamic>>,
+    );
+    if (!saved) {
+      throw StateError('Repository không lưu được lịch.');
+    }
+    _cache[classId] = schedule;
+    return schedule;
+  }
+
+  Future<List<Map<String, dynamic>>> saveSchedules(
+    List<Map<String, dynamic>> payloads, {
+    Set<String>? activeClassIds,
+  }) async {
+    if (payloads.isEmpty) {
+      throw const ScheduleValidationException('Cần có ít nhất một lớp để lưu.');
+    }
+    final schedules = payloads.map(_prepareSchedule).toList(growable: false);
+    final submittedClassIds = schedules
+        .map((schedule) => schedule['classOffering']['classId'] as String)
+        .toSet();
+    final effectiveActiveClassIds = activeClassIds ?? submittedClassIds;
+    if (effectiveActiveClassIds.isEmpty) {
+      throw const ScheduleValidationException(
+        'Cần có ít nhất một lớp active để lưu.',
+      );
+    }
+    if (!effectiveActiveClassIds.every(submittedClassIds.contains)) {
+      throw const ScheduleValidationException(
+        'activeClassIds phải thuộc danh sách lớp đang import.',
+      );
+    }
+    List<Map<String, dynamic>> existingSchedules;
+    try {
+      existingSchedules = await _repository.getAll();
+    } catch (_) {
+      // Comparing with persisted data is an optimization. If the gateway
+      // cannot restore all schedules, still attempt the idempotent upsert so
+      // new or changed classes can be saved.
+      existingSchedules = const [];
+    }
+    final existingByClassId = <String, Map<String, dynamic>>{
+      for (final schedule in existingSchedules)
+        if (_classIdOf(schedule).isNotEmpty) _classIdOf(schedule): schedule,
+    };
+    final changedSchedules = schedules.where((schedule) {
+      final classId = schedule['classOffering']['classId'] as String;
+      final existing = existingByClassId[classId];
+      return existing == null || !_sameSchedule(existing, schedule);
+    }).toList(growable: false);
+
+    if (changedSchedules.isNotEmpty) {
+      final saved = await _repository.saveAll(changedSchedules
+          .map((schedule) => {
+                'offering': schedule['classOffering'],
+                'roster': schedule['students'],
+                'lessons': schedule['lessons'],
+              })
+          .toList(growable: false));
+      if (!saved) throw StateError('Repository không lưu được lịch.');
+    }
+    final activeSynced =
+        await _repository.syncActiveClassIds(effectiveActiveClassIds);
+    if (!activeSynced) {
+      throw StateError('Repository không đồng bộ được trạng thái lớp.');
+    }
+    for (final schedule in changedSchedules) {
+      _cache[schedule['classOffering']['classId'] as String] = schedule;
+    }
+    return changedSchedules;
+  }
+
+  bool _sameSchedule(
+    Map<String, dynamic> left,
+    Map<String, dynamic> right,
+  ) {
+    return _canonicalSchedule(left).toString() ==
+        _canonicalSchedule(right).toString();
+  }
+
+  Map<String, dynamic> _canonicalSchedule(Map<String, dynamic> schedule) {
+    final offering = _mapOrEmpty(schedule['classOffering']);
+    final students = _mapListOrEmpty(schedule['students'])
+        .map(
+          (student) => <String, dynamic>{
+            'classCode': _string(student['classCode']).toUpperCase(),
+            'rollNumber': _string(student['rollNumber']).toUpperCase(),
+            'fullName': _string(student['fullName']),
+            'email': _string(student['email']).toLowerCase(),
+            'memberCode': _string(student['memberCode']),
+          },
+        )
+        .toList()
+      ..sort(
+        (left, right) => (left['rollNumber'] as String)
+            .compareTo(right['rollNumber'] as String),
+      );
+    final lessons = _mapListOrEmpty(schedule['lessons'])
+        .map(
+          (lesson) => <String, dynamic>{
+            'lessonId': _string(lesson['lessonId']),
+            'sequenceNumber': _intValue(lesson['sequenceNumber']),
+            'date': _string(lesson['date']),
+            'dailySlot': _intValue(lesson['dailySlot']),
+            'startTime': _string(lesson['startTime']),
+            'endTime': _string(lesson['endTime']),
+            'isAdjusted': lesson['isAdjusted'] == true,
+            'status': _string(lesson['status']).toLowerCase(),
+          },
+        )
+        .toList()
+      ..sort(
+        (left, right) => (left['sequenceNumber'] as int)
+            .compareTo(right['sequenceNumber'] as int),
+      );
+    return <String, dynamic>{
+      'classOffering': {
+        'classId': _string(offering['classId']),
+        'classCode': _string(offering['classCode']).toUpperCase(),
+        'subjectCode': _string(offering['subjectCode']).toUpperCase(),
+        'semester': _string(offering['semester']).toUpperCase(),
+        'scheduleCode': _string(offering['scheduleCode']),
+        'sourceSheetName': _string(offering['sourceSheetName']),
+        'lessonCount': _intValue(offering['lessonCount']),
+      },
+      'students': students,
+      'lessons': lessons,
+    };
+  }
+
+  String _classIdOf(Map<String, dynamic> schedule) {
+    final offering = schedule['classOffering'];
+    return offering is Map ? _string(offering['classId']) : '';
+  }
+
+  static Map<String, dynamic> _mapOrEmpty(dynamic value) =>
+      value is Map ? Map<String, dynamic>.from(value) : <String, dynamic>{};
+
+  static List<Map<String, dynamic>> _mapListOrEmpty(dynamic value) {
+    if (value is! List) return <Map<String, dynamic>>[];
+    return value
+        .whereType<Map>()
+        .map((item) => Map<String, dynamic>.from(item))
+        .toList();
+  }
+
+  static int _intValue(dynamic value) => value is num ? value.toInt() : 0;
+
+  Map<String, dynamic> _prepareSchedule(Map<String, dynamic> payload) {
     final classOffering = _map(payload['classOffering'], 'classOffering');
     final students = _mapList(payload['students'], 'students');
     final lessons = _mapList(payload['lessons'], 'lessons');
@@ -61,27 +243,32 @@ class ScheduleService {
       normalizedOffering['scheduleCode'] as String,
       normalizedOffering['lessonCount'] as int,
     );
-    final classId = normalizedOffering['classId'] as String;
-
-    final saved = await _repository.save(
-      classOffering: normalizedOffering,
-      students: normalizedStudents,
-      lessons: normalizedLessons,
-    );
-    if (!saved) {
-      throw StateError('Repository không lưu được lịch.');
-    }
-
-    final schedule = <String, dynamic>{
+    return <String, dynamic>{
       'classOffering': normalizedOffering,
       'students': normalizedStudents,
       'lessons': normalizedLessons,
     };
-    _cache[classId] = schedule;
-    return schedule;
   }
 
-  Map<String, dynamic>? getSchedule(String classId) => _cache[classId.trim()];
+  Future<Map<String, dynamic>?> getSchedule(String classId) async {
+    final key = classId.trim();
+    final stored = await _repository.get(key);
+    if (stored != null) _cache[key] = stored;
+    return stored ?? _cache[key];
+  }
+
+  Future<List<Map<String, dynamic>>> listSchedules() => _repository.list();
+
+  Future<List<Map<String, dynamic>>> getAllSchedules() async {
+    final schedules = await _repository.getAll();
+    for (final schedule in schedules) {
+      final offering = schedule['classOffering'];
+      if (offering is Map && offering['classId'] is String) {
+        _cache[offering['classId'] as String] = schedule;
+      }
+    }
+    return schedules;
+  }
 
   Map<String, dynamic> _normalizeOffering(Map<String, dynamic> input) {
     final fields = <String, String>{
@@ -176,12 +363,13 @@ class ScheduleService {
     DateTime? previousDate;
     final normalized = <Map<String, dynamic>>[];
     final expectedSlot = int.parse(scheduleCode[1]);
-    final expectedTimes = const <int, (String, String)>{
+    final slotTimes = const <int, (String, String)>{
       1: ('07:00', '09:15'),
       2: ('09:30', '11:45'),
       3: ('12:30', '14:45'),
       4: ('15:00', '17:15'),
-    }[expectedSlot]!;
+      5: ('17:45', '19:15'),
+    };
     final expectedWeekdays = switch (scheduleCode[0]) {
       '1' => const [DateTime.monday, DateTime.thursday],
       '2' => const [DateTime.tuesday, DateTime.friday],
@@ -222,7 +410,13 @@ class ScheduleService {
           'Các buổi phải theo thứ tự thời gian.',
         );
       }
-      if (slot != expectedSlot) {
+      final expectedTimes = slot is int ? slotTimes[slot] : null;
+      if (expectedTimes == null) {
+        throw ScheduleValidationException(
+          'Ca học của buổi $expectedSequence phải từ Slot 1 đến Slot 5.',
+        );
+      }
+      if (!isAdjusted && slot != expectedSlot) {
         throw ScheduleValidationException(
           'Ca học của buổi $expectedSequence không khớp mã lịch $scheduleCode.',
         );

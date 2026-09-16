@@ -1,8 +1,49 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:prm393_desktop/features/schedule/models/schedule_models.dart';
 import 'package:prm393_desktop/features/schedule/services/schedule_code_parser.dart';
 import 'package:prm393_desktop/features/schedule/services/schedule_generator.dart';
 
 void main() {
+  test('restores a Google Sheets date string returned by Apps Script', () {
+    final lesson = ClassLesson.fromJson({
+      'lessonId': 'lesson-1',
+      'sequenceNumber': 1,
+      'date': 'Mon Sep 07 2026 00:00:00 GMT+0700 (Giờ Đông Dương)',
+      'dailySlot': 1,
+      'startTime': 'Sat Dec 30 1899 07:14:42 GMT+0706 (Giờ Đông Dương)',
+      'endTime': 'Sat Dec 30 1899 09:29:42 GMT+0706 (Giờ Đông Dương)',
+    });
+
+    expect(lesson.date, DateTime(2026, 9, 7));
+    expect(lesson.startTime, '07:00');
+    expect(lesson.endTime, '09:15');
+  });
+
+  test('uses Vietnam slot times when stored times have a timezone offset', () {
+    const expected = {
+      1: ('07:00', '09:15'),
+      2: ('09:30', '11:45'),
+      3: ('12:30', '14:45'),
+      4: ('15:00', '17:15'),
+      5: ('17:45', '19:15'),
+    };
+
+    for (final entry in expected.entries) {
+      final lesson = ClassLesson.fromJson({
+        'lessonId': 'lesson-${entry.key}',
+        'sequenceNumber': entry.key,
+        'date': '2026-09-07',
+        'dailySlot': entry.key,
+        'startTime': '07:24',
+        'endTime': '09:39',
+        'isAdjusted': false,
+      });
+
+      expect(lesson.startTime, entry.value.$1);
+      expect(lesson.endTime, entry.value.$2);
+    }
+  });
+
   test('parses schedule code 12', () {
     final rule = ScheduleCodeParser.parse('12');
 
@@ -101,11 +142,80 @@ void main() {
 
     expect(adjusted[1].date, DateTime(2026, 9, 11));
     expect(adjusted[1].isAdjusted, isTrue);
+    final movedToEvening = ScheduleGenerator.replaceLessonDate(
+      lessons: lessons,
+      sequenceNumber: 1,
+      newDate: DateTime(2026, 9, 7),
+      newDailySlot: 5,
+    );
+    expect(movedToEvening.first.dailySlot, 5);
+    expect(movedToEvening.first.startTime, '17:45');
+    expect(movedToEvening.first.endTime, '19:15');
     expect(
       () => ScheduleGenerator.replaceLessonDate(
         lessons: lessons,
         sequenceNumber: 2,
         newDate: lessons.first.date,
+      ),
+      throwsArgumentError,
+    );
+  });
+
+  test('keeps lesson sequence even when both dates are in the past', () {
+    final lessons = <ClassLesson>[
+      ClassLesson(
+        lessonId: 'lesson-1',
+        sequenceNumber: 1,
+        date: DateTime(2026, 9, 9),
+        dailySlot: 2,
+        startTime: '09:30',
+        endTime: '11:45',
+      ),
+      ClassLesson(
+        lessonId: 'lesson-2',
+        sequenceNumber: 2,
+        date: DateTime(2026, 9, 10),
+        dailySlot: 2,
+        startTime: '09:30',
+        endTime: '11:45',
+      ),
+    ];
+
+    expect(
+      () => ScheduleGenerator.replaceLessonDate(
+        lessons: lessons,
+        sequenceNumber: 1,
+        newDate: DateTime(2026, 9, 11),
+      ),
+      throwsArgumentError,
+    );
+  });
+
+  test('keeps sequence validation for dates today or in the future', () {
+    final lessons = <ClassLesson>[
+      ClassLesson(
+        lessonId: 'lesson-1',
+        sequenceNumber: 1,
+        date: DateTime(2026, 9, 16),
+        dailySlot: 2,
+        startTime: '09:30',
+        endTime: '11:45',
+      ),
+      ClassLesson(
+        lessonId: 'lesson-2',
+        sequenceNumber: 2,
+        date: DateTime(2026, 9, 17),
+        dailySlot: 2,
+        startTime: '09:30',
+        endTime: '11:45',
+      ),
+    ];
+
+    expect(
+      () => ScheduleGenerator.replaceLessonDate(
+        lessons: lessons,
+        sequenceNumber: 1,
+        newDate: DateTime(2026, 9, 18),
       ),
       throwsArgumentError,
     );

@@ -45,6 +45,15 @@ class ImportedStudent {
     'email': normalizedEmail,
     'memberCode': memberCode,
   };
+
+  factory ImportedStudent.fromJson(Map<String, dynamic> json) =>
+      ImportedStudent(
+        classCode: json['classCode']?.toString() ?? '',
+        rollNumber: json['rollNumber']?.toString() ?? '',
+        fullName: json['fullName']?.toString() ?? '',
+        email: json['email']?.toString() ?? '',
+        memberCode: json['memberCode']?.toString() ?? '',
+      );
 }
 
 class ImportedClass {
@@ -72,8 +81,8 @@ class ImportedClass {
   bool get isReady => !hasErrors;
 
   /// FPT projects with a PRN subject code normally have 22 meetings; all
-  /// other regular subjects have 20. A different count is only entered for
-  /// an individually added special subject.
+  /// other subjects normally have 20. Lecturers may override this per class
+  /// after the Markbook has been imported.
   static int defaultLessonCountFor(String subjectCode) =>
       subjectCode.trim().toUpperCase().contains('PRN') ? 22 : 20;
 
@@ -99,6 +108,22 @@ class ImportedClass {
     lessonCount: lessonCount ?? this.lessonCount,
     students: students,
     issues: issues ?? this.issues,
+  );
+
+  factory ImportedClass.fromStorage(
+    Map<String, dynamic> offering,
+    List<ImportedStudent> students,
+  ) => ImportedClass(
+    sourceSheetName: offering['sourceSheetName']?.toString() ?? '',
+    scheduleCode: offering['scheduleCode']?.toString() ?? '',
+    subjectCode: offering['subjectCode']?.toString() ?? '',
+    classCode: offering['classCode']?.toString() ?? '',
+    semester: offering['semester']?.toString() ?? '',
+    lessonCount: offering['lessonCount'] is num
+        ? (offering['lessonCount'] as num).toInt()
+        : int.tryParse(offering['lessonCount']?.toString() ?? '') ?? 20,
+    students: students,
+    issues: const [],
   );
 }
 

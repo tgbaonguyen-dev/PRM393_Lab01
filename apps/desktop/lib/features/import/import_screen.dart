@@ -4,6 +4,8 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
 import '../schedule/schedule_generator_screen.dart';
+import '../schedule/services/schedule_api_client.dart';
+import '../../shared/m1_snackbar.dart';
 import 'models/import_models.dart';
 import 'services/markbook_parser.dart';
 
@@ -16,16 +18,20 @@ class ImportScreen extends StatefulWidget {
 
 class _ImportScreenState extends State<ImportScreen> {
   final _parser = MarkbookParser();
+  final _scheduleApiClient = ScheduleApiClient();
   final _scheduleCodeController = TextEditingController();
   final _subjectCodeController = TextEditingController();
   final _classCodeController = TextEditingController();
   final _lessonCountController = TextEditingController(text: '20');
   WorkbookImportResult? _result;
   final Map<String, ImportedClass> _editedClasses = {};
-  final Set<String> _specialLessonCountSheets = {};
   int _selectedIndex = 0;
   String? _hoveredSheetName;
   bool _isLoading = false;
+  bool _isLoadingSavedSchedules = true;
+  int? _savedScheduleCount;
+  bool _savedScheduleCheckFailed = false;
+  String? _savedScheduleCheckError;
   String? _loadError;
 
   ImportedClass? get _selectedClass {
@@ -45,14 +51,88 @@ class _ImportScreenState extends State<ImportScreen> {
   }
 
   Future<void> _pickFile() async {
-    await _pickAndLoad(singleClassOnly: false);
+    await _pickAndLoad();
   }
 
-  Future<void> _pickSingleClassFile() async {
-    await _pickAndLoad(singleClassOnly: true);
+  bool _hasAutoLoadedSavedSchedules = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _refreshSavedScheduleCount(autoOpen: true);
   }
 
-  Future<void> _pickAndLoad({required bool singleClassOnly}) async {
+  Future<void> _refreshSavedScheduleCount({bool autoOpen = false}) async {
+    if (mounted) {
+      setState(() {
+        _isLoadingSavedSchedules = true;
+        _savedScheduleCheckFailed = false;
+        _savedScheduleCheckError = null;
+      });
+    }
+    try {
+      final schedules = await _scheduleApiClient.listSchedules();
+      if (mounted) {
+        setState(() {
+          _savedScheduleCount = schedules.length;
+          _savedScheduleCheckFailed = false;
+          _savedScheduleCheckError = null;
+        });
+        if (autoOpen && !_hasAutoLoadedSavedSchedules && schedules.isNotEmpty) {
+          _hasAutoLoadedSavedSchedules = true;
+          _openSavedSchedules();
+        }
+      }
+    } catch (error) {
+      // A first-time installation or an offline backend simply has no saved
+      // schedule entry point yet. The Markbook import remains available.
+      if (mounted) {
+        setState(() {
+          _savedScheduleCount = null;
+          _savedScheduleCheckFailed = true;
+          _savedScheduleCheckError = error.toString();
+        });
+      }
+    } finally {
+      if (mounted) setState(() => _isLoadingSavedSchedules = false);
+    }
+  }
+
+  Future<void> _openSavedSchedules() async {
+    setState(() => _isLoadingSavedSchedules = true);
+    try {
+      final saved = await _scheduleApiClient.loadSavedSchedules();
+      if (!mounted) return;
+      if (saved.classes.isEmpty) {
+        M1SnackBar.show(context, 'Chưa có lịch nào được lưu.', isError: true);
+        return;
+      }
+      await Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => ScheduleGeneratorScreen(
+            importedClasses: saved.classes,
+            initialSchedules: saved.schedules,
+            semesterStart: saved.firstLessonDate,
+          ),
+        ),
+      );
+      if (mounted) _refreshSavedScheduleCount();
+    } catch (error) {
+      if (mounted) {
+        M1SnackBar.show(
+          context,
+          'Không thể tải lịch đã lưu: $error',
+          isError: true,
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoadingSavedSchedules = false);
+    }
+  }
+
+  /// A Markbook may have one class sheet or many sheets.  The same import
+  /// action handles both cases; lesson counts are editable per detected class.
+  Future<void> _pickAndLoad() async {
     _storeSelectedMetadata();
     final selection = await FilePicker.platform.pickFiles(
       type: FileType.custom,
@@ -67,57 +147,50 @@ class _ImportScreenState extends State<ImportScreen> {
     try {
       final result = await _parser.parseFile(File(path));
       if (!mounted) return;
-      if (singleClassOnly && result.classes.length != 1) {
-        throw const FormatException(
-          'Tệp thêm riêng phải chứa đúng 1 sheet/lớp.',
-        );
-      }
-      final existing = _result?.classes ?? const <ImportedClass>[];
-      if (singleClassOnly &&
-          existing.any((item) {
-            final incoming = result.classes.single;
-            return item.sourceSheetName == incoming.sourceSheetName ||
-                (item.subjectCode == incoming.subjectCode &&
-                    item.classCode == incoming.classCode);
-          })) {
-        throw const FormatException(
-          'Lớp này đã tồn tại trong danh sách import.',
-        );
-      }
-      final combined = singleClassOnly && _result != null
-          ? WorkbookImportResult(
-              sourceFileName:
-                  '${_result!.sourceFileName}, ${result.sourceFileName}',
-              classes: [...existing, ...result.classes],
-            )
-          : result;
       setState(() {
-        _result = combined;
-        final previousEdits = singleClassOnly
-            ? Map<String, ImportedClass>.of(_editedClasses)
-            : <String, ImportedClass>{};
-        final previousSpecialSheets = singleClassOnly
-            ? Set<String>.of(_specialLessonCountSheets)
-            : <String>{};
+        final current = _result;
+        final incomingBySheet = {
+          for (final item in result.classes) item.sourceSheetName: item,
+        };
+        final existingClasses = current?.classes ?? const <ImportedClass>[];
+        final mergedClasses = <ImportedClass>[];
+
+        for (final existing in existingClasses) {
+          final replacement = incomingBySheet.remove(existing.sourceSheetName);
+          mergedClasses.add(replacement ?? existing);
+        }
+        mergedClasses.addAll(incomingBySheet.values);
+
+        final incomingSheetNames = result.classes
+            .map((item) => item.sourceSheetName)
+            .toSet();
+        final sourceNames = <String>{
+          if (current != null) ...current.sourceFileName.split(', '),
+          result.sourceFileName,
+        };
+        _result = WorkbookImportResult(
+          sourceFileName: sourceNames.join(', '),
+          classes: mergedClasses,
+        );
+        final previousEdits = Map<String, ImportedClass>.of(_editedClasses);
         _editedClasses
           ..clear()
           ..addEntries(
-            combined.classes.map(
+            mergedClasses.map(
               (item) => MapEntry(
                 item.sourceSheetName,
-                previousEdits[item.sourceSheetName] ?? item,
+                incomingSheetNames.contains(item.sourceSheetName)
+                    ? item
+                    : previousEdits[item.sourceSheetName] ?? item,
               ),
             ),
           );
-        _specialLessonCountSheets
-          ..clear()
-          ..addAll(previousSpecialSheets);
-        if (singleClassOnly) {
-          _specialLessonCountSheets.add(result.classes.single.sourceSheetName);
-        }
-        _selectedIndex = singleClassOnly ? combined.classes.length - 1 : 0;
-        if (combined.classes.isNotEmpty) {
-          _loadMetadata(combined.classes[_selectedIndex]);
+        _selectedIndex = mergedClasses.indexWhere(
+          (item) => incomingSheetNames.contains(item.sourceSheetName),
+        );
+        if (_selectedIndex < 0) _selectedIndex = 0;
+        if (mergedClasses.isNotEmpty) {
+          _loadMetadata(mergedClasses[_selectedIndex]);
         }
       });
     } catch (error) {
@@ -146,7 +219,6 @@ class _ImportScreenState extends State<ImportScreen> {
     final remaining = List<ImportedClass>.of(result.classes)..removeAt(index);
     setState(() {
       _editedClasses.remove(removed.sourceSheetName);
-      _specialLessonCountSheets.remove(removed.sourceSheetName);
       _hoveredSheetName = null;
       if (remaining.isEmpty) {
         _result = null;
@@ -182,16 +254,9 @@ class _ImportScreenState extends State<ImportScreen> {
       scheduleCode: _scheduleCodeController.text.trim(),
       subjectCode: _subjectCodeController.text.trim().toUpperCase(),
       classCode: _classCodeController.text.trim().toUpperCase(),
-      lessonCount: _isSpecialLessonCountClass(importedClass)
-          ? int.tryParse(_lessonCountController.text.trim()) ?? 0
-          : ImportedClass.defaultLessonCountFor(
-              _subjectCodeController.text.trim(),
-            ),
+      lessonCount: int.tryParse(_lessonCountController.text.trim()) ?? 0,
     );
   }
-
-  bool _isSpecialLessonCountClass(ImportedClass importedClass) =>
-      _specialLessonCountSheets.contains(importedClass.sourceSheetName);
 
   ImportedClass _validateClassMetadata(ImportedClass importedClass) {
     const metadataIssueCodes = {
@@ -243,11 +308,10 @@ class _ImportScreenState extends State<ImportScreen> {
         'ClassCode',
       );
     }
-    if (_isSpecialLessonCountClass(importedClass) &&
-        (importedClass.lessonCount < 1 || importedClass.lessonCount > 60)) {
+    if (importedClass.lessonCount < 1 || importedClass.lessonCount > 60) {
       addError(
         'invalid_lesson_count',
-        'Số buổi đặc biệt phải từ 1 đến 60.',
+        'Số buổi phải từ 1 đến 60.',
         'LessonCount',
       );
     }
@@ -264,14 +328,12 @@ class _ImportScreenState extends State<ImportScreen> {
       _loadMetadata(validated);
     });
     final errorCount = validated.issues.where((issue) => issue.isError).length;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          errorCount == 0
-              ? 'Đã xác nhận ${validated.subjectCode} - ${validated.classCode}. Có thể sinh lịch.'
-              : 'Lớp này còn $errorCount lỗi. Hãy sửa các ô được báo rồi xác nhận lại.',
-        ),
-      ),
+    M1SnackBar.show(
+      context,
+      errorCount == 0
+          ? 'Đã xác nhận ${validated.subjectCode} - ${validated.classCode}. Có thể sinh lịch.'
+          : 'Lớp này còn $errorCount lỗi. Hãy sửa các ô được báo rồi xác nhận lại.',
+      isError: errorCount > 0,
     );
   }
 
@@ -297,12 +359,10 @@ class _ImportScreenState extends State<ImportScreen> {
           item.issues.any((issue) => issue.isError);
     }).length;
     if (invalidCount > 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Còn $invalidCount lớp chưa hợp lệ. Hãy kiểm tra mã lịch, metadata, dữ liệu và số buổi môn đặc biệt (1–60).',
-          ),
-        ),
+      M1SnackBar.show(
+        context,
+        'Còn $invalidCount lớp chưa hợp lệ. Hãy kiểm tra mã lịch, metadata, dữ liệu và số buổi (1–60).',
+        isError: true,
       );
       return null;
     }
@@ -435,11 +495,38 @@ class _ImportScreenState extends State<ImportScreen> {
                       : const Icon(Icons.upload_file),
                   label: Text(_isLoading ? 'Đang đọc...' : 'Chọn Markbook'),
                 ),
-                OutlinedButton.icon(
-                  onPressed: _isLoading ? null : _pickSingleClassFile,
-                  icon: const Icon(Icons.playlist_add),
-                  label: const Text('Thêm môn đặc biệt'),
-                ),
+                if (_isLoadingSavedSchedules)
+                  OutlinedButton.icon(
+                    onPressed: null,
+                    icon: const SizedBox.square(
+                      dimension: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                    label: const Text('Đang kiểm tra lịch đã lưu...'),
+                  )
+                else if ((_savedScheduleCount ?? 0) > 0)
+                  OutlinedButton.icon(
+                    onPressed: _isLoadingSavedSchedules
+                        ? null
+                        : _openSavedSchedules,
+                    icon: const Icon(Icons.calendar_month_outlined),
+                    label: Text(
+                      _isLoadingSavedSchedules
+                          ? 'Đang tải lịch...'
+                          : 'Mở lịch đã lưu ($_savedScheduleCount lớp)',
+                    ),
+                  )
+                else if (_savedScheduleCheckFailed)
+                  Tooltip(
+                    message:
+                        _savedScheduleCheckError ??
+                        'Backend không phản hồi tại 127.0.0.1:8080.',
+                    child: OutlinedButton.icon(
+                      onPressed: _refreshSavedScheduleCount,
+                      icon: const Icon(Icons.refresh),
+                      label: const Text('Backend lỗi — thử kiểm tra lại'),
+                    ),
+                  ),
               ],
             );
             if (constraints.maxWidth < 900) {
@@ -554,7 +641,6 @@ class _ImportScreenState extends State<ImportScreen> {
   }
 
   Widget _preview(ImportedClass importedClass) {
-    final isSpecialLessonCount = _isSpecialLessonCountClass(importedClass);
     return Card(
       elevation: 0,
       child: Padding(
@@ -572,12 +658,7 @@ class _ImportScreenState extends State<ImportScreen> {
                       _metadataField('Mã lịch', _scheduleCodeController, 105),
                       _metadataField('Môn', _subjectCodeController, 125),
                       _metadataField('Lớp', _classCodeController, 125),
-                      if (isSpecialLessonCount)
-                        _metadataField(
-                          'Số buổi đặc biệt',
-                          _lessonCountController,
-                          145,
-                        ),
+                      _metadataField('Số buổi', _lessonCountController, 120),
                     ],
                   ),
                 ),
@@ -599,15 +680,13 @@ class _ImportScreenState extends State<ImportScreen> {
               const SizedBox(height: 12),
               _issues(importedClass.issues),
             ],
-            if (isSpecialLessonCount) ...[
-              const SizedBox(height: 8),
-              Text(
-                'Môn này được thêm riêng nên có thể đặt số buổi khác mặc định. Mã PRN mặc định 22 buổi, môn khác mặc định 20 buổi.',
-                style: TextStyle(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
+            const SizedBox(height: 8),
+            Text(
+              'Mã PRN mặc định 22 buổi, môn khác mặc định 20 buổi. Có thể điều chỉnh số buổi từ 1 đến 60 cho từng lớp.',
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
-            ],
+            ),
             const SizedBox(height: 12),
             Text(
               'Xem trước ${importedClass.students.length} sinh viên',
