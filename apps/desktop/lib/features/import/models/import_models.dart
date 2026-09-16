@@ -1,0 +1,143 @@
+enum ValidationSeverity { warning, error }
+
+class ImportValidationIssue {
+  final ValidationSeverity severity;
+  final String code;
+  final String message;
+  final String sheetName;
+  final int? rowNumber;
+  final String? field;
+
+  const ImportValidationIssue({
+    required this.severity,
+    required this.code,
+    required this.message,
+    required this.sheetName,
+    this.rowNumber,
+    this.field,
+  });
+
+  bool get isError => severity == ValidationSeverity.error;
+}
+
+class ImportedStudent {
+  final String classCode;
+  final String rollNumber;
+  final String fullName;
+  final String email;
+  final String memberCode;
+
+  const ImportedStudent({
+    required this.classCode,
+    required this.rollNumber,
+    required this.fullName,
+    required this.email,
+    required this.memberCode,
+  });
+
+  String get normalizedRollNumber => rollNumber.trim().toUpperCase();
+  String get normalizedEmail => email.trim().toLowerCase();
+
+  Map<String, dynamic> toJson() => {
+    'classCode': classCode,
+    'rollNumber': rollNumber,
+    'fullName': fullName,
+    'email': normalizedEmail,
+    'memberCode': memberCode,
+  };
+
+  factory ImportedStudent.fromJson(Map<String, dynamic> json) =>
+      ImportedStudent(
+        classCode: json['classCode']?.toString() ?? '',
+        rollNumber: json['rollNumber']?.toString() ?? '',
+        fullName: json['fullName']?.toString() ?? '',
+        email: json['email']?.toString() ?? '',
+        memberCode: json['memberCode']?.toString() ?? '',
+      );
+}
+
+class ImportedClass {
+  final String sourceSheetName;
+  final String scheduleCode;
+  final String subjectCode;
+  final String classCode;
+  final String semester;
+  final int lessonCount;
+  final List<ImportedStudent> students;
+  final List<ImportValidationIssue> issues;
+
+  const ImportedClass({
+    required this.sourceSheetName,
+    required this.scheduleCode,
+    required this.subjectCode,
+    required this.classCode,
+    required this.students,
+    required this.issues,
+    this.semester = '',
+    this.lessonCount = 20,
+  });
+
+  bool get hasErrors => issues.any((issue) => issue.isError);
+  bool get isReady => !hasErrors;
+
+  /// FPT projects with a PRN subject code normally have 22 meetings; all
+  /// other subjects normally have 20. Lecturers may override this per class
+  /// after the Markbook has been imported.
+  static int defaultLessonCountFor(String subjectCode) =>
+      subjectCode.trim().toUpperCase().contains('PRN') ? 22 : 20;
+
+  String get offeringId => [
+    subjectCode,
+    classCode,
+    semester,
+  ].map((value) => value.trim().toUpperCase()).join('_');
+
+  ImportedClass copyWith({
+    String? scheduleCode,
+    String? subjectCode,
+    String? classCode,
+    String? semester,
+    int? lessonCount,
+    List<ImportValidationIssue>? issues,
+  }) => ImportedClass(
+    sourceSheetName: sourceSheetName,
+    scheduleCode: scheduleCode ?? this.scheduleCode,
+    subjectCode: subjectCode ?? this.subjectCode,
+    classCode: classCode ?? this.classCode,
+    semester: semester ?? this.semester,
+    lessonCount: lessonCount ?? this.lessonCount,
+    students: students,
+    issues: issues ?? this.issues,
+  );
+
+  factory ImportedClass.fromStorage(
+    Map<String, dynamic> offering,
+    List<ImportedStudent> students,
+  ) => ImportedClass(
+    sourceSheetName: offering['sourceSheetName']?.toString() ?? '',
+    scheduleCode: offering['scheduleCode']?.toString() ?? '',
+    subjectCode: offering['subjectCode']?.toString() ?? '',
+    classCode: offering['classCode']?.toString() ?? '',
+    semester: offering['semester']?.toString() ?? '',
+    lessonCount: offering['lessonCount'] is num
+        ? (offering['lessonCount'] as num).toInt()
+        : int.tryParse(offering['lessonCount']?.toString() ?? '') ?? 20,
+    students: students,
+    issues: const [],
+  );
+}
+
+class WorkbookImportResult {
+  final String sourceFileName;
+  final List<ImportedClass> classes;
+
+  const WorkbookImportResult({
+    required this.sourceFileName,
+    required this.classes,
+  });
+
+  int get totalStudents => classes.fold(
+    0,
+    (total, importedClass) => total + importedClass.students.length,
+  );
+}
