@@ -8,7 +8,6 @@ import '../schedule/services/schedule_api_client.dart';
 import '../../shared/m1_snackbar.dart';
 import 'models/import_models.dart';
 import 'services/imported_class_validator.dart';
-import 'services/markbook_import_merger.dart';
 import 'services/markbook_parser.dart';
 
 class ImportScreen extends StatefulWidget {
@@ -153,38 +152,18 @@ class _ImportScreenState extends State<ImportScreen> {
     try {
       final parsed = await _parser.parseFile(File(path));
       if (!mounted) return;
-      final incoming = WorkbookImportResult(
+      final result = WorkbookImportResult(
         sourceFileName: parsed.sourceFileName,
         classes: validateDistinctClassOfferings(parsed.classes),
       );
-      final current = _result;
-      final currentClasses = current?.classes
-          .map((item) => _editedClasses[item] ?? item)
-          .toList(growable: false);
-      final merged = mergeMarkbookImports(
-        current == null
-            ? null
-            : WorkbookImportResult(
-                sourceFileName: current.sourceFileName,
-                classes: currentClasses!,
-              ),
-        incoming,
-      );
-      final result = WorkbookImportResult(
-        sourceFileName: merged.sourceFileName,
-        classes: validateDistinctClassOfferings(merged.classes),
-      );
-      final previousCount = current?.classes.length ?? 0;
       setState(() {
         _result = result;
         _editedClasses
           ..clear()
           ..addEntries(result.classes.map((item) => MapEntry(item, item)));
-        _selectedIndex = result.classes.isEmpty
-            ? 0
-            : previousCount.clamp(0, result.classes.length - 1);
+        _selectedIndex = 0;
         if (result.classes.isNotEmpty) {
-          _loadMetadata(result.classes[_selectedIndex]);
+          _loadMetadata(result.classes.first);
         }
       });
     } catch (error) {
