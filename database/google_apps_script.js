@@ -383,11 +383,55 @@ var DatabaseService = {
   },
 
   /**
+   * Chuẩn hóa tên Sheet tuân thủ quy tắc nghiêm ngặt của Google Sheets:
+   * - Tối đa 80 ký tự (Google cho phép 100)
+   * - Không chứa các ký tự cấm: [ ] * ? : / \
+   * - Không bắt đầu/kết thúc bằng dấu nháy đơn '
+   */
+  sanitizeSheetName: function (rawName) {
+    if (!rawName) return 'Sheet';
+    var clean = String(rawName)
+      .replace(/[\[\]\*?\:\/\\']/g, '_')
+      .trim();
+    if (clean.length > 80) {
+      clean = clean.substring(0, 80);
+    }
+    return clean || 'Sheet';
+  },
+
+  /**
+   * Kiểm tra xem một sheet lớp đã có bất kỳ kết quả điểm danh thực tế (P hoặc A) nào chưa
+   */
+  hasAttendanceData: function (sheet) {
+    if (!sheet) return false;
+    var lastRow = sheet.getLastRow();
+    var lastCol = sheet.getLastColumn();
+    if (lastRow < 3 || lastCol < 6) return false;
+
+    try {
+      // Đọc vùng slot điểm danh từ dòng 3 trở đi, từ cột F (cột 6)
+      var slotData = sheet.getRange(3, 6, lastRow - 2, Math.min(25, lastCol - 5)).getValues();
+      for (var r = 0; r < slotData.length; r++) {
+        for (var c = 0; c < slotData[r].length; c++) {
+          var val = String(slotData[r][c] || '').trim().toUpperCase();
+          if (val === 'P' || val === 'A') {
+            return true;
+          }
+        }
+      }
+    } catch (e) {
+      Logger.log('Lỗi kiểm tra hasAttendanceData: ' + e);
+    }
+    return false;
+  },
+
+  /**
    * Đồng bộ toàn bộ các lớp học từ Desktop App lên Google Sheet
-   * Cơ chế Upsert thông minh:
-   * - Giữ nguyên các sheet lớp và sheet Overview đã có (không xoá sạch toàn bộ)
-   * - Chỉ tạo mới các sheet chưa tồn tại (lớp mới hoặc sheet bị xoá trên Drive)
-   * - Bảo toàn toàn bộ dữ liệu điểm danh (P / A) đã có trên Sheet
+   * Cơ chế Upsert thông minh với các ràng buộc an toàn:
+   * 1. Ghim Overview cố định ở vị trí đầu tiên
+   * 2. Sanitize tên sheet chống ký tự cấm
+   * 3. Bảo vệ dữ liệu điểm danh: Lớp bị loại khỏi import nếu đã có điểm danh thì chuyển sang [Archived], không xoá
+   * 4. Sheet trắng chưa điểm danh thì xoá an toàn
    */
   syncAllClassesFromDesktop: function (classes, startDateStr) {
     var ss = this.getSpreadsheet();
@@ -399,21 +443,89 @@ var DatabaseService = {
     }
     this.setupOverviewSheet(overviewSheet, classes, startDateStr);
 
-    // 2. Đồng bộ từng lớp học (Upsert: Giữ nguyên sheet đã có, chỉ tạo sheet chưa có)
+    // RÀNG BUỘC: Luôn ghim tab Overview ở vị trí số 1 bên trái
+    try {
+      ss.setActiveSheet(overviewSheet);
+      ss.moveActiveSheet(1);
+    } catch (orderErr) {}
+
+    // 2. Đồng bộ từng lớp học và thu thập danh sách tên sheet active
+    var expectedSheetNames = {};
     for (var i = 0; i < classes.length; i++) {
       try {
         var cls = classes[i];
         var cName = cls.className || ('Lop_' + (i + 1));
-        var sheetName = (cls.scheduleCode || '12') + '_' + (cls.subjectCode || 'PRM393') + '_' + cName;
+        var rawSheetName = (cls.scheduleCode || '12') + '_' + (cls.subjectCode || 'PRM393') + '_' + cName;
+        // RÀNG BUỘC: Sanitize tên sheet chống ký tự cấm của Google Sheets
+        var sheetName = this.sanitizeSheetName(rawSheetName);
+        expectedSheetNames[sheetName] = true;
+
         var classSheet = ss.getSheetByName(sheetName);
         if (!classSheet) {
-          classSheet = ss.insertSheet(sheetName);
+          // Thêm sheet mới vào vị trí cuối cùng bên phải (không chèn đằng trước)
+          classSheet = ss.insertSheet(sheetName, ss.getSheets().length);
         }
+
+        // RÀNG BUỘC THỨ TỰ:
+        // Đặt vị trí sheet theo đúng thứ tự danh sách lớp (sau Overview, lớp thêm sau vào sau)
+        try {
+          ss.setActiveSheet(classSheet);
+          ss.moveActiveSheet(i + 2);
+        } catch (moveErr) {}
+
         this.setupClassMarkbookSheet(classSheet, cls, startDateStr);
       } catch (classErr) {
         Logger.log('Lỗi đồng bộ sheet lớp ' + i + ': ' + classErr);
       }
     }
+
+    // 3. Xử lý các sheet thừa (lớp không còn trong danh sách file import mới)
+    // RÀNG BUỘC BẢO VỆ DỮ LIỆU:
+    // - Nếu sheet ĐÃ CÓ dữ liệu điểm danh (P hoặc A): KHÔNG xoá, đổi tên thành [Archived] và ẩn tab
+    // - Nếu sheet là sheet trắng (chưa từng điểm danh): Cho phép xoá an toàn
+    var protectedSystemSheets = {
+      'Overview': true,
+      'Classes': true,
+      'Students': true,
+      'Lessons': true,
+      'Sessions': true,
+      'Attendances': true
+    };
+    var allSheets = ss.getSheets();
+    for (var s = allSheets.length - 1; s >= 0; s--) {
+      var sheet = allSheets[s];
+      var sName = sheet.getName();
+      if (!protectedSystemSheets[sName] && !expectedSheetNames[sName] && sName.indexOf('Temp_') !== 0) {
+        try {
+          if (this.hasAttendanceData(sheet)) {
+            // Bảo toàn lịch sử: đánh dấu Archived và ẩn sheet
+            if (sName.indexOf('[Archived] ') !== 0) {
+              var archivedName = this.sanitizeSheetName('[Archived] ' + sName);
+              if (ss.getSheetByName(archivedName)) {
+                archivedName = this.sanitizeSheetName(archivedName + '_' + new Date().getTime());
+              }
+              sheet.setName(archivedName);
+              try {
+                sheet.setTabColor('#94A3B8');
+                sheet.hideSheet();
+              } catch (e) {}
+              Logger.log('Đã lưu trữ an toàn sheet có điểm danh: ' + archivedName);
+            }
+          } else {
+            // Sheet trắng chưa điểm danh: xoá an toàn
+            ss.deleteSheet(sheet);
+            Logger.log('Đã dọn dẹp sheet trắng không dùng: ' + sName);
+          }
+        } catch (delErr) {
+          Logger.log('Lỗi xử lý sheet thừa ' + sName + ': ' + delErr);
+        }
+      }
+    }
+
+    // Kích hoạt lại tab Overview để khi mở file luôn thấy Overview đầu tiên
+    try {
+      ss.setActiveSheet(overviewSheet);
+    } catch (e) {}
 
     SpreadsheetApp.flush();
     return {
@@ -424,13 +536,14 @@ var DatabaseService = {
   },
 
   /**
-   * Thiết lập Sheet Overview tổng quan
+   * Thiết lập Sheet Overview tổng quan (đã loại bỏ cột Phòng Học không có trong Markbook FAP)
    */
   setupOverviewSheet: function (sheet, classes, startDateStr) {
     sheet.clear();
+    sheet.clearFormats();
 
-    // Banner tiêu đề
-    sheet.getRange('A1:I1').merge();
+    // Banner tiêu đề (A1:H1 cho 8 cột)
+    sheet.getRange('A1:H1').merge();
     var titleCell = sheet.getRange('A1');
     titleCell.setValue('📊 TỔNG QUAN LỊCH GIẢNG DẠY HỌC KỲ (Bắt đầu từ: ' + (startDateStr || 'Theo lịch FAP') + ')');
     titleCell.setBackground('#1E3A8A');
@@ -441,8 +554,8 @@ var DatabaseService = {
     titleCell.setVerticalAlignment('middle');
     sheet.setRowHeight(1, 45);
 
-    // Header bảng
-    var headers = ['STT', 'Mã Môn', 'Tên Lớp', 'Mã Lịch FAP', 'Lịch Học Chi Tiết', 'Phòng Học', 'Slot 01 (Khai giảng)', 'Slot 20 (Kết thúc)', 'Sĩ Số'];
+    // Header bảng (8 cột chuẩn theo Markbook FAP)
+    var headers = ['STT', 'Mã Môn', 'Tên Lớp', 'Mã Lịch FAP', 'Lịch Học Chi Tiết', 'Slot 01 (Khai giảng)', 'Slot 20 (Kết thúc)', 'Sĩ Số'];
     sheet.getRange(2, 1, 1, headers.length).setValues([headers]);
     var hRange = sheet.getRange(2, 1, 1, headers.length);
     hRange.setBackground('#2563EB');
@@ -467,7 +580,6 @@ var DatabaseService = {
         c.className,
         c.scheduleCode || '',
         schedDesc,
-        c.room || 'P.Lab',
         firstDate,
         lastDate,
         c.roster ? c.roster.length : 0
@@ -480,10 +592,16 @@ var DatabaseService = {
       dataRange.setHorizontalAlignment('center');
       dataRange.setVerticalAlignment('middle');
       dataRange.setBorder(true, true, true, true, true, true, '#CBD5E1', SpreadsheetApp.BorderStyle.SOLID);
+
+      // RÀNG BUỘC ĐỊNH DẠNG:
+      // Cột 8 (Sĩ Số) luôn định dạng là Số nguyên thuần tuý ('0'), tránh bị Google Sheets nhớ format Date cũ biến thành 1900-02-xx
+      sheet.getRange(3, 8, rows.length, 1).setNumberFormat('0');
+      // Cột 6 & 7 (Ngày bắt đầu / kết thúc) định dạng Text '@'
+      sheet.getRange(3, 6, rows.length, 2).setNumberFormat('@');
     }
 
     sheet.setFrozenRows(2);
-    var colWidths = [45, 90, 110, 80, 200, 90, 140, 140, 80];
+    var colWidths = [45, 90, 110, 80, 220, 140, 140, 80];
     for (var c = 0; c < colWidths.length; c++) {
       sheet.setColumnWidth(c + 1, colWidths[c]);
     }
@@ -840,7 +958,7 @@ var DatabaseService = {
     var sheets = ss.getSheets();
     for (var i = 0; i < sheets.length; i++) {
       var sName = sheets[i].getName();
-      if (sName === 'Overview' || sName.indexOf('Temp_') === 0 ||
+      if (sName === 'Overview' || sName.indexOf('Temp_') === 0 || sName.indexOf('[Archived]') === 0 ||
           sName === 'Classes' || sName === 'Students' || sName === 'Lessons') continue;
       var matchClass = sName.toLowerCase().indexOf(parts.className.toLowerCase()) !== -1;
       var matchSubject = !parts.subjectCode || sName.toLowerCase().indexOf(parts.subjectCode.toLowerCase()) !== -1;

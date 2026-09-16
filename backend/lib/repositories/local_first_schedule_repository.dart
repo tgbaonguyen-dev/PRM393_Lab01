@@ -48,20 +48,10 @@ class LocalFirstScheduleRepository implements ScheduleRepository {
 
   @override
   Future<bool> saveAll(List<Map<String, dynamic>> schedules) async {
-    // 1. Luôn lưu vào JSON local trước
-    final localSaved = await local.saveAll(schedules);
-
-    // 2. Đồng bộ TOÀN BỘ các lớp active lên Google Sheets (tạo Sheet Overview và đầy đủ Sheet từng lớp)
-    if (sheetsGateway != null) {
-      final allActive = await local.getAll();
-      if (allActive.isNotEmpty) {
-        _syncToSheetsSafely(allActive);
-      } else if (schedules.isNotEmpty) {
-        _syncToSheetsSafely(schedules);
-      }
-    }
-
-    return localSaved;
+    // 1. Luôn lưu nội dung lịch vào JSON local trước.
+    // Việc đồng bộ lên Google Sheets sẽ do syncActiveClassIds thực hiện ngay sau đó,
+    // đảm bảo danh sách lớp active đã được cập nhật chính xác (tránh gửi nhầm lớp cũ).
+    return local.saveAll(schedules);
   }
 
   @override
