@@ -40,12 +40,14 @@ Future<void> main() async {
   );
   final attendanceController = AttendanceController(
     sheetsRepository: sheetsRepo,
+    scheduleRepository: hybridRepo,
     authService: AuthService(
       expectedClientId: env['GOOGLE_CLIENT_ID'] ?? env['NEXT_PUBLIC_GOOGLE_CLIENT_ID'],
       allowMockToken: env['ALLOW_MOCK_GOOGLE_TOKEN'] == 'true',
     ),
     qrService: qrService,
   );
+
   final router = Router()
     ..get('/health', (Request req) => Response.ok('{"status":"ok"}', headers: {'content-type': 'application/json'}))
     ..mount('/schedule/', scheduleController.router.call)

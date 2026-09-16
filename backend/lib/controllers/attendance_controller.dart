@@ -5,6 +5,7 @@ import '../repositories/sheets_repository.dart';
 import '../services/attendance_service.dart';
 import '../services/auth_service.dart';
 import '../services/qr_service.dart';
+import '../services/schedule_service.dart';
 
 // Controller tiếp nhận Request liên quan đến Điểm danh & Sửa kết quả
 
@@ -12,18 +13,22 @@ class AttendanceController {
   final AttendanceService _attendanceService;
   final AuthService _authService;
   final SheetsRepository _sheetsRepository;
+  final ScheduleRepository? _scheduleRepository;
   final QrService _qrService;
 
   AttendanceController({
     AttendanceService? attendanceService,
     AuthService? authService,
     SheetsRepository? sheetsRepository,
+    ScheduleRepository? scheduleRepository,
     String? qrSecret,
     QrService? qrService,
   })  : _attendanceService = attendanceService ?? AttendanceService(),
         _authService = authService ?? AuthService(),
         _sheetsRepository = sheetsRepository ?? SheetsRepository(),
+        _scheduleRepository = scheduleRepository,
         _qrService = qrService ?? QrService(secret: qrSecret);
+
 
   Router get router {
     final router = Router();
@@ -173,14 +178,40 @@ class AttendanceController {
             'Mã QR không hợp lệ hoặc đã hết hạn. Vui lòng quét mã mới nhất.');
       }
 
-      final isInClass = await _sheetsRepository.isStudentInClass(
-        classId: classId,
-        email: identity.email,
-      );
-      if (!isInClass) {
-        return _jsonError(403, 'NOT_IN_ROSTER',
-            'Email Google này không thuộc danh sách lớp học phần.');
+      print('[CheckIn] Yêu cầu điểm danh: email=${identity.email}, classId=$classId, sessionId=$sessionId');
+
+      bool? isStudentAllowed;
+      if (_scheduleRepository != null) {
+        try {
+          final schedule = await _scheduleRepository!.get(classId);
+          if (schedule != null) {
+            final studentsRaw = schedule['students'] ?? schedule['roster'];
+            if (studentsRaw is List && studentsRaw.isNotEmpty) {
+              final roster = studentsRaw
+                  .whereType<Map>()
+                  .map((e) => Map<String, dynamic>.from(e))
+                  .toList();
+              isStudentAllowed = _authService.isStudentInRoster(
+                email: identity.email,
+                roster: roster,
+              );
+            }
+          }
+        } catch (_) {}
       }
+
+      if (isStudentAllowed == null) {
+        isStudentAllowed = await _sheetsRepository.isStudentInClass(
+          classId: classId,
+          email: identity.email,
+        );
+      }
+
+      if (isStudentAllowed == false) {
+        return _jsonError(403, 'NOT_IN_ROSTER',
+            'Email Google (${identity.email}) không thuộc danh sách lớp học phần $classId.');
+      }
+
 
       final activeWindow = await _sheetsRepository.getActiveWindow(sessionId);
       if (activeWindow == null || activeWindow['isOpen'] != true) {
