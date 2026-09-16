@@ -8,6 +8,7 @@ import '../schedule/services/schedule_api_client.dart';
 import '../../shared/m1_snackbar.dart';
 import 'models/import_models.dart';
 import 'services/imported_class_validator.dart';
+import 'services/markbook_import_merger.dart';
 import 'services/markbook_parser.dart';
 
 class ImportScreen extends StatefulWidget {
@@ -25,9 +26,9 @@ class _ImportScreenState extends State<ImportScreen> {
   final _classCodeController = TextEditingController();
   final _lessonCountController = TextEditingController(text: '20');
   WorkbookImportResult? _result;
-  final Map<String, ImportedClass> _editedClasses = {};
+  final Map<ImportedClass, ImportedClass> _editedClasses = {};
   int _selectedIndex = 0;
-  String? _hoveredSheetName;
+  ImportedClass? _hoveredClass;
   bool _isLoading = false;
   bool _isLoadingSavedSchedules = true;
   int? _savedScheduleCount;
@@ -39,7 +40,7 @@ class _ImportScreenState extends State<ImportScreen> {
     final classes = _result?.classes ?? const <ImportedClass>[];
     if (classes.isEmpty) return null;
     final original = classes[_selectedIndex];
-    return _editedClasses[original.sourceSheetName] ?? original;
+    return _editedClasses[original] ?? original;
   }
 
   @override
@@ -152,20 +153,38 @@ class _ImportScreenState extends State<ImportScreen> {
     try {
       final parsed = await _parser.parseFile(File(path));
       if (!mounted) return;
-      final result = WorkbookImportResult(
+      final incoming = WorkbookImportResult(
         sourceFileName: parsed.sourceFileName,
         classes: validateDistinctClassOfferings(parsed.classes),
       );
+      final current = _result;
+      final currentClasses = current?.classes
+          .map((item) => _editedClasses[item] ?? item)
+          .toList(growable: false);
+      final merged = mergeMarkbookImports(
+        current == null
+            ? null
+            : WorkbookImportResult(
+                sourceFileName: current.sourceFileName,
+                classes: currentClasses!,
+              ),
+        incoming,
+      );
+      final result = WorkbookImportResult(
+        sourceFileName: merged.sourceFileName,
+        classes: validateDistinctClassOfferings(merged.classes),
+      );
+      final previousCount = current?.classes.length ?? 0;
       setState(() {
         _result = result;
         _editedClasses
           ..clear()
-          ..addEntries(
-            result.classes.map((item) => MapEntry(item.sourceSheetName, item)),
-          );
-        _selectedIndex = 0;
+          ..addEntries(result.classes.map((item) => MapEntry(item, item)));
+        _selectedIndex = result.classes.isEmpty
+            ? 0
+            : previousCount.clamp(0, result.classes.length - 1);
         if (result.classes.isNotEmpty) {
-          _loadMetadata(result.classes.first);
+          _loadMetadata(result.classes[_selectedIndex]);
         }
       });
     } catch (error) {
@@ -182,7 +201,7 @@ class _ImportScreenState extends State<ImportScreen> {
     setState(() {
       _selectedIndex = index;
       final original = _result!.classes[index];
-      _loadMetadata(_editedClasses[original.sourceSheetName] ?? original);
+      _loadMetadata(_editedClasses[original] ?? original);
     });
   }
 
@@ -193,8 +212,8 @@ class _ImportScreenState extends State<ImportScreen> {
     final removed = result.classes[index];
     final remaining = List<ImportedClass>.of(result.classes)..removeAt(index);
     setState(() {
-      _editedClasses.remove(removed.sourceSheetName);
-      _hoveredSheetName = null;
+      _editedClasses.remove(removed);
+      _hoveredClass = null;
       if (remaining.isEmpty) {
         _result = null;
         _selectedIndex = 0;
@@ -211,7 +230,7 @@ class _ImportScreenState extends State<ImportScreen> {
       );
       _selectedIndex = index.clamp(0, remaining.length - 1);
       final next = remaining[_selectedIndex];
-      _loadMetadata(_editedClasses[next.sourceSheetName] ?? next);
+      _loadMetadata(_editedClasses[next] ?? next);
     });
   }
 
@@ -226,7 +245,8 @@ class _ImportScreenState extends State<ImportScreen> {
     final importedClass = _selectedClass;
     if (importedClass == null) return;
     final classCode = _classCodeController.text.trim().toUpperCase();
-    _editedClasses[importedClass.sourceSheetName] = importedClass.copyWith(
+    final original = _result!.classes[_selectedIndex];
+    _editedClasses[original] = importedClass.copyWith(
       scheduleCode: _scheduleCodeController.text.trim(),
       subjectCode: _subjectCodeController.text.trim().toUpperCase(),
       classCode: classCode,
@@ -303,18 +323,15 @@ class _ImportScreenState extends State<ImportScreen> {
     if (importedClass == null) return;
     final individuallyValidated = _result!.classes
         .map((original) {
-          final edited = _editedClasses[original.sourceSheetName] ?? original;
+          final edited = _editedClasses[original] ?? original;
           return _validateClassMetadata(edited);
         })
         .toList(growable: false);
     final allValidated = validateDistinctClassOfferings(individuallyValidated);
-    final selectedSheetName = importedClass.sourceSheetName;
-    final validated = allValidated.firstWhere(
-      (item) => item.sourceSheetName == selectedSheetName,
-    );
+    final validated = allValidated[_selectedIndex];
     setState(() {
-      for (final item in allValidated) {
-        _editedClasses[item.sourceSheetName] = item;
+      for (var index = 0; index < allValidated.length; index++) {
+        _editedClasses[_result!.classes[index]] = allValidated[index];
       }
       _loadMetadata(validated);
     });
@@ -334,14 +351,14 @@ class _ImportScreenState extends State<ImportScreen> {
     if (result == null) return null;
     final individuallyValidated = result.classes
         .map((original) {
-          final edited = _editedClasses[original.sourceSheetName] ?? original;
+          final edited = _editedClasses[original] ?? original;
           return _validateClassMetadata(edited);
         })
         .toList(growable: false);
     final prepared = validateDistinctClassOfferings(individuallyValidated);
     setState(() {
-      for (final item in prepared) {
-        _editedClasses[item.sourceSheetName] = item;
+      for (var index = 0; index < prepared.length; index++) {
+        _editedClasses[result.classes[index]] = prepared[index];
       }
     });
 
@@ -571,18 +588,16 @@ class _ImportScreenState extends State<ImportScreen> {
               separatorBuilder: (_, _) => const SizedBox(height: 6),
               itemBuilder: (_, index) {
                 final original = classes[index];
-                final item =
-                    _editedClasses[original.sourceSheetName] ?? original;
+                final item = _editedClasses[original] ?? original;
                 final errors = item.issues
                     .where((issue) => issue.isError)
                     .length;
-                final isHovered = _hoveredSheetName == item.sourceSheetName;
+                final isHovered = identical(_hoveredClass, original);
                 return MouseRegion(
-                  onEnter: (_) =>
-                      setState(() => _hoveredSheetName = item.sourceSheetName),
+                  onEnter: (_) => setState(() => _hoveredClass = original),
                   onExit: (_) {
-                    if (_hoveredSheetName == item.sourceSheetName) {
-                      setState(() => _hoveredSheetName = null);
+                    if (identical(_hoveredClass, original)) {
+                      setState(() => _hoveredClass = null);
                     }
                   },
                   child: ListTile(
