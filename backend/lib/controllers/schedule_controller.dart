@@ -51,12 +51,12 @@ class ScheduleController {
       );
       final skippedCount = schedules.length - saved.length;
       final message = saved.isEmpty && activeClassIds != null
-          ? 'Đã cập nhật phạm vi ${activeClassIds.length} lớp; nội dung lịch không thay đổi.'
+          ? 'Đã đồng bộ ${activeClassIds.length} lớp lên Google Sheet.'
           : skippedCount == 0
-              ? 'Đã lưu ${saved.length} lớp.'
+              ? 'Đã lưu và đồng bộ ${saved.length} lớp lên Google Sheet.'
               : saved.isEmpty
-                  ? 'Không có lớp mới hoặc thay đổi; giữ nguyên ${schedules.length} lớp.'
-                  : 'Đã lưu ${saved.length} lớp mới hoặc có thay đổi; bỏ qua $skippedCount lớp không đổi.';
+                  ? 'Đã đồng bộ ${schedules.length} lớp lên Google Sheet.'
+                  : 'Đã lưu ${saved.length} lớp mới và đồng bộ toàn bộ ${activeClassIds?.length ?? schedules.length} lớp lên Google Sheet.';
       return _json(200, {
         'success': true,
         'message': message,

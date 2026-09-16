@@ -29,15 +29,18 @@ class LocalFirstScheduleRepository implements ScheduleRepository {
       lessons: lessons,
     );
 
-    // 2. Đồng bộ lên Google Sheets (nếu có cấu hình gateway)
+    // 2. Đồng bộ TOÀN BỘ các lớp lên Google Sheets (nếu có cấu hình gateway)
     if (sheetsGateway != null) {
-      _syncToSheetsSafely([
-        {
-          'classOffering': classOffering,
-          'students': students,
-          'lessons': lessons,
-        }
-      ]);
+      final allActive = await local.getAll();
+      _syncToSheetsSafely(allActive.isNotEmpty
+          ? allActive
+          : [
+              {
+                'classOffering': classOffering,
+                'students': students,
+                'lessons': lessons,
+              }
+            ]);
     }
 
     return localSaved;
@@ -48,9 +51,14 @@ class LocalFirstScheduleRepository implements ScheduleRepository {
     // 1. Luôn lưu vào JSON local trước
     final localSaved = await local.saveAll(schedules);
 
-    // 2. Đồng bộ lên Google Sheets (tạo Sheet Overview và Sheet riêng từng lớp)
-    if (sheetsGateway != null && schedules.isNotEmpty) {
-      _syncToSheetsSafely(schedules);
+    // 2. Đồng bộ TOÀN BỘ các lớp active lên Google Sheets (tạo Sheet Overview và đầy đủ Sheet từng lớp)
+    if (sheetsGateway != null) {
+      final allActive = await local.getAll();
+      if (allActive.isNotEmpty) {
+        _syncToSheetsSafely(allActive);
+      } else if (schedules.isNotEmpty) {
+        _syncToSheetsSafely(schedules);
+      }
     }
 
     return localSaved;
@@ -58,7 +66,18 @@ class LocalFirstScheduleRepository implements ScheduleRepository {
 
   @override
   Future<bool> syncActiveClassIds(Set<String> activeClassIds) async {
-    return local.syncActiveClassIds(activeClassIds);
+    final synced = await local.syncActiveClassIds(activeClassIds);
+
+    // Khi cập nhật danh sách lớp active, luôn đồng bộ lại toàn bộ các lớp active lên Google Sheets
+    // Giúp khôi phục lại bất kỳ sheet nào bị xoá trên Google Drive
+    if (sheetsGateway != null) {
+      final allActive = await local.getAll();
+      if (allActive.isNotEmpty) {
+        _syncToSheetsSafely(allActive);
+      }
+    }
+
+    return synced;
   }
 
   @override
@@ -134,54 +153,77 @@ class LocalFirstScheduleRepository implements ScheduleRepository {
     return const [];
   }
 
-  /// Đồng bộ danh sách lớp lên Google Sheets an toàn (không làm sập luồng chính nếu Sheets bị timeout)
+  Timer? _syncDebounceTimer;
+  bool _isSyncing = false;
+  List<Map<String, dynamic>>? _queuedSyncPayload;
+
+  /// Đồng bộ danh sách lớp lên Google Sheets an toàn (có debounce và queue tránh conflict gọi đồng thời)
   void _syncToSheetsSafely(List<Map<String, dynamic>> schedules) {
-    scheduleMicrotask(() async {
-      try {
-        final classesPayload = schedules.map((item) {
-          final offering = Map<String, dynamic>.from(
-            item['classOffering'] ?? item['offering'] ?? {},
-          );
-          final roster = (item['students'] ?? item['roster'] as List? ?? [])
-              .whereType<Map>()
-              .map((s) => Map<String, dynamic>.from(s))
-              .toList();
-          final lessons = (item['lessons'] as List? ?? [])
-              .whereType<Map>()
-              .map((l) => Map<String, dynamic>.from(l))
-              .toList();
+    if (sheetsGateway == null || schedules.isEmpty) return;
 
-          return {
-            'className': offering['classCode'] ?? offering['className'] ?? '',
-            'subjectCode': offering['subjectCode'] ?? 'PRM393',
-            'scheduleCode': offering['scheduleCode']?.toString() ?? '12',
-            'slotCount': offering['lessonCount'] ?? 20,
-            'roster': roster,
-            'lessons': lessons,
-          };
-        }).toList();
+    _syncDebounceTimer?.cancel();
+    _syncDebounceTimer = Timer(const Duration(milliseconds: 300), () {
+      _executeSync(schedules);
+    });
+  }
 
-        // Lấy ngày bắt đầu từ buổi học đầu tiên
-        String startDateStr = DateTime.now().toIso8601String().split('T').first;
-        for (final item in schedules) {
-          final lessons = item['lessons'] as List?;
-          if (lessons != null && lessons.isNotEmpty) {
-            final firstDate = lessons.first['date']?.toString();
-            if (firstDate != null && firstDate.isNotEmpty) {
-              startDateStr = firstDate.split('T').first;
-              break;
-            }
+  void _executeSync(List<Map<String, dynamic>> schedules) async {
+    if (_isSyncing) {
+      _queuedSyncPayload = schedules;
+      return;
+    }
+    _isSyncing = true;
+    try {
+      final classesPayload = schedules.map((item) {
+        final offering = Map<String, dynamic>.from(
+          item['classOffering'] ?? item['offering'] ?? {},
+        );
+        final roster = (item['students'] ?? item['roster'] as List? ?? [])
+            .whereType<Map>()
+            .map((s) => Map<String, dynamic>.from(s))
+            .toList();
+        final lessons = (item['lessons'] as List? ?? [])
+            .whereType<Map>()
+            .map((l) => Map<String, dynamic>.from(l))
+            .toList();
+
+        return {
+          'className': offering['classCode'] ?? offering['className'] ?? '',
+          'subjectCode': offering['subjectCode'] ?? 'PRM393',
+          'scheduleCode': offering['scheduleCode']?.toString() ?? '12',
+          'slotCount': offering['lessonCount'] ?? 20,
+          'roster': roster,
+          'lessons': lessons,
+        };
+      }).toList();
+
+      // Lấy ngày bắt đầu từ buổi học đầu tiên
+      String startDateStr = DateTime.now().toIso8601String().split('T').first;
+      for (final item in schedules) {
+        final lessons = item['lessons'] as List?;
+        if (lessons != null && lessons.isNotEmpty) {
+          final firstDate = lessons.first['date']?.toString();
+          if (firstDate != null && firstDate.isNotEmpty) {
+            startDateStr = firstDate.split('T').first;
+            break;
           }
         }
-
-        // Gọi đồng bộ lên Google Sheets (tạo tab Overview và các sheet từng lớp)
-        await sheetsGateway!.syncAllClasses(
-          classes: classesPayload,
-          startDate: startDateStr,
-        );
-      } catch (err) {
-        stderr.writeln('[LocalFirstScheduleRepository] Google Sheets sync warning: $err');
       }
-    });
+
+      // Gọi đồng bộ lên Google Sheets (tạo tab Overview và các sheet từng lớp)
+      await sheetsGateway!.syncAllClasses(
+        classes: classesPayload,
+        startDate: startDateStr,
+      );
+    } catch (err) {
+      stderr.writeln('[LocalFirstScheduleRepository] Google Sheets sync warning: $err');
+    } finally {
+      _isSyncing = false;
+      if (_queuedSyncPayload != null) {
+        final next = _queuedSyncPayload!;
+        _queuedSyncPayload = null;
+        _executeSync(next);
+      }
+    }
   }
 }

@@ -384,39 +384,36 @@ var DatabaseService = {
 
   /**
    * Đồng bộ toàn bộ các lớp học từ Desktop App lên Google Sheet
-   * Tạo Sheet Overview và Sheet riêng cho TỪNG LỚP HỌC
+   * Cơ chế Upsert thông minh:
+   * - Giữ nguyên các sheet lớp và sheet Overview đã có (không xoá sạch toàn bộ)
+   * - Chỉ tạo mới các sheet chưa tồn tại (lớp mới hoặc sheet bị xoá trên Drive)
+   * - Bảo toàn toàn bộ dữ liệu điểm danh (P / A) đã có trên Sheet
    */
   syncAllClassesFromDesktop: function (classes, startDateStr) {
     var ss = this.getSpreadsheet();
-    var tempSheet = this.clearAllDatabase();
 
-    // 1. Tạo Sheet OVERVIEW
-    var overviewSheet = ss.insertSheet('Overview', 0);
+    // 1. Quản lý Sheet OVERVIEW (Nếu đã có thì cập nhật, chưa có thì tạo mới)
+    var overviewSheet = ss.getSheetByName('Overview');
+    if (!overviewSheet) {
+      overviewSheet = ss.insertSheet('Overview', 0);
+    }
     this.setupOverviewSheet(overviewSheet, classes, startDateStr);
 
-    // 2. Tạo Sheet cho TỪNG LỚP HỌC
+    // 2. Đồng bộ từng lớp học (Upsert: Giữ nguyên sheet đã có, chỉ tạo sheet chưa có)
     for (var i = 0; i < classes.length; i++) {
       try {
         var cls = classes[i];
         var cName = cls.className || ('Lop_' + (i + 1));
         var sheetName = (cls.scheduleCode || '12') + '_' + (cls.subjectCode || 'PRM393') + '_' + cName;
-        var existing = ss.getSheetByName(sheetName);
-        if (existing) {
-          try { ss.deleteSheet(existing); } catch (e) {}
+        var classSheet = ss.getSheetByName(sheetName);
+        if (!classSheet) {
+          classSheet = ss.insertSheet(sheetName);
         }
-        var classSheet = ss.insertSheet(sheetName);
         this.setupClassMarkbookSheet(classSheet, cls, startDateStr);
       } catch (classErr) {
-        Logger.log('Lỗi tạo sheet lớp ' + i + ': ' + classErr);
+        Logger.log('Lỗi đồng bộ sheet lớp ' + i + ': ' + classErr);
       }
     }
-
-    // 3. Xoá sheet tạm
-    try {
-      if (tempSheet && ss.getSheets().length > 1) {
-        ss.deleteSheet(tempSheet);
-      }
-    } catch (e) {}
 
     SpreadsheetApp.flush();
     return {
@@ -494,12 +491,42 @@ var DatabaseService = {
 
   /**
    * Thiết lập Sheet Markbook cho 1 Lớp cụ thể (như hình ảnh mong muốn)
+   * Tự động bảo toàn các dấu điểm danh (P / A) đã ghi nhận trước đó
    */
   setupClassMarkbookSheet: function (sheet, cls, startDateStr) {
-    sheet.clear();
     var lessons = cls.lessons || [];
     var slotCount = lessons.length > 0 ? lessons.length : (cls.slotCount || 20);
     var scheduleInfo = this.getScheduleDescription(cls.scheduleCode);
+
+    // 0. Nếu sheet đã có dữ liệu trước đó, bảo toàn toàn bộ kết quả điểm danh (P / A)
+    var existingAttendance = {};
+    try {
+      if (sheet.getLastRow() >= 3 && sheet.getLastColumn() >= 6) {
+        var existingData = sheet.getDataRange().getValues();
+        for (var er = 2; er < existingData.length; er++) {
+          var eRoll = String(existingData[er][1] || '').trim().toLowerCase();
+          var eEmail = String(existingData[er][3] || '').trim().toLowerCase();
+          if (!eEmail && !eRoll) continue;
+
+          var attMap = {};
+          for (var es = 1; es <= slotCount; es++) {
+            var colIdx = 5 + es - 1; // 0-indexed: Cột F là index 5 (Slot 1)
+            if (colIdx < existingData[er].length) {
+              var mark = String(existingData[er][colIdx] || '').trim();
+              if (mark === 'P' || mark === 'A') {
+                attMap[es] = mark;
+              }
+            }
+          }
+          if (eEmail) existingAttendance[eEmail] = attMap;
+          if (eRoll) existingAttendance[eRoll] = attMap;
+        }
+      }
+    } catch (readErr) {
+      Logger.log('Không thể đọc dữ liệu điểm danh cũ: ' + readErr);
+    }
+
+    sheet.clear();
 
     // Dòng 1: Banner lớp học
     var totalCols = 5 + slotCount + 3; // 5 cột info + N slot + 3 cột thống kê
@@ -546,6 +573,7 @@ var DatabaseService = {
       var st = roster[r];
       var rowNum = r + 3;
       var email = String(st.email || '').trim().toLowerCase();
+      var roll = String(st.rollNumber || '').trim().toLowerCase();
       var row = [
         r + 1,
         st.rollNumber || '',
@@ -554,8 +582,10 @@ var DatabaseService = {
         st.memberCode || ''
       ];
 
-      // Điền trạng thái điểm danh hiện tại nếu có
-      var studentAttendance = st.attendance || {};
+      // Điền trạng thái điểm danh hiện tại nếu có (ưu tiên điểm danh đã có trên sheet)
+      var studentAttendance = existingAttendance[email] ||
+                              existingAttendance[roll] ||
+                              st.attendance || {};
       for (var s = 1; s <= slotCount; s++) {
         var status = studentAttendance[s] || studentAttendance[String(s)] || '';
         row.push(status);
