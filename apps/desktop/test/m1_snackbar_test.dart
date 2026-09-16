@@ -31,6 +31,8 @@ void main() {
         final snackBar = tester.widget<SnackBar>(find.byType(SnackBar));
         expect(snackBar.duration, const Duration(seconds: 10));
         expect(snackBar.backgroundColor, entry.value);
+        expect(snackBar.action, isNull);
+        expect(find.byTooltip('Đóng thông báo'), findsOneWidget);
 
         await tester.pump(const Duration(seconds: 10));
         await tester.pumpAndSettle();

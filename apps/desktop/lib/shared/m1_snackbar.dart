@@ -10,7 +10,7 @@ class M1SnackBar {
   const M1SnackBar._();
 
   static const _displayDuration = Duration(seconds: 10);
-  static Timer? _dismissTimer;
+  static Timer? _accessibleDismissTimer;
 
   static void show(
     BuildContext context,
@@ -23,8 +23,8 @@ class M1SnackBar {
       M1NoticeType.warning => (Colors.amber.shade800, Icons.warning_amber),
       M1NoticeType.error => (Colors.red.shade700, Icons.error),
     };
-    _dismissTimer?.cancel();
-    _dismissTimer = null;
+    _accessibleDismissTimer?.cancel();
+    _accessibleDismissTimer = null;
     messenger.hideCurrentSnackBar();
     final controller = messenger.showSnackBar(
       SnackBar(
@@ -36,26 +36,24 @@ class M1SnackBar {
             Icon(icon, color: Colors.white),
             const SizedBox(width: 10),
             Expanded(child: Text(message)),
+            IconButton(
+              tooltip: 'Đóng thông báo',
+              color: Colors.white,
+              onPressed: messenger.hideCurrentSnackBar,
+              icon: const Icon(Icons.close),
+            ),
           ],
-        ),
-        action: SnackBarAction(
-          label: '✕',
-          textColor: Colors.white,
-          onPressed: messenger.hideCurrentSnackBar,
         ),
       ),
     );
 
-    // Flutter keeps a SnackBar with an action visible indefinitely in this
-    // mode. Enforce the timeout only when needed; normal mode already honors
-    // SnackBar.duration and does not need a second pending timer.
     if (MediaQuery.accessibleNavigationOf(context)) {
       final timer = Timer(_displayDuration, controller.close);
-      _dismissTimer = timer;
+      _accessibleDismissTimer = timer;
       controller.closed.whenComplete(() {
         timer.cancel();
-        if (identical(_dismissTimer, timer)) {
-          _dismissTimer = null;
+        if (identical(_accessibleDismissTimer, timer)) {
+          _accessibleDismissTimer = null;
         }
       });
     }
