@@ -66,8 +66,10 @@ void main() {
             'success': true,
             'data': {
               'qrToken': 'token-abc',
-              'expiresAt':
-                  DateTime.now().toUtc().add(const Duration(seconds: 15)).millisecondsSinceEpoch,
+              'expiresAt': DateTime.now()
+                  .toUtc()
+                  .add(const Duration(seconds: 15))
+                  .millisecondsSinceEpoch,
               'qrUrl': 'http://localhost:3000/checkin?token=token-abc',
               'windowId': 'win-test-01',
               'sessionId': 'lesson-01',
@@ -94,6 +96,21 @@ void main() {
           headers: {'content-type': 'application/json; charset=utf-8'},
         );
       }
+      if (request.url.path.contains('/attendances')) {
+        return http.Response(
+          jsonEncode({
+            'success': true,
+            'data': {
+              'sessionId': 'lesson-01',
+              'students': [
+                {'email': 'test@fe.edu.vn', 'status': 'P'},
+              ],
+            },
+          }),
+          200,
+          headers: {'content-type': 'application/json; charset=utf-8'},
+        );
+      }
       return http.Response('Not found', 404);
     });
 
@@ -104,6 +121,10 @@ void main() {
           sessionId: 'lesson-01',
           className: 'PRM393 - SE1917',
           lessonLabel: 'Buổi 01/20',
+          roster: const [
+            {'email': 'test@fe.edu.vn', 'fullName': 'Nguyen Van A'},
+            {'email': 'absent@fe.edu.vn', 'fullName': 'Tran Van B'},
+          ],
           client: mockClient,
         ),
       ),
@@ -122,7 +143,10 @@ void main() {
     // Tap copy link button
     await tester.tap(find.text('Sao chép link'));
     await tester.pumpAndSettle();
-    expect(find.text('Đã sao chép link điểm danh vào bộ nhớ tạm!'), findsOneWidget);
+    expect(
+      find.text('Đã sao chép link điểm danh vào bộ nhớ tạm!'),
+      findsOneWidget,
+    );
 
     // Tap close session
     await tester.tap(find.text('Đóng phiên'));

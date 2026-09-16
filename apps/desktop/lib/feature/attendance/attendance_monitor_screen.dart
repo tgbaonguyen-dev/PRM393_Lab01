@@ -4,6 +4,8 @@ import 'models/attendance_model.dart';
 import 'attendance_api_service.dart';
 import 'widgets/attendance_summary_card.dart';
 import 'widgets/student_attendance_table.dart';
+import '../../features/export/export_dialog.dart';
+import '../../features/attendance/services/attendance_storage_service.dart';
 
 /// Màn hình Giám sát Điểm danh Realtime & Sửa kết quả thủ công (Thành viên 4)
 /// Phụ trách: DES-03, DES-04, DES-05, API-08, FR-11, FR-14, AC-10
@@ -72,6 +74,9 @@ class _AttendanceMonitorScreenState extends State<AttendanceMonitorScreen> {
           _errorMessage = null;
           _lastSyncTime = DateTime.now();
         });
+
+        // Tự động lưu vào bộ nhớ cục bộ để khi xuất file luôn có P/A
+        _persistCurrentSlotAttendance();
       }
     } catch (e) {
       if (mounted) {
@@ -143,6 +148,95 @@ class _AttendanceMonitorScreenState extends State<AttendanceMonitorScreen> {
     }
   }
 
+  /// Lưu điểm danh slot hiện tại vào file JSON cục bộ
+  Future<void> _persistCurrentSlotAttendance() async {
+    try {
+      final storage = AttendanceStorageService();
+      final store = await storage.loadStore();
+      final classKey = widget.className;
+      final classStore = store.putIfAbsent(classKey, () => {});
+
+      final currentSlotMap = <String, String>{};
+      for (final s in _students) {
+        if (s.status.isNotEmpty) {
+          currentSlotMap[s.email.toLowerCase()] = s.status;
+        }
+      }
+      classStore[widget.lessonSequence] = currentSlotMap;
+      await storage.saveStore(store);
+    } catch (_) {}
+  }
+
+  /// Mở hộp thoại xuất báo cáo điểm danh Excel (.xlsx) / CSV (.csv)
+  Future<void> _openExportDialog() async {
+    if (_students.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Chưa có dữ liệu sinh viên để xuất báo cáo.'),
+          backgroundColor: Color(0xFFDC2626),
+        ),
+      );
+      return;
+    }
+
+    final roster = _students
+        .map(
+          (s) => {
+            'rollNumber': s.rollNumber,
+            'fullName': s.fullName,
+            'email': s.email,
+            'memberCode': s.rollNumber,
+          },
+        )
+        .toList();
+
+    // Nạp toàn bộ các slot đã lưu từ trước
+    final storage = AttendanceStorageService();
+    final store = await storage.loadStore();
+    final classStore = store[widget.className] ?? <int, Map<String, String>>{};
+
+    final attendanceData = <String, Map<int, String>>{};
+    for (final s in _students) {
+      final emailKey = s.email.toLowerCase();
+      final slotMap = <int, String>{};
+
+      // Nạp từ lịch sử các slot
+      classStore.forEach((slotNum, studentMap) {
+        final status = studentMap[emailKey] ?? '';
+        if (status.isNotEmpty) {
+          slotMap[slotNum] = status;
+        }
+      });
+
+      // Ghi đè trạng thái slot hiện tại đang mở
+      if (s.status.isNotEmpty) {
+        slotMap[widget.lessonSequence] = s.status;
+      }
+
+      attendanceData[emailKey] = slotMap;
+    }
+
+    final today = DateTime.now();
+    final dateStr =
+        '${today.year}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}';
+    final lessonDates = <int, String>{widget.lessonSequence: dateStr};
+
+    if (!mounted) return;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => ExportDialog(
+        subjectCode: widget.subjectCode,
+        className: widget.className,
+        semester: 'FA26',
+        roster: roster,
+        lessonDates: lessonDates,
+        attendanceData: attendanceData,
+        currentLessonSequence: widget.lessonSequence,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -180,6 +274,17 @@ class _AttendanceMonitorScreenState extends State<AttendanceMonitorScreen> {
           ],
         ),
         actions: [
+          // Nút Xuất Báo Cáo Excel / CSV (M5)
+          IconButton(
+            tooltip: 'Xuất báo cáo Excel / CSV',
+            icon: const Icon(
+              Icons.file_download_outlined,
+              color: Color(0xFF2563EB),
+            ),
+            onPressed: _openExportDialog,
+          ),
+          const SizedBox(width: 4),
+
           // Indicator trạng thái Live Polling 5s
           Padding(
             padding: const EdgeInsets.only(right: 16.0),

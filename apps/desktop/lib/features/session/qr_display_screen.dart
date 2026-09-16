@@ -9,6 +9,7 @@ import 'package:qr_flutter/qr_flutter.dart';
 
 import '../../config.dart';
 import '../../shared/m1_snackbar.dart';
+import '../attendance/services/attendance_storage_service.dart';
 
 enum _SessionViewState { idle, opening, open, closing, closed }
 
@@ -17,6 +18,7 @@ class QrDisplayScreen extends StatefulWidget {
   final String sessionId;
   final String? className;
   final String? lessonLabel;
+  final List<Map<String, dynamic>>? roster;
   final String apiBaseUrl;
   final http.Client? client;
 
@@ -26,6 +28,7 @@ class QrDisplayScreen extends StatefulWidget {
     required this.sessionId,
     this.className,
     this.lessonLabel,
+    this.roster,
     this.apiBaseUrl = AppConfig.apiBaseUrl,
     this.client,
   });
@@ -92,6 +95,7 @@ class _QrDisplayScreenState extends State<QrDisplayScreen> {
       });
       _startTimers();
       await _fetchQr();
+      unawaited(_syncAttendanceToStorage());
     } catch (error) {
       if (!mounted) return;
       setState(() {
@@ -99,6 +103,55 @@ class _QrDisplayScreenState extends State<QrDisplayScreen> {
         _errorMessage = _friendlyError(error);
       });
     }
+  }
+
+  Future<void> _syncAttendanceToStorage() async {
+    try {
+      final storage = AttendanceStorageService();
+      final store = await storage.loadStore();
+
+      final classKey = widget.className ?? widget.classId;
+      final classStore = store.putIfAbsent(classKey, () => {});
+
+      final match = RegExp(r'(\d+)$').firstMatch(widget.sessionId);
+      final slotSeq = match != null ? int.tryParse(match.group(1)!) ?? 1 : 1;
+
+      final slotMap = <String, String>{};
+
+      // Mặc định tất cả sinh viên trong danh sách lớp là Vắng ("A")
+      if (widget.roster != null) {
+        for (final s in widget.roster!) {
+          final email = (s['email'] ?? s['Email'] ?? '').toString().toLowerCase();
+          if (email.isNotEmpty) {
+            slotMap[email] = 'A';
+          }
+        }
+      }
+
+      try {
+        final uri = _endpoint('/session/${widget.sessionId}/attendances');
+        final response = await _client.get(uri);
+        if (response.statusCode == 200) {
+          final data = jsonDecode(utf8.decode(response.bodyBytes));
+          final payload = data['data'];
+          if (payload != null && payload['students'] != null) {
+            final students = payload['students'] as List;
+            for (final s in students) {
+              final email = (s['email'] ?? s['Email'] ?? '').toString().toLowerCase();
+              final status = (s['status'] ?? s['Status'] ?? 'P').toString().toUpperCase();
+              if (email.isNotEmpty) {
+                slotMap[email] = status.isNotEmpty ? status : 'P';
+              }
+            }
+          }
+        }
+      } catch (_) {}
+
+      if (slotMap.isNotEmpty) {
+        classStore[slotSeq] = slotMap;
+        await storage.saveStore(store);
+      }
+    } catch (_) {}
   }
 
   Future<void> _fetchQr() async {
@@ -145,6 +198,7 @@ class _QrDisplayScreenState extends State<QrDisplayScreen> {
   Future<void> _closeSession() async {
     final windowId = _windowId;
     if (!_isOpen || windowId == null) return;
+    _stopTimers();
     setState(() {
       _viewState = _SessionViewState.closing;
       _errorMessage = null;
@@ -161,7 +215,7 @@ class _QrDisplayScreenState extends State<QrDisplayScreen> {
       );
       _responseData(response);
       if (!mounted) return;
-      _stopTimers();
+      unawaited(_syncAttendanceToStorage());
       setState(() {
         _viewState = _SessionViewState.closed;
         _qrUrl = null;
