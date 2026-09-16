@@ -1,12 +1,10 @@
 import 'dart:convert';
-import 'dart:io';
-
-import 'package:crypto/crypto.dart';
 import 'package:shelf/shelf.dart';
 import 'package:shelf_router/shelf_router.dart';
 import '../repositories/sheets_repository.dart';
 import '../services/attendance_service.dart';
 import '../services/auth_service.dart';
+import '../services/qr_service.dart';
 
 // Controller tiếp nhận Request liên quan đến Điểm danh & Sửa kết quả
 
@@ -14,17 +12,18 @@ class AttendanceController {
   final AttendanceService _attendanceService;
   final AuthService _authService;
   final SheetsRepository _sheetsRepository;
-  final String? _qrSecret;
+  final QrService _qrService;
 
   AttendanceController({
     AttendanceService? attendanceService,
     AuthService? authService,
     SheetsRepository? sheetsRepository,
     String? qrSecret,
+    QrService? qrService,
   })  : _attendanceService = attendanceService ?? AttendanceService(),
         _authService = authService ?? AuthService(),
         _sheetsRepository = sheetsRepository ?? SheetsRepository(),
-        _qrSecret = qrSecret;
+        _qrService = qrService ?? QrService(secret: qrSecret);
 
   Router get router {
     final router = Router();
@@ -159,10 +158,12 @@ class AttendanceController {
             'Google ID Token không hợp lệ hoặc đã hết hạn.');
       }
 
-      final qr = _verifyQrToken(qrToken);
-      if (qr == null ||
-          qr['sessionId'] != sessionId ||
-          qr['classId'] != classId) {
+      final qr = _qrService.verifyToken(
+        qrToken,
+        expectedSessionId: sessionId,
+        expectedClassId: classId,
+      );
+      if (qr == null) {
         return _jsonError(400, 'QR_EXPIRED',
             'Mã QR không hợp lệ hoặc đã hết hạn. Vui lòng quét mã mới nhất.');
       }
@@ -180,6 +181,15 @@ class AttendanceController {
       if (activeWindow == null || activeWindow['isOpen'] != true) {
         return _jsonError(409, 'SESSION_CLOSED',
             'Phiên điểm danh đã đóng hoặc chưa được mở.');
+      }
+
+      final activeWindowId =
+          (activeWindow['windowId'] ?? activeWindow['id'])?.toString().trim();
+      if (activeWindowId == null ||
+          activeWindowId.isEmpty ||
+          qr.windowId != activeWindowId) {
+        return _jsonError(400, 'QR_EXPIRED',
+            'Mã QR thuộc phiên cũ. Vui lòng quét mã mới nhất.');
       }
 
       final result = await _sheetsRepository.recordCheckIn(
@@ -221,46 +231,6 @@ class AttendanceController {
       return _jsonError(502, 'PERSISTENCE_ERROR',
           'Không thể lưu kết quả điểm danh. Vui lòng thử lại.');
     }
-  }
-
-  Map<String, dynamic>? _verifyQrToken(String token) {
-    final secret =
-        (_qrSecret ?? Platform.environment['QR_HMAC_SECRET'])?.trim() ?? '';
-    if (secret.isEmpty) return null;
-
-    final parts = token.split('.');
-    if (parts.length != 2) return null;
-    final payloadBytes = _decodeBase64Url(parts[0]);
-    final signatureBytes = _decodeBase64Url(parts[1]);
-    if (payloadBytes == null || signatureBytes == null) return null;
-
-    final expected = Hmac(sha256, utf8.encode(secret)).convert(payloadBytes);
-    if (!_constantTimeEquals(expected.bytes, signatureBytes)) return null;
-
-    final payload = jsonDecode(utf8.decode(payloadBytes));
-    if (payload is! Map<String, dynamic>) return null;
-    final expiry = int.tryParse(payload['expiresAt']?.toString() ?? '');
-    if (expiry == null || expiry <= DateTime.now().millisecondsSinceEpoch) {
-      return null;
-    }
-    return payload;
-  }
-
-  List<int>? _decodeBase64Url(String value) {
-    try {
-      return base64Url.decode(base64Url.normalize(value));
-    } catch (_) {
-      return null;
-    }
-  }
-
-  bool _constantTimeEquals(List<int> left, List<int> right) {
-    if (left.length != right.length) return false;
-    var difference = 0;
-    for (var index = 0; index < left.length; index++) {
-      difference |= left[index] ^ right[index];
-    }
-    return difference == 0;
   }
 
   String _requiredString(dynamic value) => value is String ? value.trim() : '';

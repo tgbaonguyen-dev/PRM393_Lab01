@@ -13,6 +13,8 @@ type Status =
   | 'roster'
   | 'closed'
   | 'auth'
+  | 'manual'
+  | 'persistence'
   | 'error';
 
 type ApiResponse = {
@@ -33,6 +35,8 @@ function statusFromApi(result: ApiResponse): Status {
     case 'NOT_IN_ROSTER': return 'roster';
     case 'SESSION_CLOSED': return 'closed';
     case 'AUTH_FAILED': return 'auth';
+    case 'MANUAL_OVERRIDE': return 'manual';
+    case 'PERSISTENCE_ERROR': return 'persistence';
     default: return result.success ? 'success' : 'error';
   }
 }
@@ -67,7 +71,13 @@ function CheckinContent() {
         body: JSON.stringify({ idToken: googleToken, qrToken: token, sessionId, classId }),
       });
       const result = (await response.json()) as ApiResponse;
-      setStatus(statusFromApi(result));
+      const nextStatus = statusFromApi(result);
+      if (nextStatus === 'auth') {
+        window.sessionStorage.removeItem('prm393.googleIdToken');
+        setIdToken(null);
+        lastAttempt.current = '';
+      }
+      setStatus(nextStatus);
       setMessage(result.message ?? 'Máy chủ đã phản hồi.');
       setEmail(result.data?.email);
     } catch {
@@ -111,13 +121,17 @@ function CheckinContent() {
     roster: 'border-[#e6b1a0] bg-[#fff0eb]',
     closed: 'border-[#c7cbc7] bg-[#eef0ed]',
     auth: 'border-[#e6b1a0] bg-[#fff0eb]',
+    manual: 'border-[#e5c77c] bg-[#fff8e3]',
+    persistence: 'border-[#e6b1a0] bg-[#fff0eb]',
     error: 'border-[#e6b1a0] bg-[#fff0eb]',
   };
 
   const heading = {
     idle: 'Xác thực danh tính', loading: 'Đang xử lý', success: 'Điểm danh thành công',
     already: 'Đã điểm danh trước đó', expired: 'QR đã hết hạn', roster: 'Không thuộc danh sách lớp',
-    closed: 'Phiên điểm danh đã đóng', auth: 'Xác thực Google thất bại', error: 'Không thể hoàn tất',
+    closed: 'Phiên điểm danh đã đóng', auth: 'Xác thực Google thất bại',
+    manual: 'Kết quả đã được giảng viên chỉnh sửa',
+    persistence: 'Chưa thể lưu điểm danh', error: 'Không thể hoàn tất',
   }[status];
 
   return (
@@ -135,7 +149,7 @@ function CheckinContent() {
         <div className={`m-3 rounded-2xl border p-4 sm:m-4 sm:p-5 ${statusStyle[status]}`}>
           <div className="flex items-start gap-3">
             <span className="mt-1 text-2xl" aria-hidden="true">
-              {status === 'success' ? '✓' : status === 'already' ? '!' : status === 'loading' ? '…' : status === 'closed' ? '×' : '•'}
+              {status === 'success' ? '✓' : status === 'already' || status === 'manual' ? '!' : status === 'loading' ? '…' : status === 'closed' ? '×' : '•'}
             </span>
             <div>
               <h2 className="break-words text-lg font-bold">{heading}</h2>
@@ -154,7 +168,8 @@ function CheckinContent() {
 
           {status === 'success' && <p className="mt-5 text-center text-sm font-bold text-[#28733b]">Trạng thái đã chuyển sang P · Có mặt</p>}
 
-          {(status === 'error' || status === 'auth') && <button type="button" onClick={retry} className="mt-5 w-full rounded-xl bg-[#e67e43] px-4 py-3 text-sm font-bold text-white hover:bg-[#c96632]">Thử lại</button>}
+          {(status === 'error' || status === 'persistence') && <button type="button" onClick={retry} className="mt-5 w-full rounded-xl bg-[#e67e43] px-4 py-3 text-sm font-bold text-white hover:bg-[#c96632]">Thử lại</button>}
+          {status === 'auth' && <button type="button" onClick={resetGoogleSession} className="mt-5 w-full rounded-xl bg-[#e67e43] px-4 py-3 text-sm font-bold text-white hover:bg-[#c96632]">Đăng nhập lại</button>}
           {status === 'roster' && <button type="button" onClick={resetGoogleSession} className="mt-5 w-full rounded-xl border border-[#c9d3c7] px-4 py-3 text-sm font-bold text-[#315d3b]">Đổi tài khoản Google</button>}
         </div>
 

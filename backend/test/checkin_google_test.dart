@@ -13,6 +13,7 @@ const _qrSecret = 'test-qr-secret';
 const _sessionId = 'PRM393_SE1917_Lesson_1';
 const _classId = 'SE1917';
 const _studentEmail = 'student@fpt.edu.vn';
+const _windowId = 'window-1';
 
 void main() {
   test('verified Google student is recorded as P', () async {
@@ -173,8 +174,10 @@ String _createQrToken() {
   final payload = utf8.encode(jsonEncode({
     'classId': _classId,
     'sessionId': _sessionId,
+    'windowId': _windowId,
+    'issuedAt': DateTime.now().millisecondsSinceEpoch,
     'expiresAt':
-        DateTime.now().add(const Duration(minutes: 1)).millisecondsSinceEpoch,
+      DateTime.now().add(const Duration(seconds: 10)).millisecondsSinceEpoch,
   }));
   final encodedPayload = base64Url.encode(payload).replaceAll('=', '');
   final signature = Hmac(sha256, utf8.encode(_qrSecret)).convert(payload);
@@ -222,7 +225,7 @@ class _FakeGatewayClient extends http.BaseClient {
       'isStudentInClass' => {'success': true, 'data': inClass},
       'getActiveWindow' => {
           'success': true,
-          'data': {'isOpen': activeWindow}
+          'data': {'isOpen': activeWindow, 'windowId': _windowId}
         },
       _ => checkInResponse,
     };

@@ -7,11 +7,13 @@ import 'package:shelf_cors_headers/shelf_cors_headers.dart';
 import 'package:shelf_router/shelf_router.dart';
 
 import '../lib/controllers/attendance_controller.dart';
+import '../lib/controllers/session_controller.dart';
 
 Future<void> main() async {
   final port = int.tryParse(Platform.environment['PORT'] ?? '') ?? 8080;
   final router = Router();
   final attendanceController = AttendanceController();
+  final sessionController = SessionController();
 
   router.get(
       '/',
@@ -25,6 +27,7 @@ Future<void> main() async {
           ));
   router.mount('/', attendanceController.router.call);
   router.mount('/attendance', attendanceController.router.call);
+  router.mount('/', sessionController.router.call);
 
   final handler = Pipeline()
       .addMiddleware(corsHeaders())

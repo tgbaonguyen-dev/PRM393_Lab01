@@ -24,24 +24,26 @@ class SheetsRepository {
       };
     }
 
-    var response = await _client.post(
-      Uri.parse(gatewayUrl),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
+    final request = http.Request('POST', Uri.parse(gatewayUrl))
+      ..followRedirects = false
+      ..maxRedirects = 0
+      ..headers['Content-Type'] = 'application/json'
+      ..body = jsonEncode({
         'action': action,
         'payload': payload,
-      }),
-    );
+      });
+    var response = await http.Response.fromStream(await _client.send(request));
 
-    // Google Apps Script Web App trả về mã 302 Redirect sang googleusercontent.com/echo
+    // Apps Script ghi dữ liệu trước rồi redirect sang URL echo để trả JSON.
     if (response.statusCode == 302 ||
         response.statusCode == 301 ||
         response.statusCode == 303 ||
         response.statusCode == 307) {
       final redirectUrl = response.headers['location'];
-      if (redirectUrl != null && redirectUrl.isNotEmpty) {
-        response = await _client.get(Uri.parse(redirectUrl));
+      if (redirectUrl == null || redirectUrl.isEmpty) {
+        throw StateError('Data Gateway không trả URL chuyển hướng.');
       }
+      response = await _client.get(Uri.parse(redirectUrl));
     }
 
     if (response.statusCode != 200) {
