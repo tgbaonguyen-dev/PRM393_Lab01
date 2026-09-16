@@ -104,7 +104,11 @@ class _ImportScreenState extends State<ImportScreen> {
       final saved = await _scheduleApiClient.loadSavedSchedules();
       if (!mounted) return;
       if (saved.classes.isEmpty) {
-        M1SnackBar.show(context, 'Chưa có lịch nào được lưu.', isError: true);
+        M1SnackBar.show(
+          context,
+          'Chưa có lịch nào được lưu.',
+          type: M1NoticeType.warning,
+        );
         return;
       }
       await Navigator.of(context).push(
@@ -122,7 +126,7 @@ class _ImportScreenState extends State<ImportScreen> {
         M1SnackBar.show(
           context,
           'Không thể tải lịch đã lưu: $error',
-          isError: true,
+          type: M1NoticeType.error,
         );
       }
     } finally {
@@ -299,7 +303,7 @@ class _ImportScreenState extends State<ImportScreen> {
       errorCount == 0
           ? 'Đã xác nhận ${validated.subjectCode} - ${validated.classCode}. Có thể sinh lịch.'
           : 'Lớp này còn $errorCount lỗi. Hãy sửa các ô được báo rồi xác nhận lại.',
-      isError: errorCount > 0,
+      type: errorCount > 0 ? M1NoticeType.error : M1NoticeType.warning,
     );
   }
 
@@ -328,7 +332,7 @@ class _ImportScreenState extends State<ImportScreen> {
       M1SnackBar.show(
         context,
         'Còn $invalidCount lớp chưa hợp lệ. Hãy kiểm tra mã lịch, metadata, dữ liệu và số buổi (1–60).',
-        isError: true,
+        type: M1NoticeType.error,
       );
       return null;
     }
