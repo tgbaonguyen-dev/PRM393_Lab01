@@ -152,18 +152,9 @@ class _ScheduleGeneratorScreenState extends State<ScheduleGeneratorScreen> {
       return;
     }
 
-    final newDate = await showDatePicker(
-      context: context,
-      helpText: 'Chọn ngày học bù hoặc ngày được đổi lịch',
-      confirmText: 'Đổi lịch',
-      initialDate: selected.lesson.date,
-      firstDate: DateTime(widget.semesterStart.year - 1),
-      lastDate: DateTime(widget.semesterStart.year + 2, 12, 31),
-    );
-    if (newDate == null || !mounted) return;
-
-    final newSlot = await _pickReplacementSlot(selected.lesson.dailySlot);
-    if (newSlot == null || !mounted) return;
+    final adjustment = await _pickLessonAdjustment(selected.lesson);
+    if (adjustment == null || !mounted) return;
+    final (newDate, newSlot) = adjustment;
 
     try {
       final key = selected.importedClass.sourceSheetName;
@@ -190,36 +181,83 @@ class _ScheduleGeneratorScreenState extends State<ScheduleGeneratorScreen> {
     }
   }
 
-  Future<int?> _pickReplacementSlot(int currentSlot) async {
-    var selectedSlot = currentSlot;
-    return showDialog<int>(
+  Future<(DateTime, int)?> _pickLessonAdjustment(ClassLesson lesson) async {
+    var selectedDate = lesson.date;
+    var selectedSlot = lesson.dailySlot;
+    return showDialog<(DateTime, int)>(
       context: context,
-      builder: (context) => StatefulBuilder(
+      builder: (dialogContext) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          title: const Text('Chọn slot học'),
-          content: DropdownButtonFormField<int>(
-            initialValue: selectedSlot,
-            decoration: const InputDecoration(labelText: 'Slot mới'),
-            items: List.generate(5, (index) {
-              final slot = index + 1;
-              final time = ScheduleCodeParser.slotTimes[slot]!;
-              return DropdownMenuItem(
-                value: slot,
-                child: Text('Slot $slot (${time.$1}–${time.$2})'),
-              );
-            }),
-            onChanged: (value) {
-              if (value != null) setDialogState(() => selectedSlot = value);
-            },
+          title: const Text('Điều chỉnh buổi học'),
+          content: SizedBox(
+            width: 420,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                InputDecorator(
+                  decoration: const InputDecoration(labelText: 'Ngày học'),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          DateFormat('dd/MM/yyyy').format(selectedDate),
+                        ),
+                      ),
+                      TextButton.icon(
+                        onPressed: () async {
+                          final picked = await showDatePicker(
+                            context: dialogContext,
+                            helpText: 'Chọn ngày học bù hoặc ngày đổi lịch',
+                            confirmText: 'Chọn ngày',
+                            initialDate: selectedDate,
+                            firstDate: DateTime(widget.semesterStart.year - 1),
+                            lastDate: DateTime(
+                              widget.semesterStart.year + 2,
+                              12,
+                              31,
+                            ),
+                          );
+                          if (picked != null && context.mounted) {
+                            setDialogState(() => selectedDate = picked);
+                          }
+                        },
+                        icon: const Icon(Icons.calendar_month_outlined),
+                        label: const Text('Đổi ngày'),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+                DropdownButtonFormField<int>(
+                  initialValue: selectedSlot,
+                  decoration: const InputDecoration(labelText: 'Slot mới'),
+                  items: List.generate(5, (index) {
+                    final slot = index + 1;
+                    final time = ScheduleCodeParser.slotTimes[slot]!;
+                    return DropdownMenuItem(
+                      value: slot,
+                      child: Text('Slot $slot (${time.$1}–${time.$2})'),
+                    );
+                  }),
+                  onChanged: (value) {
+                    if (value != null) {
+                      setDialogState(() => selectedSlot = value);
+                    }
+                  },
+                ),
+              ],
+            ),
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.of(context).pop(),
+              onPressed: () => Navigator.of(dialogContext).pop(),
               child: const Text('Hủy'),
             ),
             FilledButton(
-              onPressed: () => Navigator.of(context).pop(selectedSlot),
-              child: const Text('Xác nhận'),
+              onPressed: () =>
+                  Navigator.of(dialogContext).pop((selectedDate, selectedSlot)),
+              child: const Text('Áp dụng'),
             ),
           ],
         ),

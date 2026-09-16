@@ -61,6 +61,36 @@ void main() {
     expect(find.text('Slot 6'), findsNothing);
     expect(find.text('Slot 7'), findsNothing);
   });
+
+  testWidgets('lesson adjustment dialog shows both date and slot controls', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1440, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: ScheduleGeneratorScreen(
+          importedClasses: [
+            _class('12_PRM393_SE1917', '12', 'PRM393', 'SE1917', 20),
+          ],
+          semesterStart: DateTime(2026, 9, 7),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Buổi 01 / 20'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Đổi lịch buổi đã chọn'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Điều chỉnh buổi học'), findsOneWidget);
+    expect(find.text('Ngày học'), findsOneWidget);
+    expect(find.text('Slot mới'), findsOneWidget);
+    expect(find.text('Đổi ngày'), findsOneWidget);
+    expect(find.text('Áp dụng'), findsOneWidget);
+  });
 }
 
 ImportedClass _class(
