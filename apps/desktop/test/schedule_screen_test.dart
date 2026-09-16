@@ -28,7 +28,7 @@ void main() {
     expect(find.text('PRN232'), findsWidgets);
     expect(find.text('Buổi 01 / 20'), findsOneWidget);
     expect(find.text('Buổi 01 / 12'), findsOneWidget);
-    expect(find.text('Mở điểm danh • Chờ M2'), findsOneWidget);
+    expect(find.text('Mở điểm danh QR'), findsOneWidget);
     expect(find.text('Đổi lịch buổi đã chọn'), findsOneWidget);
     expect(find.text('Xác nhận buổi'), findsNothing);
     expect(find.text('Lưu lịch học'), findsOneWidget);

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../import/models/import_models.dart';
+import '../session/qr_display_screen.dart';
 import '../../shared/m1_snackbar.dart';
 import 'models/schedule_models.dart';
 import 'services/schedule_code_parser.dart';
@@ -139,6 +140,21 @@ class _ScheduleGeneratorScreenState extends State<ScheduleGeneratorScreen> {
     setState(() {
       _selectedKey = item.key;
     });
+  }
+
+  void _openQrScreen(ScheduledLessonView item) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => QrDisplayScreen(
+          classId: item.importedClass.offeringId,
+          sessionId: item.lesson.lessonId,
+          className:
+              '${item.importedClass.subjectCode} - ${item.importedClass.classCode}',
+          lessonLabel:
+              'Buổi ${item.lesson.sequenceNumber}/${item.importedClass.lessonCount}',
+        ),
+      ),
+    );
   }
 
   Future<void> _changeSelectedLessonDate() async {
@@ -399,14 +415,12 @@ class _ScheduleGeneratorScreenState extends State<ScheduleGeneratorScreen> {
                   icon: const Icon(Icons.edit_calendar_outlined),
                   label: const Text('Đổi lịch buổi đã chọn'),
                 ),
-                Tooltip(
-                  message:
-                      'Thành viên 2 sẽ gắn màn hình mở phiên và QR vào buổi bạn đã chọn.',
-                  child: FilledButton.icon(
-                    onPressed: null,
-                    icon: const Icon(Icons.play_arrow),
-                    label: const Text('Mở điểm danh • Chờ M2'),
-                  ),
+                FilledButton.icon(
+                  onPressed: selected == null
+                      ? null
+                      : () => _openQrScreen(selected),
+                  icon: const Icon(Icons.qr_code_2),
+                  label: const Text('Mở điểm danh QR'),
                 ),
               ],
             ),
@@ -558,6 +572,10 @@ class _ScheduleGeneratorScreenState extends State<ScheduleGeneratorScreen> {
         child: InkWell(
           borderRadius: BorderRadius.circular(8),
           onTap: () => _selectLesson(item),
+          onDoubleTap: () {
+            _selectLesson(item);
+            _openQrScreen(item);
+          },
           child: Padding(
             padding: const EdgeInsets.all(8),
             child: Column(
