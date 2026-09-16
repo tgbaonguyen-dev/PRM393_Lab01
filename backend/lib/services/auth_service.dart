@@ -30,18 +30,23 @@ class GoogleTokenPayload {
 class AuthService {
   final http.Client _client;
   final String? expectedClientId;
+  final bool allowMockToken;
 
-  AuthService({http.Client? client, String? expectedClientId})
-      : _client = client ?? http.Client(),
+  AuthService({
+    http.Client? client,
+    String? expectedClientId,
+    bool? allowMockToken,
+  })  : _client = client ?? http.Client(),
         expectedClientId =
-            expectedClientId ?? Platform.environment['GOOGLE_CLIENT_ID'];
+            expectedClientId ?? Platform.environment['GOOGLE_CLIENT_ID'],
+        allowMockToken = allowMockToken ??
+            (Platform.environment['ALLOW_MOCK_GOOGLE_TOKEN'] == 'true');
 
   Future<GoogleTokenPayload?> verifyGoogleIdToken(String idToken) async {
     final token = idToken.trim();
     if (token.isEmpty) return null;
 
-    if (Platform.environment['ALLOW_MOCK_GOOGLE_TOKEN'] == 'true' &&
-        token.startsWith('mock_id_token_')) {
+    if (allowMockToken && token.startsWith('mock_id_token_')) {
       final parts = token.split('_');
       final email = parts.length >= 4 ? parts[3].trim().toLowerCase() : '';
       if (email.isEmpty || !email.contains('@')) return null;

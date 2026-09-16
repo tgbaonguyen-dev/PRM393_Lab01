@@ -42,6 +42,7 @@ Future<void> main() async {
     sheetsRepository: sheetsRepo,
     authService: AuthService(
       expectedClientId: env['GOOGLE_CLIENT_ID'] ?? env['NEXT_PUBLIC_GOOGLE_CLIENT_ID'],
+      allowMockToken: env['ALLOW_MOCK_GOOGLE_TOKEN'] == 'true',
     ),
     qrService: qrService,
   );
