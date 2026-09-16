@@ -7,6 +7,7 @@ import '../schedule/schedule_generator_screen.dart';
 import '../schedule/services/schedule_api_client.dart';
 import '../../shared/m1_snackbar.dart';
 import 'models/import_models.dart';
+import 'services/markbook_import_merger.dart';
 import 'services/markbook_parser.dart';
 
 class ImportScreen extends StatefulWidget {
@@ -24,9 +25,9 @@ class _ImportScreenState extends State<ImportScreen> {
   final _classCodeController = TextEditingController();
   final _lessonCountController = TextEditingController(text: '20');
   WorkbookImportResult? _result;
-  final Map<String, ImportedClass> _editedClasses = {};
+  final Map<ImportedClass, ImportedClass> _editedClasses = {};
   int _selectedIndex = 0;
-  String? _hoveredSheetName;
+  ImportedClass? _hoveredClass;
   bool _isLoading = false;
   bool _isLoadingSavedSchedules = true;
   int? _savedScheduleCount;
@@ -38,7 +39,7 @@ class _ImportScreenState extends State<ImportScreen> {
     final classes = _result?.classes ?? const <ImportedClass>[];
     if (classes.isEmpty) return null;
     final original = classes[_selectedIndex];
-    return _editedClasses[original.sourceSheetName] ?? original;
+    return _editedClasses[original] ?? original;
   }
 
   @override
@@ -151,16 +152,30 @@ class _ImportScreenState extends State<ImportScreen> {
     try {
       final result = await _parser.parseFile(File(path));
       if (!mounted) return;
+      final previous = _result;
+      final previousClasses = previous?.classes
+          .map((item) => _editedClasses[item] ?? item)
+          .toList(growable: false);
+      final merged = mergeMarkbookImports(
+        previous == null
+            ? null
+            : WorkbookImportResult(
+                sourceFileName: previous.sourceFileName,
+                classes: previousClasses!,
+              ),
+        result,
+      );
+      final previousCount = previous?.classes.length ?? 0;
       setState(() {
-        _result = result;
+        _result = merged;
         _editedClasses
           ..clear()
-          ..addEntries(
-            result.classes.map((item) => MapEntry(item.sourceSheetName, item)),
-          );
-        _selectedIndex = 0;
-        if (result.classes.isNotEmpty) {
-          _loadMetadata(result.classes.first);
+          ..addEntries(merged.classes.map((item) => MapEntry(item, item)));
+        _selectedIndex = merged.classes.isEmpty
+            ? 0
+            : previousCount.clamp(0, merged.classes.length - 1);
+        if (merged.classes.isNotEmpty) {
+          _loadMetadata(merged.classes[_selectedIndex]);
         }
       });
     } catch (error) {
@@ -177,7 +192,7 @@ class _ImportScreenState extends State<ImportScreen> {
     setState(() {
       _selectedIndex = index;
       final original = _result!.classes[index];
-      _loadMetadata(_editedClasses[original.sourceSheetName] ?? original);
+      _loadMetadata(_editedClasses[original] ?? original);
     });
   }
 
@@ -188,8 +203,8 @@ class _ImportScreenState extends State<ImportScreen> {
     final removed = result.classes[index];
     final remaining = List<ImportedClass>.of(result.classes)..removeAt(index);
     setState(() {
-      _editedClasses.remove(removed.sourceSheetName);
-      _hoveredSheetName = null;
+      _editedClasses.remove(removed);
+      _hoveredClass = null;
       if (remaining.isEmpty) {
         _result = null;
         _selectedIndex = 0;
@@ -206,7 +221,7 @@ class _ImportScreenState extends State<ImportScreen> {
       );
       _selectedIndex = index.clamp(0, remaining.length - 1);
       final next = remaining[_selectedIndex];
-      _loadMetadata(_editedClasses[next.sourceSheetName] ?? next);
+      _loadMetadata(_editedClasses[next] ?? next);
     });
   }
 
@@ -220,7 +235,8 @@ class _ImportScreenState extends State<ImportScreen> {
   void _storeSelectedMetadata() {
     final importedClass = _selectedClass;
     if (importedClass == null) return;
-    _editedClasses[importedClass.sourceSheetName] = importedClass.copyWith(
+    final original = _result!.classes[_selectedIndex];
+    _editedClasses[original] = importedClass.copyWith(
       scheduleCode: _scheduleCodeController.text.trim(),
       subjectCode: _subjectCodeController.text.trim().toUpperCase(),
       classCode: _classCodeController.text.trim().toUpperCase(),
@@ -294,7 +310,8 @@ class _ImportScreenState extends State<ImportScreen> {
     if (importedClass == null) return;
     final validated = _validateClassMetadata(importedClass);
     setState(() {
-      _editedClasses[validated.sourceSheetName] = validated;
+      final original = _result!.classes[_selectedIndex];
+      _editedClasses[original] = validated;
       _loadMetadata(validated);
     });
     final errorCount = validated.issues.where((issue) => issue.isError).length;
@@ -313,7 +330,7 @@ class _ImportScreenState extends State<ImportScreen> {
     if (result == null) return null;
     final prepared = result.classes
         .map((original) {
-          final edited = _editedClasses[original.sourceSheetName] ?? original;
+          final edited = _editedClasses[original] ?? original;
           return _validateClassMetadata(edited);
         })
         .toList(growable: false);
@@ -544,18 +561,16 @@ class _ImportScreenState extends State<ImportScreen> {
               separatorBuilder: (_, _) => const SizedBox(height: 6),
               itemBuilder: (_, index) {
                 final original = classes[index];
-                final item =
-                    _editedClasses[original.sourceSheetName] ?? original;
+                final item = _editedClasses[original] ?? original;
                 final errors = item.issues
                     .where((issue) => issue.isError)
                     .length;
-                final isHovered = _hoveredSheetName == item.sourceSheetName;
+                final isHovered = identical(_hoveredClass, original);
                 return MouseRegion(
-                  onEnter: (_) =>
-                      setState(() => _hoveredSheetName = item.sourceSheetName),
+                  onEnter: (_) => setState(() => _hoveredClass = original),
                   onExit: (_) {
-                    if (_hoveredSheetName == item.sourceSheetName) {
-                      setState(() => _hoveredSheetName = null);
+                    if (identical(_hoveredClass, original)) {
+                      setState(() => _hoveredClass = null);
                     }
                   },
                   child: ListTile(
