@@ -122,6 +122,8 @@ function dispatchAction(action, payload) {
       return DatabaseService.getAttendanceResults(payload.lessonId || payload.sessionId);
     case 'getActiveWindow':
       return DatabaseService.getActiveWindow(payload.lessonId || payload.sessionId);
+    case 'isStudentInClass':
+      return DatabaseService.isStudentInClass(payload.classId, payload.studentEmail);
     case 'clearAllDatabase':
       return DatabaseService.clearAllDatabase();
     default:
@@ -925,6 +927,44 @@ var DatabaseService = {
     }
     return null;
   },
+
+  isStudentInClass: function (classId, studentEmail) {
+    var normalizedClassId = String(classId || '').trim().toLowerCase();
+    var normalizedEmail = String(studentEmail || '').trim().toLowerCase();
+    if (!normalizedClassId || !normalizedEmail) return false;
+
+    var ss = this.getSpreadsheet();
+    var sheets = ss.getSheets();
+    for (var i = 0; i < sheets.length; i++) {
+      var sheet = sheets[i];
+      var sheetName = sheet.getName().toLowerCase();
+      if (sheetName === 'overview' || sheetName.indexOf('temp_') === 0 ||
+          sheetName.indexOf('[archived]') === 0 ||
+          sheetName === 'classes' || sheetName === 'students' || sheetName === 'lessons') continue;
+
+      // Khớp theo classId (ví dụ 11_PRN232_SE1917 hoặc PRN232_SE1917_FA26)
+      var parts = normalizedClassId.split('_');
+      var match = true;
+      for (var p = 0; p < parts.length; p++) {
+        if (parts[p].length > 1 && sheetName.indexOf(parts[p]) === -1) {
+          match = false;
+          break;
+        }
+      }
+      if (!match && sheetName.indexOf(normalizedClassId) === -1) continue;
+
+      var data = sheet.getDataRange().getValues();
+      for (var row = 2; row < data.length; row++) {
+        var emailInCell = String(data[row][3] || '').trim().toLowerCase();
+        var rollInCell = String(data[row][1] || '').trim().toLowerCase();
+        if (emailInCell === normalizedEmail || rollInCell === normalizedEmail) {
+          return true;
+        }
+      }
+    }
+    return false;
+  },
+
 
   /**
    * Khởi tạo bảng mẫu mặc định nếu chạy lần đầu

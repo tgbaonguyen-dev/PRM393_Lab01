@@ -319,6 +319,26 @@ class SheetsRepository {
     return null;
   }
 
+  /// Kiểm tra email đã xác thực có thuộc đúng class offering hay không.
+  Future<bool?> isStudentInClass({
+    required String classId,
+    required String email,
+  }) async {
+    try {
+      final res = await _postToGateway('isStudentInClass', {
+        'classId': classId,
+        'studentEmail': email,
+      });
+      if (res['success'] == true) {
+        return res['data'] == true;
+      }
+      return null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+
   /// Nạp dữ liệu mẫu 5 sinh viên để test (M5)
   Future<bool> seedSampleData(List<Map<String, dynamic>> students) async {
     final res = await _postToGateway('seedSampleData', {

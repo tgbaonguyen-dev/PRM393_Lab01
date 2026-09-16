@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../import/models/import_models.dart';
+import '../session/qr_display_screen.dart';
+import '../export/export_dialog.dart';
+import '../attendance/services/attendance_storage_service.dart';
 import '../../shared/m1_snackbar.dart';
 import 'models/schedule_models.dart';
 import 'services/schedule_code_parser.dart';
@@ -123,7 +126,11 @@ class _ScheduleGeneratorScreenState extends State<ScheduleGeneratorScreen> {
       M1SnackBar.show(context, message);
     } catch (error) {
       if (!mounted) return;
-      M1SnackBar.show(context, 'Không thể lưu lịch: $error', isError: true);
+      M1SnackBar.show(
+        context,
+        'Không thể lưu lịch: $error',
+        type: M1NoticeType.error,
+      );
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
@@ -141,13 +148,40 @@ class _ScheduleGeneratorScreenState extends State<ScheduleGeneratorScreen> {
     });
   }
 
+  void _openQrScreen(ScheduledLessonView item) {
+    final rosterList = item.importedClass.students
+        .map(
+          (s) => {
+            'rollNumber': s.rollNumber,
+            'fullName': s.fullName,
+            'email': s.email,
+            'memberCode': s.memberCode,
+          },
+        )
+        .toList();
+
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => QrDisplayScreen(
+          classId: item.importedClass.offeringId,
+          sessionId: item.lesson.lessonId,
+          className:
+              '${item.importedClass.subjectCode} - ${item.importedClass.classCode}',
+          lessonLabel:
+              'Buổi ${item.lesson.sequenceNumber}/${item.importedClass.lessonCount}',
+          roster: rosterList,
+        ),
+      ),
+    );
+  }
+
   Future<void> _changeSelectedLessonDate() async {
     final selected = _selectedLesson;
     if (selected == null) {
       M1SnackBar.show(
         context,
         'Hãy chọn một buổi học trên lịch trước.',
-        isError: true,
+        type: M1NoticeType.warning,
       );
       return;
     }
@@ -180,12 +214,13 @@ class _ScheduleGeneratorScreenState extends State<ScheduleGeneratorScreen> {
       M1SnackBar.show(
         context,
         'Đã đổi Buổi ${selected.lesson.sequenceNumber} sang ${DateFormat('dd/MM/yyyy').format(newDate)}, Slot $newSlot. Nhấn Lưu lịch học để ghi nhận thay đổi.',
+        type: M1NoticeType.warning,
       );
     } on ArgumentError catch (error) {
       M1SnackBar.show(
         context,
         error.message?.toString() ?? 'Không thể đổi lịch.',
-        isError: true,
+        type: M1NoticeType.error,
       );
     }
   }
@@ -399,19 +434,103 @@ class _ScheduleGeneratorScreenState extends State<ScheduleGeneratorScreen> {
                   icon: const Icon(Icons.edit_calendar_outlined),
                   label: const Text('Đổi lịch buổi đã chọn'),
                 ),
-                Tooltip(
-                  message:
-                      'Thành viên 2 sẽ gắn màn hình mở phiên và QR vào buổi bạn đã chọn.',
-                  child: FilledButton.icon(
-                    onPressed: null,
-                    icon: const Icon(Icons.play_arrow),
-                    label: const Text('Mở điểm danh • Chờ M2'),
+                OutlinedButton.icon(
+                  onPressed: _openExportDialogFromSchedule,
+                  icon: const Icon(
+                    Icons.file_download_outlined,
+                    color: Color(0xFF2563EB),
                   ),
+                  label: const Text('Xuất báo cáo Excel / CSV'),
+                ),
+                FilledButton.icon(
+                  onPressed: selected == null
+                      ? null
+                      : () => _openQrScreen(selected),
+                  icon: const Icon(Icons.qr_code_2),
+                  label: const Text('Mở điểm danh QR'),
                 ),
               ],
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Future<void> _openExportDialogFromSchedule() async {
+    final storage = AttendanceStorageService();
+    final persistentStore = await storage.loadStore();
+
+    final exportOptions = _classes.map((c) {
+      final lessons = _schedules[c.sourceSheetName] ?? [];
+      final lessonDates = <int, String>{};
+      for (final l in lessons) {
+        lessonDates[l.sequenceNumber] = DateFormat('yyyy-MM-dd').format(l.date);
+      }
+      final rosterList = c.students
+          .map(
+            (s) => {
+              'rollNumber': s.rollNumber,
+              'fullName': s.fullName,
+              'email': s.email,
+              'memberCode': s.memberCode,
+            },
+          )
+          .toList();
+
+      // Nạp dữ liệu P/A từ local storage (hoặc từ persistentStore)
+      // QrDisplayScreen lưu với key "${subjectCode} - ${classCode}"
+      final compositeKey = '${c.subjectCode} - ${c.classCode}';
+      final classAttendance =
+          persistentStore[compositeKey] ??
+          persistentStore[c.sourceSheetName] ??
+          persistentStore[c.classCode] ??
+          <int, Map<String, String>>{};
+
+      final attendanceData = <String, Map<int, String>>{};
+      for (final s in c.students) {
+        final emailKey = s.email.toLowerCase();
+        final studentSlotMap = <int, String>{};
+        classAttendance.forEach((slotNum, studentMap) {
+          final status = studentMap[emailKey] ?? '';
+          if (status.isNotEmpty) {
+            studentSlotMap[slotNum] = status;
+          }
+        });
+        attendanceData[emailKey] = studentSlotMap;
+      }
+
+      return ExportClassOption(
+        subjectCode: c.subjectCode,
+        className: c.classCode,
+        semester: 'FA26',
+        roster: rosterList,
+        lessonDates: lessonDates,
+        attendanceData: attendanceData,
+      );
+    }).toList();
+
+    final initialClass = _selectedLesson?.importedClass ?? _classes.first;
+    final initialOption = exportOptions.firstWhere(
+      (o) =>
+          o.subjectCode == initialClass.subjectCode &&
+          o.className == initialClass.classCode,
+      orElse: () => exportOptions.first,
+    );
+
+    if (!mounted) return;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => ExportDialog(
+        subjectCode: initialOption.subjectCode,
+        className: initialOption.className,
+        semester: initialOption.semester,
+        roster: initialOption.roster,
+        lessonDates: initialOption.lessonDates,
+        attendanceData: initialOption.attendanceData,
+        currentLessonSequence: _selectedLesson?.lesson.sequenceNumber,
+        availableClasses: exportOptions,
       ),
     );
   }
@@ -558,6 +677,10 @@ class _ScheduleGeneratorScreenState extends State<ScheduleGeneratorScreen> {
         child: InkWell(
           borderRadius: BorderRadius.circular(8),
           onTap: () => _selectLesson(item),
+          onDoubleTap: () {
+            _selectLesson(item);
+            _openQrScreen(item);
+          },
           child: Padding(
             padding: const EdgeInsets.all(8),
             child: Column(

@@ -1,0 +1,24 @@
+@import 'tailwindcss';
+
+:root {
+  --ink: #17211b;
+  --paper: #f5f6ef;
+  --mint: #cfe8d5;
+  --orange: #e67e43;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  min-width: 320px;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: 'Segoe UI', 'Noto Sans', Arial, sans-serif;
+  font-kerning: normal;
+  font-synthesis: none;
+  letter-spacing: 0;
+  line-height: 1.5;
+}
+
+button, input { font: inherit; }
