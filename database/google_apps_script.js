@@ -122,6 +122,8 @@ function dispatchAction(action, payload) {
       return DatabaseService.getAttendanceResults(payload.lessonId || payload.sessionId);
     case 'getActiveWindow':
       return DatabaseService.getActiveWindow(payload.lessonId || payload.sessionId);
+    case 'isStudentInClass':
+      return DatabaseService.isStudentInClass(payload.classId, payload.studentEmail);
     case 'clearAllDatabase':
       return DatabaseService.clearAllDatabase();
     default:
@@ -924,6 +926,30 @@ var DatabaseService = {
       return win;
     }
     return null;
+  },
+
+  isStudentInClass: function (classId, studentEmail) {
+    var normalizedClassId = String(classId || '').trim().toLowerCase();
+    var normalizedEmail = String(studentEmail || '').trim().toLowerCase();
+    if (!normalizedClassId || !normalizedEmail) return false;
+
+    var ss = this.getSpreadsheet();
+    var sheets = ss.getSheets();
+    for (var i = 0; i < sheets.length; i++) {
+      var sheet = sheets[i];
+      var sheetName = sheet.getName().toLowerCase();
+      if (sheetName === 'overview' || sheetName.indexOf('temp_') === 0 ||
+          sheetName.indexOf('[archived]') === 0 ||
+          sheetName.indexOf(normalizedClassId) === -1) continue;
+
+      var data = sheet.getDataRange().getValues();
+      for (var row = 2; row < data.length; row++) {
+        if (String(data[row][3] || '').trim().toLowerCase() === normalizedEmail) {
+          return true;
+        }
+      }
+    }
+    return false;
   },
 
   /**

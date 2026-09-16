@@ -1,11 +1,13 @@
 import 'dart:io';
 
 import 'package:backend/config/local_env.dart';
+import 'package:backend/controllers/attendance_controller.dart';
 import 'package:backend/controllers/schedule_controller.dart';
 import 'package:backend/controllers/session_controller.dart';
 import 'package:backend/repositories/local_first_schedule_repository.dart';
 import 'package:backend/repositories/local_json_schedule_repository.dart';
 import 'package:backend/repositories/sheets_repository.dart';
+import 'package:backend/services/auth_service.dart';
 import 'package:backend/services/qr_service.dart';
 import 'package:backend/services/schedule_service.dart';
 import 'package:backend/services/session_service.dart';
@@ -26,18 +28,29 @@ Future<void> main() async {
     service: ScheduleService(repository: hybridRepo),
   );
   final qrSecret = (env['QR_HMAC_SECRET'] ?? '').trim();
+  final qrService = QrService(
+    secret: qrSecret.isNotEmpty
+        ? qrSecret
+        : 'dev-secret-key-prm393-attendance',
+  );
   final sessionController = SessionController(
     sessionService: SessionService(repository: sheetsRepo),
-    qrService: QrService(
-      secret: qrSecret.isNotEmpty
-          ? qrSecret
-          : 'dev-secret-key-prm393-attendance',
-    ),
+    qrService: qrService,
     checkInBaseUrl: env['STUDENT_CHECKIN_BASE_URL'],
+  );
+  final attendanceController = AttendanceController(
+    sheetsRepository: sheetsRepo,
+    authService: AuthService(
+      expectedClientId: env['GOOGLE_CLIENT_ID'] ?? env['NEXT_PUBLIC_GOOGLE_CLIENT_ID'],
+    ),
+    qrService: qrService,
   );
   final router = Router()
     ..get('/health', (Request req) => Response.ok('{"status":"ok"}', headers: {'content-type': 'application/json'}))
     ..mount('/schedule/', scheduleController.router.call)
+    ..mount('/attendance/', attendanceController.router.call)
+    ..get('/session/<sessionId>/attendances', (Request req, String sessionId) => attendanceController.handleGetAttendances(req, sessionId))
+    ..post('/session/<sessionId>/attendances/manual-override', (Request req, String sessionId) => attendanceController.handleManualEdit(req))
     ..mount('/session/', sessionController.router.call);
   final handler = Pipeline()
       .addMiddleware(logRequests())
