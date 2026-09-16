@@ -55,6 +55,7 @@ class SessionPersistenceException implements Exception {
 /// Applies attendance-window lifecycle rules on top of the data gateway.
 class SessionService {
   final SheetsRepository _repository;
+  final Map<String, AttendanceWindow> _activeWindows = {};
 
   SessionService({SheetsRepository? repository})
       : _repository = repository ?? SheetsRepository();
@@ -71,11 +72,13 @@ class SessionService {
         'Không thể mở phiên điểm danh trên kho dữ liệu.',
       );
     }
-    return _windowFromGateway(
+    final window = _windowFromGateway(
       data,
       sessionId: normalizedSessionId,
       classId: normalizedClassId,
     );
+    _activeWindows[normalizedSessionId] = window;
+    return window;
   }
 
   Future<AttendanceWindow> requireOpenSession({
@@ -84,6 +87,20 @@ class SessionService {
   }) async {
     final normalizedSessionId = _required(sessionId, 'sessionId');
     final normalizedClassId = _required(classId, 'classId');
+
+    // 1. Return immediately from in-memory cache if active and open
+    final cached = _activeWindows[normalizedSessionId];
+    if (cached != null) {
+      if (cached.isOpen && cached.classId == normalizedClassId) {
+        return cached;
+      }
+      throw const SessionStateException(
+        'SESSION_CLOSED',
+        'Phiên điểm danh đã đóng hoặc chưa được mở.',
+      );
+    }
+
+    // 2. Fall back to remote gateway if not in cache (e.g. after server restart)
     final data = await _repository.getActiveWindow(normalizedSessionId);
     if (data == null || data['isOpen'] != true) {
       throw const SessionStateException(
@@ -91,11 +108,13 @@ class SessionService {
         'Phiên điểm danh đã đóng hoặc chưa được mở.',
       );
     }
-    return _windowFromGateway(
+    final window = _windowFromGateway(
       data,
       sessionId: normalizedSessionId,
       classId: normalizedClassId,
     );
+    _activeWindows[normalizedSessionId] = window;
+    return window;
   }
 
   Future<AttendanceWindow> closeSession({
@@ -103,11 +122,28 @@ class SessionService {
     required String classId,
     required String windowId,
   }) async {
-    final active = await requireOpenSession(
-      sessionId: sessionId,
-      classId: classId,
-    );
+    final normalizedSessionId = _required(sessionId, 'sessionId');
+    final normalizedClassId = _required(classId, 'classId');
     final normalizedWindowId = _required(windowId, 'windowId');
+
+    // Check active window using cache first to avoid redundant remote GET
+    final cached = _activeWindows[normalizedSessionId];
+    final AttendanceWindow active;
+    if (cached != null) {
+      if (!cached.isOpen) {
+        throw const SessionStateException(
+          'SESSION_CLOSED',
+          'Phiên điểm danh đã đóng hoặc chưa được mở.',
+        );
+      }
+      active = cached;
+    } else {
+      active = await requireOpenSession(
+        sessionId: normalizedSessionId,
+        classId: normalizedClassId,
+      );
+    }
+
     if (active.windowId != normalizedWindowId) {
       throw const SessionStateException(
         'WINDOW_REPLACED',
@@ -121,7 +157,7 @@ class SessionService {
         'Không thể xác nhận đóng phiên trên kho dữ liệu.',
       );
     }
-    return AttendanceWindow(
+    final closed = AttendanceWindow(
       windowId: active.windowId,
       sessionId: active.sessionId,
       classId: active.classId,
@@ -129,6 +165,8 @@ class SessionService {
       closedAt: DateTime.now().toUtc(),
       isOpen: false,
     );
+    _activeWindows[normalizedSessionId] = closed;
+    return closed;
   }
 
   AttendanceWindow _windowFromGateway(
