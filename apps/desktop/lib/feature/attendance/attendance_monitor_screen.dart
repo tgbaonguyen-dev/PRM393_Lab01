@@ -153,8 +153,8 @@ class _AttendanceMonitorScreenState extends State<AttendanceMonitorScreen> {
     try {
       final storage = AttendanceStorageService();
       final store = await storage.loadStore();
-      final classKey = widget.className;
-      final classStore = store.putIfAbsent(classKey, () => {});
+      final compositeKey = '${widget.subjectCode} - ${widget.className}';
+      final classStore = store.putIfAbsent(compositeKey, () => {});
 
       final currentSlotMap = <String, String>{};
       for (final s in _students) {
@@ -193,7 +193,11 @@ class _AttendanceMonitorScreenState extends State<AttendanceMonitorScreen> {
     // Nạp toàn bộ các slot đã lưu từ trước
     final storage = AttendanceStorageService();
     final store = await storage.loadStore();
-    final classStore = store[widget.className] ?? <int, Map<String, String>>{};
+    final compositeKey = '${widget.subjectCode} - ${widget.className}';
+    final classStore =
+        store[compositeKey] ??
+        store[widget.className] ??
+        <int, Map<String, String>>{};
 
     final attendanceData = <String, Map<int, String>>{};
     for (final s in _students) {

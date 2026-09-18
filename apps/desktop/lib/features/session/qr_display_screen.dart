@@ -116,18 +116,11 @@ class _QrDisplayScreenState extends State<QrDisplayScreen> {
       final match = RegExp(r'(\d+)$').firstMatch(widget.sessionId);
       final slotSeq = match != null ? int.tryParse(match.group(1)!) ?? 1 : 1;
 
-      final slotMap = <String, String>{};
+      // 1. Khởi tạo từ dữ liệu đã có trong local store (nếu có)
+      final existingSlotData = classStore[slotSeq] ?? {};
+      final slotMap = Map<String, String>.from(existingSlotData);
 
-      // Mặc định tất cả sinh viên trong danh sách lớp là Vắng ("A")
-      if (widget.roster != null) {
-        for (final s in widget.roster!) {
-          final email = (s['email'] ?? s['Email'] ?? '').toString().toLowerCase();
-          if (email.isNotEmpty) {
-            slotMap[email] = 'A';
-          }
-        }
-      }
-
+      // 2. Lấy dữ liệu điểm danh thực tế từ Sheet (qua Backend)
       try {
         final uri = _endpoint('/session/${widget.sessionId}/attendances');
         final response = await _client.get(uri);
@@ -137,15 +130,42 @@ class _QrDisplayScreenState extends State<QrDisplayScreen> {
           if (payload != null && payload['students'] != null) {
             final students = payload['students'] as List;
             for (final s in students) {
-              final email = (s['email'] ?? s['Email'] ?? '').toString().toLowerCase();
-              final status = (s['status'] ?? s['Status'] ?? 'P').toString().toUpperCase();
-              if (email.isNotEmpty) {
-                slotMap[email] = status.isNotEmpty ? status : 'P';
+              final email =
+                  (s['studentEmail'] ??
+                          s['email'] ??
+                          s['Email'] ??
+                          s['StudentEmail'] ??
+                          '')
+                      .toString()
+                      .toLowerCase();
+              final status = (s['status'] ?? s['Status'] ?? '')
+                  .toString()
+                  .toUpperCase();
+              if (email.isNotEmpty && (status == 'P' || status == 'A')) {
+                slotMap[email] = status;
               }
             }
           }
         }
       } catch (_) {}
+
+      // 3. Với những sinh viên trong danh sách mà CHƯA có dữ liệu (trên Sheet cũng chưa có):
+      // lúc này mới gán mặc định là Vắng ("A")
+      if (widget.roster != null) {
+        for (final s in widget.roster!) {
+          final email =
+              (s['email'] ??
+                      s['studentEmail'] ??
+                      s['Email'] ??
+                      s['StudentEmail'] ??
+                      '')
+                  .toString()
+                  .toLowerCase();
+          if (email.isNotEmpty && !slotMap.containsKey(email)) {
+            slotMap[email] = 'A';
+          }
+        }
+      }
 
       if (slotMap.isNotEmpty) {
         classStore[slotSeq] = slotMap;
@@ -182,6 +202,8 @@ class _QrDisplayScreenState extends State<QrDisplayScreen> {
         _secondsRemaining = _remainingSeconds(expiresAt);
         _errorMessage = null;
       });
+      // Đồng bộ dữ liệu điểm danh mới nhất vào bộ nhớ cục bộ mỗi khi xoay QR
+      unawaited(_syncAttendanceToStorage());
     } catch (error) {
       if (!mounted || !_isOpen) return;
       setState(() {
@@ -255,18 +277,18 @@ class _QrDisplayScreenState extends State<QrDisplayScreen> {
   }
 
   int _remainingSeconds(DateTime expiresAt) {
-    final milliseconds =
-        expiresAt.difference(DateTime.now().toUtc()).inMilliseconds;
+    final milliseconds = expiresAt
+        .difference(DateTime.now().toUtc())
+        .inMilliseconds;
     if (milliseconds <= 0) return 0;
     return (milliseconds / 1000).ceil().clamp(0, 15).toInt();
   }
 
   Uri _endpoint(String path) {
     final base = Uri.parse(widget.apiBaseUrl);
-    final normalizedBasePath =
-        base.path.endsWith('/')
-            ? base.path.substring(0, base.path.length - 1)
-            : base.path;
+    final normalizedBasePath = base.path.endsWith('/')
+        ? base.path.substring(0, base.path.length - 1)
+        : base.path;
     return base.replace(path: '$normalizedBasePath$path');
   }
 
@@ -456,15 +478,14 @@ class _QrDisplayScreenState extends State<QrDisplayScreen> {
                       if (!_isOpen && _viewState != _SessionViewState.closing)
                         FilledButton.icon(
                           onPressed: _isBusy ? null : _openSession,
-                          icon:
-                              _viewState == _SessionViewState.opening
-                                  ? const SizedBox.square(
-                                    dimension: 18,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                    ),
-                                  )
-                                  : const Icon(Icons.play_arrow),
+                          icon: _viewState == _SessionViewState.opening
+                              ? const SizedBox.square(
+                                  dimension: 18,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : const Icon(Icons.play_arrow),
                           label: Text(
                             _viewState == _SessionViewState.closed
                                 ? 'Mở lại phiên'
@@ -474,15 +495,14 @@ class _QrDisplayScreenState extends State<QrDisplayScreen> {
                       if (_isOpen || _viewState == _SessionViewState.closing)
                         FilledButton.tonalIcon(
                           onPressed: _isBusy ? null : _closeSession,
-                          icon:
-                              _viewState == _SessionViewState.closing
-                                  ? const SizedBox.square(
-                                    dimension: 18,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                    ),
-                                  )
-                                  : const Icon(Icons.stop),
+                          icon: _viewState == _SessionViewState.closing
+                              ? const SizedBox.square(
+                                  dimension: 18,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : const Icon(Icons.stop),
                           label: const Text('Đóng phiên'),
                         ),
                     ],

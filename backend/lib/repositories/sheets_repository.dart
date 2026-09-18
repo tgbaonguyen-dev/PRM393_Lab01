@@ -308,6 +308,18 @@ class SheetsRepository {
     return [];
   }
 
+  /// Lấy toàn bộ ma trận điểm danh của tất cả các lớp trên Google Sheets
+  Future<Map<String, dynamic>> getAllAttendance() async {
+    final res = await _postToGateway('getAllAttendance', {});
+    final dynamic data = res['data'];
+    if (data is Map<String, dynamic>) {
+      return data;
+    } else if (data is Map) {
+      return Map<String, dynamic>.from(data);
+    }
+    return {};
+  }
+
   /// Lấy thông tin ca điểm danh đang mở
   Future<Map<String, dynamic>?> getActiveWindow(String sessionId) async {
     final res = await _postToGateway('getActiveWindow', {
@@ -337,7 +349,6 @@ class SheetsRepository {
       return null;
     }
   }
-
 
   /// Nạp dữ liệu mẫu 5 sinh viên để test (M5)
   Future<bool> seedSampleData(List<Map<String, dynamic>> students) async {

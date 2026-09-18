@@ -23,12 +23,12 @@ class AttendanceController {
     ScheduleRepository? scheduleRepository,
     String? qrSecret,
     QrService? qrService,
-  })  : _attendanceService = attendanceService ?? AttendanceService(),
+  })  : _sheetsRepository = sheetsRepository ?? SheetsRepository(),
+        _attendanceService = attendanceService ??
+            AttendanceService(sheetsRepository: sheetsRepository),
         _authService = authService ?? AuthService(),
-        _sheetsRepository = sheetsRepository ?? SheetsRepository(),
         _scheduleRepository = scheduleRepository,
         _qrService = qrService ?? QrService(secret: qrSecret);
-
 
   Router get router {
     final router = Router();
@@ -36,18 +36,35 @@ class AttendanceController {
     //1 endpoint: phục vụ Polling 5s từ Desktop
     router.get('/session/<sessionId>/attendances', handleGetAttendances);
     router.get('/<sessionId>/attendances', handleGetAttendances);
+    router.get('/all', handleGetAllAttendance);
+    router.get('/', handleGetAllAttendance);
 
     //2 endpoint: phục vụ sửa A/P thủ công từ Desktop
     router.post(
         '/session/<sessionId>/attendances/manual-override', handleManualEdit);
-    router.post(
-        '/<sessionId>/attendances/manual-override', handleManualEdit);
+    router.post('/<sessionId>/attendances/manual-override', handleManualEdit);
     router.post('/manual-edit', handleManualEdit);
     router.post('/attendance/manual-edit', handleManualEdit);
     router.post('/checkin', _handleCheckIn);
     router.post('/attendance/checkin', _handleCheckIn);
 
     return router;
+  }
+
+  // Xử lý GET /attendance/all: Lấy toàn bộ ma trận điểm danh của tất cả các lớp từ Google Sheets
+  Future<Response> handleGetAllAttendance(Request request) async {
+    try {
+      final store = await _attendanceService.getAllAttendance();
+      return Response.ok(
+        jsonEncode({'success': true, 'data': store}),
+        headers: {'Content-Type': 'application/json'},
+      );
+    } catch (e) {
+      return Response.internalServerError(
+        body: jsonEncode({'success': false, 'error': e.toString()}),
+        headers: {'Content-Type': 'application/json'},
+      );
+    }
   }
 
   //Xử lý GET /session/<sessionId>/attendances
@@ -178,7 +195,8 @@ class AttendanceController {
             'Mã QR không hợp lệ hoặc đã hết hạn. Vui lòng quét mã mới nhất.');
       }
 
-      print('[CheckIn] Yêu cầu điểm danh: email=${identity.email}, classId=$classId, sessionId=$sessionId');
+      print(
+          '[CheckIn] Yêu cầu điểm danh: email=${identity.email}, classId=$classId, sessionId=$sessionId');
 
       bool? isStudentAllowed;
       if (_scheduleRepository != null) {
@@ -211,7 +229,6 @@ class AttendanceController {
         return _jsonError(403, 'NOT_IN_ROSTER',
             'Email Google (${identity.email}) không thuộc danh sách lớp học phần $classId.');
       }
-
 
       final activeWindow = await _sheetsRepository.getActiveWindow(sessionId);
       if (activeWindow == null || activeWindow['isOpen'] != true) {

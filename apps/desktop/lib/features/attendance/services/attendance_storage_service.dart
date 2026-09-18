@@ -1,12 +1,16 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:http/http.dart' as http;
+import '../../../config.dart';
 
 /// Dịch vụ lưu trữ và đọc kết quả điểm danh cục bộ giữa các phiên làm việc
 class AttendanceStorageService {
   static const String defaultFileName = 'attendance_database.json';
   final String? customFilePath;
+  final http.Client _httpClient;
 
-  AttendanceStorageService([this.customFilePath]);
+  AttendanceStorageService([this.customFilePath, http.Client? client])
+    : _httpClient = client ?? http.Client();
 
   File get storageFile => _resolveFile(customFilePath);
 
@@ -92,6 +96,60 @@ class AttendanceStorageService {
       });
     } catch (_) {}
     return store;
+  }
+
+  /// Kéo toàn bộ ma trận điểm danh từ Google Sheets (qua Backend API) về và hợp nhất vào local storage
+  Future<bool> pullFromRemote([String? baseUrl]) async {
+    try {
+      final url = baseUrl ?? AppConfig.apiBaseUrl;
+      final uri = Uri.parse('$url/attendance/all');
+      final res = await _httpClient
+          .get(uri)
+          .timeout(const Duration(seconds: 15));
+
+      if (res.statusCode != 200) return false;
+
+      final dynamic decoded = jsonDecode(utf8.decode(res.bodyBytes));
+      if (decoded is! Map || decoded['success'] != true) {
+        return false;
+      }
+
+      final dynamic remoteData = decoded['data'];
+      if (remoteData is! Map) return false;
+
+      final currentStore = await loadStore();
+
+      remoteData.forEach((classKey, slotsDynamic) {
+        if (slotsDynamic is Map) {
+          final classStore = currentStore.putIfAbsent(
+            classKey.toString(),
+            () => <int, Map<String, String>>{},
+          );
+          slotsDynamic.forEach((slotKey, studentsDynamic) {
+            final slotNum = int.tryParse(slotKey.toString());
+            if (slotNum != null && studentsDynamic is Map) {
+              final studentMap = classStore.putIfAbsent(
+                slotNum,
+                () => <String, String>{},
+              );
+              studentsDynamic.forEach((email, status) {
+                final normalizedEmail = email.toString().trim().toLowerCase();
+                final normalizedStatus = status.toString().trim().toUpperCase();
+                if (normalizedEmail.isNotEmpty &&
+                    (normalizedStatus == 'P' || normalizedStatus == 'A')) {
+                  studentMap[normalizedEmail] = normalizedStatus;
+                }
+              });
+            }
+          });
+        }
+      });
+
+      await saveStore(currentStore);
+      return true;
+    } catch (_) {
+      return false;
+    }
   }
 
   /// Xóa toàn bộ dữ liệu điểm danh (dùng khi import markbook mới)

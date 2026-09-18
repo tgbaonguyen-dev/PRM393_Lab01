@@ -60,4 +60,9 @@ class AttendanceService {
     return await _sheetsRepository.recordManualOverride(
         sessionId, studentEmail.trim(), newStatus);
   }
+
+  /// Lấy toàn bộ ma trận điểm danh từ Google Sheets phục vụ đồng bộ 2 chiều
+  Future<Map<String, dynamic>> getAllAttendance() async {
+    return await _sheetsRepository.getAllAttendance();
+  }
 }
