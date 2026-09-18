@@ -120,6 +120,8 @@ function dispatchAction(action, payload) {
       return DatabaseService.recordOverride(payload.lessonId || payload.sessionId, payload.studentEmail, payload.status);
     case 'getAttendanceResults':
       return DatabaseService.getAttendanceResults(payload.lessonId || payload.sessionId);
+    case 'getAllAttendance':
+      return DatabaseService.getAllAttendance();
     case 'getActiveWindow':
       return DatabaseService.getActiveWindow(payload.lessonId || payload.sessionId);
     case 'isStudentInClass':
@@ -869,6 +871,86 @@ var DatabaseService = {
     }
 
     return results;
+  },
+
+  /**
+   * Đọc toàn bộ ma trận điểm danh của tất cả các lớp học từ Google Sheets
+   * Phục vụ đồng bộ 2 chiều (Google Sheets -> App)
+   */
+  getAllAttendance: function () {
+    var ss = this.getSpreadsheet();
+    var sheets = ss.getSheets();
+    var store = {};
+
+    for (var i = 0; i < sheets.length; i++) {
+      var sheet = sheets[i];
+      var sheetName = sheet.getName();
+      var lowerName = sheetName.toLowerCase();
+
+      // Bỏ qua các sheet hệ thống
+      if (lowerName === 'overview' || lowerName.indexOf('temp_') === 0 ||
+          lowerName.indexOf('[archived]') === 0 || lowerName === 'classes' ||
+          lowerName === 'students' || lowerName === 'lessons') {
+        continue;
+      }
+
+      var data = sheet.getDataRange().getValues();
+      if (data.length <= 2) continue; // Cần có ít nhất 1 dòng sinh viên (từ dòng 3)
+
+      // Đọc Banner dòng 1 để xác định subjectCode và className nếu có
+      var banner = String(data[0][0] || '');
+      var subjectCode = '';
+      var className = '';
+
+      var subMatch = banner.match(/Môn:\s*([A-Za-z0-9]+)/i);
+      if (subMatch) subjectCode = subMatch[1];
+      var classMatch = banner.match(/Lớp:\s*([A-Za-z0-9_-]+)/i);
+      if (classMatch) className = classMatch[1];
+
+      // Nếu không parse được từ banner thì parse từ tên sheet (ví dụ 12_PRM393_SE1920)
+      if (!className) {
+        var parts = sheetName.split('_');
+        if (parts.length >= 3) {
+          subjectCode = subjectCode || parts[1];
+          className = parts[2];
+        } else {
+          className = sheetName;
+        }
+      }
+
+      var slotCount = 20;
+      var slotMap = {};
+      for (var s = 1; s <= slotCount; s++) {
+        slotMap[s] = {};
+      }
+
+      for (var r = 2; r < data.length; r++) {
+        var email = String(data[r][3] || '').trim().toLowerCase();
+        if (!email) continue;
+
+        for (var s = 1; s <= slotCount; s++) {
+          var colIndex = 5 + s - 1; // 0-indexed: Slot 1 là cột F (index 5)
+          if (colIndex < data[r].length) {
+            var val = String(data[r][colIndex] || '').trim().toUpperCase();
+            if (val === 'P' || val === 'A') {
+              slotMap[s][email] = val;
+            }
+          }
+        }
+      }
+
+      // Lưu trữ theo các định dạng key để đảm bảo Desktop App tra cứu đều tìm thấy
+      if (subjectCode && className) {
+        var compositeKey = subjectCode + ' - ' + className;
+        store[compositeKey] = slotMap;
+      }
+      store[sheetName] = slotMap;
+      if (className) {
+        store[className] = slotMap;
+      }
+    }
+
+    return store;
   },
 
   /**

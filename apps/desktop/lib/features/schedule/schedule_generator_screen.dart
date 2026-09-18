@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
@@ -50,6 +52,7 @@ class _ScheduleGeneratorScreenState extends State<ScheduleGeneratorScreen> {
   String? _selectedKey;
   String? _suggestedKey;
   bool _isSaving = false;
+  bool _isSyncingAttendance = false;
   final _apiClient = ScheduleApiClient();
 
   ScheduledLessonView? get _selectedLesson => ScheduleOverview.findByKey(
@@ -76,6 +79,9 @@ class _ScheduleGeneratorScreenState extends State<ScheduleGeneratorScreen> {
     _weekStart = ScheduleOverview.startOfWeek(widget.semesterStart);
     _generateAllSchedules();
 
+    // Đồng bộ điểm danh ngầm từ Google Sheet khi vào màn hình
+    unawaited(_syncFromGoogleSheet(showToast: false));
+
     final current = ScheduleOverview.findCurrentLesson(
       classes: _classes,
       schedules: _schedules,
@@ -92,6 +98,43 @@ class _ScheduleGeneratorScreenState extends State<ScheduleGeneratorScreen> {
     final firstLessons = _schedules[_classes[index].sourceSheetName]!;
     if (firstLessons.isNotEmpty) {
       _weekStart = ScheduleOverview.startOfWeek(firstLessons.first.date);
+    }
+  }
+
+  /// Đồng bộ toàn bộ dữ liệu điểm danh mới nhất từ Google Sheet (qua Backend)
+  Future<void> _syncFromGoogleSheet({bool showToast = true}) async {
+    if (_isSyncingAttendance) return;
+    if (mounted) setState(() => _isSyncingAttendance = true);
+    try {
+      final success = await AttendanceStorageService().pullFromRemote();
+      if (!mounted) return;
+      if (showToast) {
+        if (success) {
+          M1SnackBar.show(
+            context,
+            'Đã đồng bộ dữ liệu điểm danh mới nhất từ Google Sheet.',
+          );
+        } else {
+          M1SnackBar.show(
+            context,
+            'Không thể kết nối với Google Sheet để đồng bộ.',
+            type: M1NoticeType.warning,
+          );
+        }
+      }
+    } catch (e) {
+      if (!mounted) return;
+      if (showToast) {
+        M1SnackBar.show(
+          context,
+          'Lỗi khi đồng bộ Google Sheet: $e',
+          type: M1NoticeType.error,
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isSyncingAttendance = false);
+      }
     }
   }
 
@@ -428,6 +471,23 @@ class _ScheduleGeneratorScreenState extends State<ScheduleGeneratorScreen> {
               runSpacing: 8,
               children: [
                 OutlinedButton.icon(
+                  onPressed: _isSyncingAttendance
+                      ? null
+                      : () => _syncFromGoogleSheet(showToast: true),
+                  icon: _isSyncingAttendance
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.sync, color: Color(0xFF059669)),
+                  label: Text(
+                    _isSyncingAttendance
+                        ? 'Đang đồng bộ...'
+                        : 'Đồng bộ từ Google Sheet',
+                  ),
+                ),
+                OutlinedButton.icon(
                   onPressed: selected == null
                       ? null
                       : _changeSelectedLessonDate,
@@ -458,6 +518,9 @@ class _ScheduleGeneratorScreenState extends State<ScheduleGeneratorScreen> {
   }
 
   Future<void> _openExportDialogFromSchedule() async {
+    // Kéo dữ liệu mới nhất từ Google Sheet trước khi mở hộp thoại xuất
+    await _syncFromGoogleSheet(showToast: false);
+
     final storage = AttendanceStorageService();
     final persistentStore = await storage.loadStore();
 
