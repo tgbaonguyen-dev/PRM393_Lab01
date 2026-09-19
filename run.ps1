@@ -65,7 +65,7 @@ function Start-ServiceWindow {
     )
 
     Write-Host "[+] Dang khoi dong: $Title" -ForegroundColor $Color
-    $cmd = "`$host.UI.RawUI.WindowTitle = '$Title'; Set-Location -LiteralPath '$WorkingDir'; Write-Host '==================================================' -ForegroundColor Cyan; Write-Host '  $Title' -ForegroundColor Yellow; Write-Host '  Lenh: $Command' -ForegroundColor DarkGray; Write-Host '==================================================' -ForegroundColor Cyan; $Command"
+    $cmd = "try { `$host.UI.RawUI.WindowTitle = '$Title' } catch {}; Set-Location -LiteralPath '$WorkingDir'; Write-Host '==================================================' -ForegroundColor Cyan; Write-Host '  $Title' -ForegroundColor Yellow; Write-Host '  Lenh: $Command' -ForegroundColor DarkGray; Write-Host '==================================================' -ForegroundColor Cyan; $Command"
 
     Start-Process powershell.exe -WorkingDirectory $WorkingDir -ArgumentList "-NoExit", "-Command", $cmd
 }

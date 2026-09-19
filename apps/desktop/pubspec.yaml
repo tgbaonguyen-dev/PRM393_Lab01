@@ -41,6 +41,7 @@ dependencies:
   file_picker: ^8.1.7
   qr_flutter: ^4.1.0
   intl: ^0.20.2
+  google_fonts: ^8.2.1
 
 dev_dependencies:
   flutter_test:

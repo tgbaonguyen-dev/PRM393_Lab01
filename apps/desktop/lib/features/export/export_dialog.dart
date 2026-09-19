@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'export_report_service.dart';
 
 enum ExportFormat { xlsx, csv }
@@ -231,32 +232,52 @@ class _ExportDialogState extends State<ExportDialog> {
     }
   }
 
+  // Notion Academic Minimalist Palette
+  static const _borderColor = Color(0xFFE3E2DE);
+  static const _textPrimary = Color(0xFF37352F);
+  static const _textSecondary = Color(0xFF787774);
+
   @override
   Widget build(BuildContext context) {
     final hasMultiClasses =
         widget.availableClasses != null && widget.availableClasses!.length > 1;
 
     return AlertDialog(
-      titlePadding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
-      contentPadding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
-      actionsPadding: const EdgeInsets.fromLTRB(24, 16, 24, 16),
+      backgroundColor: Colors.white,
+      surfaceTintColor: Colors.transparent,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(8),
+        side: const BorderSide(color: _borderColor, width: 1),
+      ),
+      titlePadding: const EdgeInsets.fromLTRB(20, 18, 20, 0),
+      contentPadding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
+      actionsPadding: const EdgeInsets.fromLTRB(20, 14, 20, 16),
       title: Row(
         children: [
           Container(
-            padding: const EdgeInsets.all(8),
+            width: 34,
+            height: 34,
             decoration: BoxDecoration(
-              color: const Color(0xFFEFF6FF),
-              borderRadius: BorderRadius.circular(8),
+              color: const Color(0xFFF7F6F3),
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(color: _borderColor, width: 1),
             ),
+            alignment: Alignment.center,
             child: const Icon(
               Icons.file_download_outlined,
-              color: Color(0xFF2563EB),
+              size: 18,
+              color: _textPrimary,
             ),
           ),
-          const SizedBox(width: 12),
-          const Text(
+          const SizedBox(width: 10),
+          Text(
             'Xuất Báo Cáo Điểm Danh',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            style: GoogleFonts.inter(
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+              color: _textPrimary,
+              letterSpacing: -0.2,
+            ),
           ),
         ],
       ),
@@ -268,9 +289,13 @@ class _ExportDialogState extends State<ExportDialog> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // 1. Chọn Môn học & Lớp học
-              const Text(
+              Text(
                 'Môn học & Lớp:',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                style: GoogleFonts.inter(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 12.5,
+                  color: _textPrimary,
+                ),
               ),
               const SizedBox(height: 6),
               if (hasMultiClasses) ...[
@@ -281,12 +306,19 @@ class _ExportDialogState extends State<ExportDialog> {
                         c.className == _selectedClassName,
                     orElse: () => widget.availableClasses!.first,
                   ),
-                  decoration: const InputDecoration(
-                    contentPadding: EdgeInsets.symmetric(
-                      horizontal: 12,
+                  decoration: InputDecoration(
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 10,
                       vertical: 8,
                     ),
-                    border: OutlineInputBorder(),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(4),
+                      borderSide: const BorderSide(color: _borderColor),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(4),
+                      borderSide: const BorderSide(color: _textPrimary),
+                    ),
                     isDense: true,
                   ),
                   items: widget.availableClasses!.map((c) {
@@ -294,7 +326,7 @@ class _ExportDialogState extends State<ExportDialog> {
                       value: c,
                       child: Text(
                         'Môn: ${c.subjectCode} | Lớp: ${c.className} (${c.roster.length} SV)',
-                        style: const TextStyle(fontSize: 13),
+                        style: GoogleFonts.inter(fontSize: 12.5),
                       ),
                     );
                   }).toList(),
@@ -305,111 +337,125 @@ class _ExportDialogState extends State<ExportDialog> {
                   width: double.infinity,
                   padding: const EdgeInsets.symmetric(
                     horizontal: 12,
-                    vertical: 10,
+                    vertical: 8,
                   ),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFF1F5F9),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                    color: const Color(0xFFF7F6F3),
+                    borderRadius: BorderRadius.circular(4),
+                    border: Border.all(color: _borderColor),
                   ),
                   child: Text(
                     'Môn: $_selectedSubjectCode  •  Lớp: $_selectedClassName  •  Học kỳ: $_selectedSemester  (${_currentRoster.length} sinh viên)',
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF334155),
-                      fontSize: 13,
+                    style: GoogleFonts.inter(
+                      fontWeight: FontWeight.w500,
+                      color: _textPrimary,
+                      fontSize: 12,
                     ),
                   ),
                 ),
               ],
-              const SizedBox(height: 16),
+              const SizedBox(height: 14),
 
               // 2. Chọn Định dạng file xuất
-              const Text(
+              Text(
                 'Định dạng file xuất:',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-              ),
-              const SizedBox(height: 6),
-              SizedBox(
-                width: double.infinity,
-                child: SegmentedButton<ExportFormat>(
-                  segments: const [
-                    ButtonSegment(
-                      value: ExportFormat.xlsx,
-                      label: Text('Excel (.xlsx)'),
-                      icon: Icon(Icons.table_chart_outlined, size: 18),
-                    ),
-                    ButtonSegment(
-                      value: ExportFormat.csv,
-                      label: Text('CSV (.csv)'),
-                      icon: Icon(Icons.description_outlined, size: 18),
-                    ),
-                  ],
-                  selected: {_selectedFormat},
-                  onSelectionChanged: (set) =>
-                      setState(() => _selectedFormat = set.first),
+                style: GoogleFonts.inter(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 12.5,
+                  color: _textPrimary,
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 6),
+              Row(
+                children: [
+                  _formatPill(
+                    label: 'Excel (.xlsx)',
+                    icon: Icons.table_chart_outlined,
+                    isSelected: _selectedFormat == ExportFormat.xlsx,
+                    onTap: () => setState(() => _selectedFormat = ExportFormat.xlsx),
+                  ),
+                  const SizedBox(width: 8),
+                  _formatPill(
+                    label: 'CSV (.csv)',
+                    icon: Icons.description_outlined,
+                    isSelected: _selectedFormat == ExportFormat.csv,
+                    onTap: () => setState(() => _selectedFormat = ExportFormat.csv),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
 
               // 3. Chọn Chế độ Slot (3 trường hợp)
-              const Text(
+              Text(
                 'Chọn Buổi học (Slots) cần xuất:',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-              ),
-              const SizedBox(height: 6),
-              SizedBox(
-                width: double.infinity,
-                child: SegmentedButton<ExportSlotMode>(
-                  segments: const [
-                    ButtonSegment(
-                      value: ExportSlotMode.singleSlot,
-                      label: Text('1 Slot'),
-                      icon: Icon(Icons.today_outlined, size: 16),
-                    ),
-                    ButtonSegment(
-                      value: ExportSlotMode.multiSlots,
-                      label: Text('Nhiều Slot'),
-                      icon: Icon(Icons.checklist_rounded, size: 16),
-                    ),
-                    ButtonSegment(
-                      value: ExportSlotMode.all20Slots,
-                      label: Text('Cả 20 Slot'),
-                      icon: Icon(Icons.calendar_month_outlined, size: 16),
-                    ),
-                  ],
-                  selected: {_slotMode},
-                  onSelectionChanged: (set) =>
-                      setState(() => _slotMode = set.first),
+                style: GoogleFonts.inter(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 12.5,
+                  color: _textPrimary,
                 ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 6),
+              Row(
+                children: [
+                  _slotModePill(
+                    label: '1 Slot',
+                    icon: Icons.today_outlined,
+                    isSelected: _slotMode == ExportSlotMode.singleSlot,
+                    onTap: () => setState(() => _slotMode = ExportSlotMode.singleSlot),
+                  ),
+                  const SizedBox(width: 8),
+                  _slotModePill(
+                    label: 'Nhiều Slot',
+                    icon: Icons.checklist_rounded,
+                    isSelected: _slotMode == ExportSlotMode.multiSlots,
+                    onTap: () => setState(() => _slotMode = ExportSlotMode.multiSlots),
+                  ),
+                  const SizedBox(width: 8),
+                  _slotModePill(
+                    label: 'Cả 20 Slot',
+                    icon: Icons.calendar_month_outlined,
+                    isSelected: _slotMode == ExportSlotMode.all20Slots,
+                    onTap: () => setState(() => _slotMode = ExportSlotMode.all20Slots),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
 
               // Chi tiết theo từng chế độ Slot
               if (_slotMode == ExportSlotMode.singleSlot) ...[
                 Container(
-                  padding: const EdgeInsets.all(12),
+                  padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFF8FAFC),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                    color: const Color(0xFFF7F6F3),
+                    borderRadius: BorderRadius.circular(5),
+                    border: Border.all(color: _borderColor),
                   ),
                   child: Row(
                     children: [
-                      const Text(
+                      Text(
                         'Chọn slot duy nhất:',
-                        style: TextStyle(fontSize: 13),
+                        style: GoogleFonts.inter(
+                          fontSize: 12,
+                          color: _textSecondary,
+                        ),
                       ),
-                      const SizedBox(width: 12),
+                      const SizedBox(width: 10),
                       Expanded(
                         child: DropdownButtonFormField<int>(
                           initialValue: _singleSelectedSlot,
-                          decoration: const InputDecoration(
-                            contentPadding: EdgeInsets.symmetric(
+                          decoration: InputDecoration(
+                            contentPadding: const EdgeInsets.symmetric(
                               horizontal: 10,
                               vertical: 6,
                             ),
-                            border: OutlineInputBorder(),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(4),
+                              borderSide: const BorderSide(color: _borderColor),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(4),
+                              borderSide: const BorderSide(color: _textPrimary),
+                            ),
                             isDense: true,
                           ),
                           items: List.generate(20, (i) => i + 1).map((slot) {
@@ -419,6 +465,7 @@ class _ExportDialogState extends State<ExportDialog> {
                               value: slot,
                               child: Text(
                                 'Slot ${slot.toString().padLeft(2, '0')}$dateText',
+                                style: GoogleFonts.inter(fontSize: 12),
                               ),
                             );
                           }).toList(),
@@ -434,11 +481,11 @@ class _ExportDialogState extends State<ExportDialog> {
                 ),
               ] else if (_slotMode == ExportSlotMode.multiSlots) ...[
                 Container(
-                  padding: const EdgeInsets.all(12),
+                  padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFF8FAFC),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                    color: const Color(0xFFF7F6F3),
+                    borderRadius: BorderRadius.circular(5),
+                    border: Border.all(color: _borderColor),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -448,10 +495,10 @@ class _ExportDialogState extends State<ExportDialog> {
                         children: [
                           Text(
                             'Đã chọn ${_multiSelectedSlots.length}/20 slot',
-                            style: const TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFF2563EB),
+                            style: GoogleFonts.inter(
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w600,
+                              color: _textPrimary,
                             ),
                           ),
                           Row(
@@ -464,28 +511,28 @@ class _ExportDialogState extends State<ExportDialog> {
                                     );
                                   });
                                 },
-                                child: const Text(
+                                child: Text(
                                   'Chọn hết',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: Color(0xFF2563EB),
-                                    fontWeight: FontWeight.w600,
+                                  style: GoogleFonts.inter(
+                                    fontSize: 11.5,
+                                    color: _textSecondary,
+                                    fontWeight: FontWeight.w500,
                                   ),
                                 ),
                               ),
                               const Text(
                                 ' • ',
-                                style: TextStyle(color: Color(0xFF94A3B8)),
+                                style: TextStyle(color: _borderColor),
                               ),
                               InkWell(
                                 onTap: () =>
                                     setState(() => _multiSelectedSlots.clear()),
-                                child: const Text(
+                                child: Text(
                                   'Bỏ chọn',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: Color(0xFF64748B),
-                                    fontWeight: FontWeight.w600,
+                                  style: GoogleFonts.inter(
+                                    fontSize: 11.5,
+                                    color: _textSecondary,
+                                    fontWeight: FontWeight.w500,
                                   ),
                                 ),
                               ),
@@ -495,33 +542,53 @@ class _ExportDialogState extends State<ExportDialog> {
                       ),
                       const SizedBox(height: 8),
                       Wrap(
-                        spacing: 6,
-                        runSpacing: 6,
+                        spacing: 4,
+                        runSpacing: 4,
                         children: List.generate(20, (i) {
                           final slot = i + 1;
                           final isSelected = _multiSelectedSlots.contains(slot);
-                          return FilterChip(
-                            label: Text(
-                              slot.toString().padLeft(2, '0'),
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: isSelected
-                                    ? FontWeight.bold
-                                    : FontWeight.normal,
-                              ),
-                            ),
-                            selected: isSelected,
-                            showCheckmark: false,
-                            selectedColor: const Color(0xFFDBEAFE),
-                            onSelected: (selected) {
+                          return InkWell(
+                            onTap: () {
                               setState(() {
-                                if (selected) {
-                                  _multiSelectedSlots.add(slot);
-                                } else {
+                                if (isSelected) {
                                   _multiSelectedSlots.remove(slot);
+                                } else {
+                                  _multiSelectedSlots.add(slot);
                                 }
                               });
                             },
+                            borderRadius: BorderRadius.circular(3),
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 100),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 7,
+                                vertical: 3,
+                              ),
+                              decoration: BoxDecoration(
+                                color: isSelected
+                                    ? _textPrimary
+                                    : Colors.white,
+                                borderRadius: BorderRadius.circular(3),
+                                border: Border.all(
+                                  color: isSelected
+                                      ? _textPrimary
+                                      : _borderColor,
+                                  width: 0.8,
+                                ),
+                              ),
+                              child: Text(
+                                slot.toString().padLeft(2, '0'),
+                                style: GoogleFonts.inter(
+                                  fontSize: 11,
+                                  fontWeight: isSelected
+                                      ? FontWeight.w600
+                                      : FontWeight.w400,
+                                  color: isSelected
+                                      ? Colors.white
+                                      : _textPrimary,
+                                ),
+                              ),
+                            ),
                           );
                         }),
                       ),
@@ -531,26 +598,26 @@ class _ExportDialogState extends State<ExportDialog> {
               ] else ...[
                 Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.all(10),
+                  padding: const EdgeInsets.all(9),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFF0FDF4),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: const Color(0xFFBBF7D0)),
+                    color: const Color(0xFFEBF5F0),
+                    borderRadius: BorderRadius.circular(4),
+                    border: Border.all(color: const Color(0xFFC6E7D6)),
                   ),
-                  child: const Row(
+                  child: Row(
                     children: [
-                      Icon(
+                      const Icon(
                         Icons.check_circle_outline,
-                        color: Color(0xFF16A34A),
-                        size: 18,
+                        color: Color(0xFF1F7A4D),
+                        size: 15,
                       ),
-                      SizedBox(width: 8),
+                      const SizedBox(width: 7),
                       Expanded(
                         child: Text(
                           'Sẽ xuất toàn bộ 20 cột điểm danh (Slot 01 đến Slot 20).',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Color(0xFF15803D),
+                          style: GoogleFonts.inter(
+                            fontSize: 11.5,
+                            color: const Color(0xFF1F7A4D),
                             fontWeight: FontWeight.w500,
                           ),
                         ),
@@ -561,19 +628,20 @@ class _ExportDialogState extends State<ExportDialog> {
               ],
 
               if (_errorMessage != null) ...[
-                const SizedBox(height: 12),
+                const SizedBox(height: 10),
                 Container(
                   width: double.infinity,
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
                     color: const Color(0xFFFEE2E2),
-                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(color: const Color(0xFFFECACA)),
+                    borderRadius: BorderRadius.circular(4),
                   ),
                   child: Text(
                     _errorMessage!,
-                    style: const TextStyle(
-                      color: Color(0xFFB91C1C),
-                      fontSize: 13,
+                    style: GoogleFonts.inter(
+                      color: const Color(0xFFB91C1C),
+                      fontSize: 12,
                     ),
                   ),
                 ),
@@ -585,27 +653,146 @@ class _ExportDialogState extends State<ExportDialog> {
       actions: [
         TextButton(
           onPressed: _isExporting ? null : () => Navigator.of(context).pop(),
-          child: const Text('Hủy'),
-        ),
-        ElevatedButton.icon(
-          onPressed: _isExporting ? null : _handleExport,
-          style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFF2563EB),
-            foregroundColor: Colors.white,
+          child: Text(
+            'Hủy',
+            style: GoogleFonts.inter(
+              fontSize: 12.5,
+              color: _textSecondary,
+              fontWeight: FontWeight.w500,
+            ),
           ),
-          icon: _isExporting
-              ? const SizedBox(
-                  width: 16,
-                  height: 16,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
+        ),
+        InkWell(
+          onTap: _isExporting ? null : _handleExport,
+          borderRadius: BorderRadius.circular(4),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            decoration: BoxDecoration(
+              color: _textPrimary,
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (_isExporting)
+                  const SizedBox(
+                    width: 14,
+                    height: 14,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
+                else
+                  const Icon(
+                    Icons.save_alt_rounded,
+                    size: 15,
                     color: Colors.white,
                   ),
-                )
-              : const Icon(Icons.save_alt_rounded, size: 18),
-          label: Text(_isExporting ? 'Đang xuất...' : 'Lưu File'),
+                const SizedBox(width: 6),
+                Text(
+                  _isExporting ? 'Đang xuất...' : 'Lưu File',
+                  style: GoogleFonts.inter(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ],
+    );
+  }
+
+  Widget _formatPill({
+    required String label,
+    required IconData icon,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    return Expanded(
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(4),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 120),
+          padding: const EdgeInsets.symmetric(vertical: 7),
+          decoration: BoxDecoration(
+            color: isSelected ? _textPrimary : Colors.white,
+            borderRadius: BorderRadius.circular(4),
+            border: Border.all(
+              color: isSelected ? _textPrimary : _borderColor,
+              width: 1,
+            ),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                icon,
+                size: 15,
+                color: isSelected ? Colors.white : _textSecondary,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                label,
+                style: GoogleFonts.inter(
+                  fontSize: 12,
+                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                  color: isSelected ? Colors.white : _textPrimary,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _slotModePill({
+    required String label,
+    required IconData icon,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    return Expanded(
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(4),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 120),
+          padding: const EdgeInsets.symmetric(vertical: 7),
+          decoration: BoxDecoration(
+            color: isSelected ? _textPrimary : Colors.white,
+            borderRadius: BorderRadius.circular(4),
+            border: Border.all(
+              color: isSelected ? _textPrimary : _borderColor,
+              width: 1,
+            ),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                icon,
+                size: 14,
+                color: isSelected ? Colors.white : _textSecondary,
+              ),
+              const SizedBox(width: 5),
+              Text(
+                label,
+                style: GoogleFonts.inter(
+                  fontSize: 11.5,
+                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                  color: isSelected ? Colors.white : _textPrimary,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
