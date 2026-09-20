@@ -1,3 +1,4 @@
+import 'support/memory_attendance.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:prm393_desktop/features/import/models/import_models.dart';
@@ -44,15 +45,15 @@ void main() {
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
     await tester.pumpWidget(
-      const MaterialApp(
-        home: ReportsScreen(),
+      MaterialApp(
+        home: ReportsScreen(storageService: MemoryAttendance()),
       ),
     );
     await tester.pumpAndSettle();
 
     // 1. Kiểm tra tiêu đề và các nút
     expect(find.text('Báo Cáo & Thống Kê Điểm Danh'), findsOneWidget);
-    expect(find.text('Đồng bộ Google Sheet'), findsOneWidget);
+    expect(find.text('Đồng bộ Google Sheet'), findsNothing);
     expect(find.textContaining('Xuất Báo Cáo'), findsOneWidget);
 
     // 2. Kiểm tra bộ chọn lớp và format

@@ -30,7 +30,8 @@ class ExportReportService {
     required List<Map<String, dynamic>> roster,
     required List<int> selectedLessonNumbers,
     required Map<int, String> lessonDates,
-    required Map<String, Map<int, String>> attendanceData, // email -> {lessonNumber: status}
+    required Map<String, Map<int, String>>
+    attendanceData, // email -> {lessonNumber: status}
     required String targetFilePath,
   }) async {
     try {
@@ -53,8 +54,12 @@ class ExportReportService {
         CellIndex.indexByColumnRow(columnIndex: totalCols - 1, rowIndex: 0),
       );
 
-      final titleCell = sheet.cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: 0));
-      titleCell.value = TextCellValue('BÁO CÁO ĐIỂM DANH - MÔN: $subjectCode | LỚP: $className | HỌC KỲ: $semester');
+      final titleCell = sheet.cell(
+        CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: 0),
+      );
+      titleCell.value = TextCellValue(
+        'BÁO CÁO ĐIỂM DANH - MÔN: $subjectCode | LỚP: $className | HỌC KỲ: $semester',
+      );
       titleCell.cellStyle = CellStyle(
         bold: true,
         fontSize: 14,
@@ -76,7 +81,8 @@ class ExportReportService {
       for (final lesNum in sortedLessons) {
         final date = lessonDates[lesNum];
         final dateSuffix = date != null && date.isNotEmpty ? '\n($date)' : '';
-        final slotLabel = 'Slot ${lesNum.toString().padLeft(2, '0')}$dateSuffix';
+        final slotLabel =
+            'Slot ${lesNum.toString().padLeft(2, '0')}$dateSuffix';
         headers.add(slotLabel);
       }
 
@@ -85,7 +91,9 @@ class ExportReportService {
       headers.add('Tỉ lệ Vắng (%)');
 
       for (int c = 0; c < headers.length; c++) {
-        final cell = sheet.cell(CellIndex.indexByColumnRow(columnIndex: c, rowIndex: 1));
+        final cell = sheet.cell(
+          CellIndex.indexByColumnRow(columnIndex: c, rowIndex: 1),
+        );
         cell.value = TextCellValue(headers[c]);
         cell.cellStyle = CellStyle(
           bold: true,
@@ -103,11 +111,41 @@ class ExportReportService {
         final email = (student['email'] ?? '').toString().trim().toLowerCase();
         final rowIndex = r + 2;
 
-        sheet.cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: rowIndex)).value = IntCellValue(r + 1);
-        sheet.cell(CellIndex.indexByColumnRow(columnIndex: 1, rowIndex: rowIndex)).value = TextCellValue(student['rollNumber']?.toString() ?? '');
-        sheet.cell(CellIndex.indexByColumnRow(columnIndex: 2, rowIndex: rowIndex)).value = TextCellValue(student['fullName']?.toString() ?? '');
-        sheet.cell(CellIndex.indexByColumnRow(columnIndex: 3, rowIndex: rowIndex)).value = TextCellValue(email);
-        sheet.cell(CellIndex.indexByColumnRow(columnIndex: 4, rowIndex: rowIndex)).value = TextCellValue(student['memberCode']?.toString() ?? '');
+        sheet
+            .cell(
+              CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: rowIndex),
+            )
+            .value = IntCellValue(
+          r + 1,
+        );
+        sheet
+            .cell(
+              CellIndex.indexByColumnRow(columnIndex: 1, rowIndex: rowIndex),
+            )
+            .value = TextCellValue(
+          student['rollNumber']?.toString() ?? '',
+        );
+        sheet
+            .cell(
+              CellIndex.indexByColumnRow(columnIndex: 2, rowIndex: rowIndex),
+            )
+            .value = TextCellValue(
+          student['fullName']?.toString() ?? '',
+        );
+        sheet
+            .cell(
+              CellIndex.indexByColumnRow(columnIndex: 3, rowIndex: rowIndex),
+            )
+            .value = TextCellValue(
+          email,
+        );
+        sheet
+            .cell(
+              CellIndex.indexByColumnRow(columnIndex: 4, rowIndex: rowIndex),
+            )
+            .value = TextCellValue(
+          student['memberCode']?.toString() ?? '',
+        );
 
         int absentCount = 0;
         int presentCount = 0;
@@ -116,7 +154,12 @@ class ExportReportService {
           final lesNum = sortedLessons[l];
           final status = attendanceData[email]?[lesNum] ?? '';
           final colIndex = 5 + l;
-          final cell = sheet.cell(CellIndex.indexByColumnRow(columnIndex: colIndex, rowIndex: rowIndex));
+          final cell = sheet.cell(
+            CellIndex.indexByColumnRow(
+              columnIndex: colIndex,
+              rowIndex: rowIndex,
+            ),
+          );
 
           if (status == 'P') {
             cell.value = TextCellValue('P');
@@ -148,11 +191,33 @@ class ExportReportService {
         final presentCol = 5 + sortedLessons.length + 1;
         final pctCol = 5 + sortedLessons.length + 2;
 
-        sheet.cell(CellIndex.indexByColumnRow(columnIndex: absentCol, rowIndex: rowIndex)).value = IntCellValue(absentCount);
-        sheet.cell(CellIndex.indexByColumnRow(columnIndex: presentCol, rowIndex: rowIndex)).value = IntCellValue(presentCount);
+        sheet
+            .cell(
+              CellIndex.indexByColumnRow(
+                columnIndex: absentCol,
+                rowIndex: rowIndex,
+              ),
+            )
+            .value = IntCellValue(
+          absentCount,
+        );
+        sheet
+            .cell(
+              CellIndex.indexByColumnRow(
+                columnIndex: presentCol,
+                rowIndex: rowIndex,
+              ),
+            )
+            .value = IntCellValue(
+          presentCount,
+        );
 
-        final absentPct = sortedLessons.isNotEmpty ? (absentCount / sortedLessons.length) * 100 : 0.0;
-        final pctCell = sheet.cell(CellIndex.indexByColumnRow(columnIndex: pctCol, rowIndex: rowIndex));
+        final absentPct = sortedLessons.isNotEmpty
+            ? (absentCount / sortedLessons.length) * 100
+            : 0.0;
+        final pctCell = sheet.cell(
+          CellIndex.indexByColumnRow(columnIndex: pctCol, rowIndex: rowIndex),
+        );
         pctCell.value = TextCellValue('${absentPct.toStringAsFixed(1)}%');
 
         if (absentPct > 20.0) {
@@ -163,7 +228,9 @@ class ExportReportService {
             horizontalAlign: HorizontalAlign.Center,
           );
         } else {
-          pctCell.cellStyle = CellStyle(horizontalAlign: HorizontalAlign.Center);
+          pctCell.cellStyle = CellStyle(
+            horizontalAlign: HorizontalAlign.Center,
+          );
         }
       }
 
@@ -219,13 +286,7 @@ class ExportReportService {
       buffer.write('\uFEFF');
 
       // 1. Header CSV
-      final headers = <String>[
-        'STT',
-        'MSSV',
-        'Họ và tên',
-        'Email',
-        'Mã FAP',
-      ];
+      final headers = <String>['STT', 'MSSV', 'Họ và tên', 'Email', 'Mã FAP'];
 
       for (final lesNum in sortedLessons) {
         final date = lessonDates[lesNum];
@@ -268,7 +329,9 @@ class ExportReportService {
           }
         }
 
-        final absentPct = sortedLessons.isNotEmpty ? (absentCount / sortedLessons.length) * 100 : 0.0;
+        final absentPct = sortedLessons.isNotEmpty
+            ? (absentCount / sortedLessons.length) * 100
+            : 0.0;
         row.add('$absentCount');
         row.add('$presentCount');
         row.add('"${absentPct.toStringAsFixed(1)}%"');

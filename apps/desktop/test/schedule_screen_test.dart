@@ -1,3 +1,4 @@
+import 'support/memory_attendance.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:prm393_desktop/features/import/models/import_models.dart';
@@ -24,15 +25,15 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('2 lớp • 32 buổi'), findsOneWidget);
+    expect(find.textContaining('2 lớp học phần'), findsOneWidget);
     expect(find.text('PRM393'), findsWidgets);
     expect(find.text('PRN232'), findsWidgets);
     expect(find.text('Buổi 01 / 20'), findsOneWidget);
     expect(find.text('Buổi 01 / 12'), findsOneWidget);
     expect(find.text('Mở điểm danh QR'), findsOneWidget);
-    expect(find.text('Đổi lịch buổi đã chọn'), findsOneWidget);
+    expect(find.text('Đổi Lịch'), findsOneWidget);
     expect(find.text('Xác nhận buổi'), findsNothing);
-    expect(find.text('Lưu lịch học'), findsOneWidget);
+    expect(find.byTooltip('Thao Tác Lịch'), findsOneWidget);
   });
 
   testWidgets('shows only slots used by the imported class schedules', (
@@ -78,12 +79,13 @@ void main() {
         semesterStart: DateTime(2026, 9, 7),
       );
 
-      await tester.pumpWidget(const MaterialApp(home: AppShell()));
+      await tester.pumpWidget(MaterialApp(home: AppShell(loadExistingData: false, storageService: MemoryAttendance())));
       await tester.pumpAndSettle();
 
       expect(AppNavigationController.instance.currentIndex, 0);
 
-      // Tap 'Mở điểm danh QR'
+      await tester.tap(find.text('PRM393').first);
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Mở điểm danh QR'));
       await tester.pumpAndSettle();
 
@@ -91,11 +93,9 @@ void main() {
       expect(AppNavigationController.instance.currentIndex, 1);
       expect(find.text('Trình chiếu QR điểm danh'), findsOneWidget);
 
-      // Tap back button in QrDisplayScreen's AppBar
-      await tester.tap(find.byTooltip('Quay lại Lịch Giảng Dạy'));
+      // QR is a workspace tab; navigation remains available in the sidebar.
+      AppNavigationController.instance.navigateToTab(0);
       await tester.pumpAndSettle();
-
-      // Verify returned to Tab 0 (Lịch Giảng Dạy)
       expect(AppNavigationController.instance.currentIndex, 0);
     },
   );

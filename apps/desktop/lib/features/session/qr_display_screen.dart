@@ -9,8 +9,11 @@ import 'package:qr_flutter/qr_flutter.dart';
 
 import '../../config.dart';
 import '../../shared/m1_snackbar.dart';
-import '../../shell/app_shell.dart';
+import '../../shared/notion_tokens.dart';
+import '../../shared/workspace_ui.dart';
 import '../attendance/services/attendance_storage_service.dart';
+import 'services/checkin_notification_detector.dart';
+import 'widgets/checkin_notification_toast.dart';
 
 enum _SessionViewState { idle, opening, open, closing, closed }
 
@@ -22,6 +25,7 @@ class QrDisplayScreen extends StatefulWidget {
   final List<Map<String, dynamic>>? roster;
   final String apiBaseUrl;
   final http.Client? client;
+  final AttendanceStorageService? storageService;
 
   const QrDisplayScreen({
     super.key,
@@ -32,6 +36,7 @@ class QrDisplayScreen extends StatefulWidget {
     this.roster,
     this.apiBaseUrl = AppConfig.apiBaseUrl,
     this.client,
+    this.storageService,
   });
 
   @override
@@ -39,18 +44,19 @@ class QrDisplayScreen extends StatefulWidget {
 }
 
 class _QrDisplayScreenState extends State<QrDisplayScreen> {
-  // Notion Academic Minimalist Palette
-  static const _canvasBg = Color(0xFFFAF9F6);
-  static const _borderColor = Color(0xFFE3E2DE);
-  static const _textPrimary = Color(0xFF37352F);
-  static const _textSecondary = Color(0xFF787774);
+  // 100% Exact Notion Tokens from ai/DESIGN.md
+  static const _canvasBg = NotionColors.canvasSoft; // #F6F5F4
+  static const _borderColor = NotionColors.hairline; // #E6E6E6
+  static const _textPrimary = NotionColors.ink; // #000000
+  static const _textSecondary = NotionColors.inkMuted; // #615D59
 
+  late final AttendanceStorageService _storage =
+      widget.storageService ?? AttendanceStorageService();
   late final http.Client _client;
   late final bool _ownsClient;
   Timer? _rotationTimer;
   Timer? _countdownTimer;
   Timer? _livePollingTimer;
-  Timer? _sessionTimeoutTimer;
 
   _SessionViewState _viewState = _SessionViewState.idle;
   String? _windowId;
@@ -69,12 +75,17 @@ class _QrDisplayScreenState extends State<QrDisplayScreen> {
   String _statusFilter = 'all'; // 'all', 'present', 'absent'
 
   // 2. Thiết lập thời gian (Time settings)
-  int _qrRefreshSeconds = 15; // 10, 15, 30, 60 giây
-  int? _sessionDurationMinutes = 15; // 5, 10, 15, 30 phút hoặc null (không giới hạn)
-  int _sessionRemainingSeconds = 0;
+  final int _qrRefreshSeconds = 15; // 10, 15, 30, 60 giây
 
   // 3. Toàn màn hình (Fullscreen Presentation)
   bool _isFullscreen = false;
+
+  // 4. Thông báo điểm danh Realtime & Âm thanh
+  final CheckinNotificationDetector _checkinDetector =
+      CheckinNotificationDetector();
+  final List<CheckinNotificationItem> _activeNotifications = [];
+  bool _soundEnabled = true;
+  bool _hasSyncedRemoteOnce = false;
 
   bool get _isOpen => _viewState == _SessionViewState.open;
   bool get _isBusy =>
@@ -95,7 +106,6 @@ class _QrDisplayScreenState extends State<QrDisplayScreen> {
   void dispose() {
     _stopTimers();
     _livePollingTimer?.cancel();
-    _sessionTimeoutTimer?.cancel();
     _searchController.dispose();
     if (_ownsClient) _client.close();
     super.dispose();
@@ -114,7 +124,8 @@ class _QrDisplayScreenState extends State<QrDisplayScreen> {
     Map<String, Map<int, Map<String, String>>> store,
   ) {
     final candidateKeys = <String>[
-      if (widget.className != null && widget.className!.isNotEmpty) widget.className!,
+      if (widget.className != null && widget.className!.isNotEmpty)
+        widget.className!,
       widget.classId,
       if (widget.className != null && widget.className!.contains(' - ')) ...[
         widget.className!.split(' - ').last.trim(),
@@ -160,7 +171,10 @@ class _QrDisplayScreenState extends State<QrDisplayScreen> {
   void _initRosterData() {
     if (widget.roster != null && widget.roster!.isNotEmpty) {
       for (final s in widget.roster!) {
-        final email = (s['studentEmail'] ?? s['email'] ?? '').toString().trim().toLowerCase();
+        final email = (s['studentEmail'] ?? s['email'] ?? '')
+            .toString()
+            .trim()
+            .toLowerCase();
         _rosterList.add(Map<String, dynamic>.from(s));
         if (email.isNotEmpty) {
           _studentStatus.putIfAbsent(email, () => 'A');
@@ -172,7 +186,7 @@ class _QrDisplayScreenState extends State<QrDisplayScreen> {
   /// Nạp ngay dữ liệu điểm danh đã lưu trước đó của slot này (nếu có)
   Future<void> _loadInitialAttendance() async {
     try {
-      final storage = AttendanceStorageService();
+      final storage = _storage;
       final store = await storage.loadStore();
       final slotSeq = _resolveSlotSequence();
       final classAttendance = _resolveClassStore(store);
@@ -187,8 +201,14 @@ class _QrDisplayScreenState extends State<QrDisplayScreen> {
             if (status == 'P' || status == 'A') {
               _studentStatus[email] = status;
               if (email.isNotEmpty &&
-                  !_rosterList.any((r) =>
-                      (r['studentEmail'] ?? r['email'] ?? '').toString().trim().toLowerCase() == email)) {
+                  !_rosterList.any(
+                    (r) =>
+                        (r['studentEmail'] ?? r['email'] ?? '')
+                            .toString()
+                            .trim()
+                            .toLowerCase() ==
+                        email,
+                  )) {
                 _rosterList.add({
                   'rollNumber': '',
                   'fullName': email,
@@ -199,6 +219,9 @@ class _QrDisplayScreenState extends State<QrDisplayScreen> {
             }
           }
         });
+      }
+      if (!_checkinDetector.isInitialized) {
+        _checkinDetector.initialize(_studentStatus);
       }
     } catch (_) {}
 
@@ -229,11 +252,6 @@ class _QrDisplayScreenState extends State<QrDisplayScreen> {
       setState(() {
         _windowId = windowId;
         _viewState = _SessionViewState.open;
-        if (_sessionDurationMinutes != null) {
-          _sessionRemainingSeconds = _sessionDurationMinutes! * 60;
-        } else {
-          _sessionRemainingSeconds = 0;
-        }
       });
       _startTimers();
       _startLivePolling();
@@ -255,7 +273,7 @@ class _QrDisplayScreenState extends State<QrDisplayScreen> {
       setState(() => _isSyncingRemote = true);
     }
     try {
-      final storage = AttendanceStorageService();
+      final storage = _storage;
       final store = await storage.loadStore();
 
       final slotSeq = _resolveSlotSequence();
@@ -284,15 +302,19 @@ class _QrDisplayScreenState extends State<QrDisplayScreen> {
             final students = payload['students'] as List;
             bool stateChanged = false;
             for (final s in students) {
-              final email = (s['studentEmail'] ??
-                      s['email'] ??
-                      s['Email'] ??
-                      s['StudentEmail'] ??
-                      '')
+              final email =
+                  (s['studentEmail'] ??
+                          s['email'] ??
+                          s['Email'] ??
+                          s['StudentEmail'] ??
+                          '')
+                      .toString()
+                      .trim()
+                      .toLowerCase();
+              final status = (s['status'] ?? s['Status'] ?? '')
                   .toString()
                   .trim()
-                  .toLowerCase();
-              final status = (s['status'] ?? s['Status'] ?? '').toString().trim().toUpperCase();
+                  .toUpperCase();
 
               if (email.isNotEmpty && (status == 'P' || status == 'A')) {
                 slotMap[email] = status;
@@ -304,9 +326,14 @@ class _QrDisplayScreenState extends State<QrDisplayScreen> {
 
               // Nếu danh sách lớp chưa có sinh viên này thì nạp thêm vào
               if (email.isNotEmpty &&
-                  !_rosterList.any((r) =>
-                      (r['studentEmail'] ?? r['email'] ?? '').toString().trim().toLowerCase() ==
-                      email)) {
+                  !_rosterList.any(
+                    (r) =>
+                        (r['studentEmail'] ?? r['email'] ?? '')
+                            .toString()
+                            .trim()
+                            .toLowerCase() ==
+                        email,
+                  )) {
                 _rosterList.add({
                   'rollNumber': s['rollNumber'] ?? s['RollNumber'] ?? '',
                   'fullName': s['fullName'] ?? s['FullName'] ?? email,
@@ -319,20 +346,35 @@ class _QrDisplayScreenState extends State<QrDisplayScreen> {
             if (stateChanged && mounted) {
               setState(() {});
             }
+
+            // Phát hiện và thông báo sinh viên vừa điểm danh
+            if (!_hasSyncedRemoteOnce) {
+              _hasSyncedRemoteOnce = true;
+              _checkinDetector.initialize(_studentStatus);
+            } else {
+              final newEvents = _checkinDetector.processNewStatuses(
+                newStatuses: _studentStatus,
+                roster: _rosterList,
+              );
+              if (newEvents.isNotEmpty) {
+                _handleNewCheckinEvents(newEvents);
+              }
+            }
           }
         }
       } catch (_) {}
 
       // Duy trì trạng thái đã có hoặc gán mặc định A nếu chưa từng điểm danh
       for (final student in _rosterList) {
-        final email = (student['studentEmail'] ??
-                student['email'] ??
-                student['Email'] ??
-                student['StudentEmail'] ??
-                '')
-            .toString()
-            .trim()
-            .toLowerCase();
+        final email =
+            (student['studentEmail'] ??
+                    student['email'] ??
+                    student['Email'] ??
+                    student['StudentEmail'] ??
+                    '')
+                .toString()
+                .trim()
+                .toLowerCase();
         if (email.isNotEmpty) {
           final current = _studentStatus[email] ?? slotMap[email] ?? 'A';
           _studentStatus[email] = current;
@@ -340,12 +382,16 @@ class _QrDisplayScreenState extends State<QrDisplayScreen> {
         }
       }
 
+      if (!mounted) return;
       classStore[slotSeq] = slotMap;
       _syncClassStoreToAliases(store, classStore);
       await storage.saveStore(store);
 
       if (!isSilent && mounted) {
-        M1SnackBar.show(context, 'Đã đồng bộ realtime với Google Sheet thành công!');
+        M1SnackBar.show(
+          context,
+          'Đã đồng bộ realtime với Google Sheet thành công!',
+        );
       }
     } catch (_) {
     } finally {
@@ -356,7 +402,10 @@ class _QrDisplayScreenState extends State<QrDisplayScreen> {
   }
 
   /// Giảng viên đổi điểm danh thủ công (Manual Override) -> Ghi ngay lên Google Sheets
-  Future<void> _toggleStudentAttendance(String email, String studentName) async {
+  Future<void> _toggleStudentAttendance(
+    String email,
+    String studentName,
+  ) async {
     final current = _studentStatus[email] ?? 'A';
     final nextStatus = current == 'P' ? 'A' : 'P';
 
@@ -364,10 +413,11 @@ class _QrDisplayScreenState extends State<QrDisplayScreen> {
     setState(() {
       _studentStatus[email] = nextStatus;
     });
+    _checkinDetector.updateStatus(email, nextStatus);
 
     // 2. Lưu ngay vào local storage
     try {
-      final storage = AttendanceStorageService();
+      final storage = _storage;
       final store = await storage.loadStore();
       final slotSeq = _resolveSlotSequence();
       final classStore = _resolveClassStore(store);
@@ -476,7 +526,6 @@ class _QrDisplayScreenState extends State<QrDisplayScreen> {
         _qrUrl = null;
         _expiresAt = null;
         _secondsRemaining = 0;
-        _sessionRemainingSeconds = 0;
       });
     } catch (error) {
       if (!mounted) return;
@@ -501,32 +550,6 @@ class _QrDisplayScreenState extends State<QrDisplayScreen> {
         setState(() => _secondsRemaining = remaining);
       }
     });
-
-    // Timer ca điểm danh tự động đóng khi hết giờ
-    if (_sessionDurationMinutes != null) {
-      _sessionTimeoutTimer?.cancel();
-      _sessionTimeoutTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
-        if (!mounted || !_isOpen) {
-          timer.cancel();
-          return;
-        }
-        if (_sessionRemainingSeconds > 0) {
-          setState(() {
-            _sessionRemainingSeconds--;
-          });
-        } else {
-          timer.cancel();
-          unawaited(_closeSession());
-          if (mounted) {
-            M1SnackBar.show(
-              context,
-              'Thời gian ca điểm danh đã kết thúc. Phiên đã được tự động đóng.',
-              type: M1NoticeType.warning,
-            );
-          }
-        }
-      });
-    }
   }
 
   void _startLivePolling() {
@@ -541,10 +564,8 @@ class _QrDisplayScreenState extends State<QrDisplayScreen> {
   void _stopTimers() {
     _rotationTimer?.cancel();
     _countdownTimer?.cancel();
-    _sessionTimeoutTimer?.cancel();
     _rotationTimer = null;
     _countdownTimer = null;
-    _sessionTimeoutTimer = null;
   }
 
   int _remainingSeconds(DateTime expiresAt) {
@@ -593,12 +614,16 @@ class _QrDisplayScreenState extends State<QrDisplayScreen> {
   List<Map<String, dynamic>> get _filteredRoster {
     final query = _searchQuery.trim().toLowerCase();
     return _rosterList.where((student) {
-      final email = (student['studentEmail'] ?? student['email'] ?? '').toString().trim().toLowerCase();
+      final email = (student['studentEmail'] ?? student['email'] ?? '')
+          .toString()
+          .trim()
+          .toLowerCase();
       final name = (student['fullName'] ?? '').toString().toLowerCase();
       final roll = (student['rollNumber'] ?? '').toString().toLowerCase();
       final status = _studentStatus[email] ?? 'A';
 
-      final matchesQuery = query.isEmpty ||
+      final matchesQuery =
+          query.isEmpty ||
           email.contains(query) ||
           name.contains(query) ||
           roll.contains(query);
@@ -612,10 +637,67 @@ class _QrDisplayScreenState extends State<QrDisplayScreen> {
   }
 
   int get _presentCount => _rosterList.where((student) {
-        final email = (student['studentEmail'] ?? student['email'] ?? '').toString().trim().toLowerCase();
-        return (_studentStatus[email] ?? 'A') == 'P';
-      }).length;
+    final email = (student['studentEmail'] ?? student['email'] ?? '')
+        .toString()
+        .trim()
+        .toLowerCase();
+    return (_studentStatus[email] ?? 'A') == 'P';
+  }).length;
   int get _absentCount => _rosterList.length - _presentCount;
+
+  void _handleNewCheckinEvents(List<CheckinNotificationItem> events) {
+    if (!mounted || events.isEmpty) return;
+
+    if (_soundEnabled) {
+      SystemSound.play(SystemSoundType.click);
+    }
+
+    setState(() {
+      for (final event in events) {
+        _activeNotifications.insert(0, event);
+      }
+      // Giới hạn tối đa 3 toast đồng thời trên màn hình
+      if (_activeNotifications.length > 3) {
+        _activeNotifications.removeRange(3, _activeNotifications.length);
+      }
+    });
+
+    // Tự động ẩn từng thông báo sau 4 giây
+    for (final event in events) {
+      Timer(const Duration(seconds: 4), () {
+        if (mounted) {
+          _dismissNotification(event.id);
+        }
+      });
+    }
+  }
+
+  void _dismissNotification(String id) {
+    if (!mounted) return;
+    setState(() {
+      _activeNotifications.removeWhere((item) => item.id == id);
+    });
+  }
+
+  Widget _buildNotificationToastOverlay() {
+    if (_activeNotifications.isEmpty) return const SizedBox.shrink();
+
+    return Positioned(
+      bottom: 20,
+      right: 20,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: _activeNotifications.map((item) {
+          return CheckinNotificationToast(
+            key: ValueKey(item.id),
+            item: item,
+            onDismiss: () => _dismissNotification(item.id),
+          );
+        }).toList(),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -631,17 +713,6 @@ class _QrDisplayScreenState extends State<QrDisplayScreen> {
         elevation: 0,
         backgroundColor: _canvasBg,
         surfaceTintColor: Colors.transparent,
-        leading: IconButton(
-          tooltip: 'Quay lại Lịch Giảng Dạy',
-          icon: const Icon(Icons.arrow_back, size: 20, color: _textPrimary),
-          onPressed: () {
-            if (Navigator.of(context).canPop()) {
-              Navigator.of(context).pop();
-            } else {
-              AppNavigationController.instance.navigateToTab(0);
-            }
-          },
-        ),
         bottom: const PreferredSize(
           preferredSize: Size.fromHeight(1),
           child: Divider(height: 1, thickness: 1, color: _borderColor),
@@ -656,6 +727,15 @@ class _QrDisplayScreenState extends State<QrDisplayScreen> {
         ),
         actions: [
           IconButton(
+            tooltip: _soundEnabled ? 'Tắt âm báo điểm danh' : 'Bật âm báo điểm danh',
+            icon: Icon(
+              _soundEnabled ? Icons.volume_up_outlined : Icons.volume_off_outlined,
+              size: 20,
+              color: _textPrimary,
+            ),
+            onPressed: () => setState(() => _soundEnabled = !_soundEnabled),
+          ),
+          IconButton(
             tooltip: 'Trình chiếu toàn màn hình (Projector)',
             icon: const Icon(Icons.fullscreen, size: 20, color: _textPrimary),
             onPressed: () => setState(() => _isFullscreen = true),
@@ -667,264 +747,89 @@ class _QrDisplayScreenState extends State<QrDisplayScreen> {
         ],
       ),
       body: SafeArea(
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final isWide = constraints.maxWidth >= 940;
+        child: Stack(
+          children: [
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final isWide = constraints.maxWidth >= 940;
 
-            if (isWide) {
-              return Padding(
-                padding: const EdgeInsets.all(16),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    // Cột Trái: QR, Bộ Đếm, Nút Thao Tác & Cài Đặt (420px)
-                    SizedBox(
-                      width: 420,
-                      child: SingleChildScrollView(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            _SessionHeader(
-                              className: widget.className ?? widget.classId,
-                              lessonLabel: widget.lessonLabel ?? widget.sessionId,
+                if (isWide) {
+                  return Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        // Cột Trái: QR, Bộ Đếm, Nút Thao Tác & Cài Đặt (420px)
+                        SizedBox(
+                          width: 420,
+                          child: SingleChildScrollView(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                _SessionHeader(
+                                  className: widget.className ?? widget.classId,
+                                  lessonLabel:
+                                      widget.lessonLabel ?? widget.sessionId,
+                                ),
+                                const SizedBox(height: 12),
+                                _buildQrCard(),
+                                if (_errorMessage != null) ...[
+                                  const SizedBox(height: 12),
+                                  _buildErrorBanner(),
+                                ],
+                                const SizedBox(height: 12),
+                                _buildActionButtons(),
+                              ],
                             ),
-                            const SizedBox(height: 12),
-                            _buildTimeSettingsCard(),
-                            const SizedBox(height: 12),
-                            _buildQrCard(),
-                            if (_errorMessage != null) ...[
-                              const SizedBox(height: 12),
-                              _buildErrorBanner(),
-                            ],
-                            const SizedBox(height: 12),
-                            _buildActionButtons(),
-                          ],
+                          ),
                         ),
+                        const SizedBox(width: 16),
+                        // Cột Phải: Bảng Sinh Viên & Điểm Danh Realtime
+                        Expanded(child: _buildRosterPanel()),
+                      ],
+                    ),
+                  );
+                }
+
+                // Màn hình hẹp: Dạng cột cuộn dọc
+                return SingleChildScrollView(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      _SessionHeader(
+                        className: widget.className ?? widget.classId,
+                        lessonLabel: widget.lessonLabel ?? widget.sessionId,
                       ),
-                    ),
-                    const SizedBox(width: 16),
-                    // Cột Phải: Bảng Sinh Viên & Điểm Danh Realtime
-                    Expanded(
-                      child: _buildRosterPanel(),
-                    ),
-                  ],
-                ),
-              );
-            }
-
-            // Màn hình hẹp: Dạng cột cuộn dọc
-            return SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  _SessionHeader(
-                    className: widget.className ?? widget.classId,
-                    lessonLabel: widget.lessonLabel ?? widget.sessionId,
+                      const SizedBox(height: 12),
+                      _buildQrCard(),
+                      if (_errorMessage != null) ...[
+                        const SizedBox(height: 12),
+                        _buildErrorBanner(),
+                      ],
+                      const SizedBox(height: 12),
+                      _buildActionButtons(),
+                      const SizedBox(height: 16),
+                      SizedBox(height: 520, child: _buildRosterPanel()),
+                    ],
                   ),
-                  const SizedBox(height: 12),
-                  _buildTimeSettingsCard(),
-                  const SizedBox(height: 12),
-                  _buildQrCard(),
-                  if (_errorMessage != null) ...[
-                    const SizedBox(height: 12),
-                    _buildErrorBanner(),
-                  ],
-                  const SizedBox(height: 12),
-                  _buildActionButtons(),
-                  const SizedBox(height: 16),
-                  SizedBox(
-                    height: 520,
-                    child: _buildRosterPanel(),
-                  ),
-                ],
-              ),
-            );
-          },
+                );
+              },
+            ),
+            _buildNotificationToastOverlay(),
+          ],
         ),
       ),
     );
-  }
-
-  Widget _buildTimeSettingsCard() {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: _borderColor, width: 1),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Icon(Icons.timer_outlined, size: 15, color: _textSecondary),
-              const SizedBox(width: 6),
-              Expanded(
-                child: Text(
-                  'Thiết Lập Thời Gian',
-                  style: GoogleFonts.inter(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: _textPrimary,
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-              if (_isOpen && _sessionDurationMinutes != null) ...[
-                const SizedBox(width: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFFEF3C7),
-                    borderRadius: BorderRadius.circular(4),
-                    border: Border.all(color: const Color(0xFFFCD34D), width: 0.8),
-                  ),
-                  child: Text(
-                    'Đóng sau: ${_formatDuration(_sessionRemainingSeconds)}',
-                    style: GoogleFonts.inter(
-                      fontSize: 10.5,
-                      fontWeight: FontWeight.w600,
-                      color: const Color(0xFFB45309),
-                    ),
-                  ),
-                ),
-              ],
-            ],
-          ),
-          const SizedBox(height: 8),
-          // 1. Chu kỳ xoay QR
-          Wrap(
-            crossAxisAlignment: WrapCrossAlignment.center,
-            spacing: 4,
-            runSpacing: 4,
-            children: [
-              Text(
-                'Xoay mã QR:',
-                style: GoogleFonts.inter(fontSize: 11, color: _textSecondary),
-              ),
-              _timePill(10, '10s', _qrRefreshSeconds == 10, (val) {
-                setState(() => _qrRefreshSeconds = val);
-                if (_isOpen) _startTimers();
-              }),
-              _timePill(15, '15s', _qrRefreshSeconds == 15, (val) {
-                setState(() => _qrRefreshSeconds = val);
-                if (_isOpen) _startTimers();
-              }),
-              _timePill(30, '30s', _qrRefreshSeconds == 30, (val) {
-                setState(() => _qrRefreshSeconds = val);
-                if (_isOpen) _startTimers();
-              }),
-              _timePill(60, '60s', _qrRefreshSeconds == 60, (val) {
-                setState(() => _qrRefreshSeconds = val);
-                if (_isOpen) _startTimers();
-              }),
-            ],
-          ),
-          const SizedBox(height: 6),
-          // 2. Thời lượng ca điểm danh
-          Wrap(
-            crossAxisAlignment: WrapCrossAlignment.center,
-            spacing: 4,
-            runSpacing: 4,
-            children: [
-              Text(
-                'Thời lượng ca:',
-                style: GoogleFonts.inter(fontSize: 11, color: _textSecondary),
-              ),
-              _durationPill(5, '5p', _sessionDurationMinutes == 5, (val) {
-                setState(() => _sessionDurationMinutes = val);
-              }),
-              _durationPill(10, '10p', _sessionDurationMinutes == 10, (val) {
-                setState(() => _sessionDurationMinutes = val);
-              }),
-              _durationPill(15, '15p', _sessionDurationMinutes == 15, (val) {
-                setState(() => _sessionDurationMinutes = val);
-              }),
-              _durationPill(30, '30p', _sessionDurationMinutes == 30, (val) {
-                setState(() => _sessionDurationMinutes = val);
-              }),
-              _durationPill(null, 'Vô hạn', _sessionDurationMinutes == null, (val) {
-                setState(() => _sessionDurationMinutes = val);
-              }),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _timePill(int value, String label, bool isSelected, ValueChanged<int> onSelect) {
-    return Padding(
-      padding: const EdgeInsets.only(right: 4),
-      child: InkWell(
-        onTap: () => onSelect(value),
-        borderRadius: BorderRadius.circular(3),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-          decoration: BoxDecoration(
-            color: isSelected ? _textPrimary : const Color(0xFFF7F6F3),
-            borderRadius: BorderRadius.circular(3),
-            border: Border.all(
-              color: isSelected ? _textPrimary : _borderColor,
-              width: 0.8,
-            ),
-          ),
-          child: Text(
-            label,
-            style: GoogleFonts.inter(
-              fontSize: 10.5,
-              fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-              color: isSelected ? Colors.white : _textPrimary,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _durationPill(int? value, String label, bool isSelected, ValueChanged<int?> onSelect) {
-    return Padding(
-      padding: const EdgeInsets.only(right: 4),
-      child: InkWell(
-        onTap: () => onSelect(value),
-        borderRadius: BorderRadius.circular(3),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-          decoration: BoxDecoration(
-            color: isSelected ? _textPrimary : const Color(0xFFF7F6F3),
-            borderRadius: BorderRadius.circular(3),
-            border: Border.all(
-              color: isSelected ? _textPrimary : _borderColor,
-              width: 0.8,
-            ),
-          ),
-          child: Text(
-            label,
-            style: GoogleFonts.inter(
-              fontSize: 10.5,
-              fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-              color: isSelected ? Colors.white : _textPrimary,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  String _formatDuration(int totalSeconds) {
-    final m = totalSeconds ~/ 60;
-    final s = totalSeconds % 60;
-    return '${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
   }
 
   Widget _buildQrCard() {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(6),
+        color: NotionColors.surface,
+        borderRadius: NotionRounded.md,
         border: Border.all(color: _borderColor, width: 1),
+        boxShadow: NotionElevation.soft,
       ),
       padding: const EdgeInsets.all(20),
       child: Column(
@@ -947,7 +852,7 @@ class _QrDisplayScreenState extends State<QrDisplayScreen> {
                   width: 6,
                   height: 6,
                   decoration: const BoxDecoration(
-                    color: Color(0xFF1F7A4D),
+                    color: _textPrimary,
                     shape: BoxShape.circle,
                   ),
                 ),
@@ -968,9 +873,11 @@ class _QrDisplayScreenState extends State<QrDisplayScreen> {
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(3),
                 child: LinearProgressIndicator(
-                  value: _qrRefreshSeconds > 0 ? (_secondsRemaining / _qrRefreshSeconds) : 0,
+                  value: _qrRefreshSeconds > 0
+                      ? (_secondsRemaining / _qrRefreshSeconds)
+                      : 0,
                   minHeight: 4,
-                  backgroundColor: const Color(0xFFEFEFED),
+                  backgroundColor: NotionColors.hairline,
                   valueColor: const AlwaysStoppedAnimation<Color>(_textPrimary),
                 ),
               ),
@@ -979,17 +886,17 @@ class _QrDisplayScreenState extends State<QrDisplayScreen> {
             Text(
               'Sinh viên quét mã bằng camera điện thoại để mở trang điểm danh.',
               textAlign: TextAlign.center,
-              style: GoogleFonts.inter(
-                fontSize: 11.5,
-                color: _textSecondary,
-              ),
+              style: GoogleFonts.inter(fontSize: 11.5, color: _textSecondary),
             ),
             if (_qrUrl != null && _qrUrl!.isNotEmpty) ...[
               const SizedBox(height: 12),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF7F6F3),
+                  color: NotionColors.canvasSoft,
                   borderRadius: BorderRadius.circular(4),
                   border: Border.all(color: _borderColor, width: 1),
                 ),
@@ -1001,7 +908,10 @@ class _QrDisplayScreenState extends State<QrDisplayScreen> {
                       child: SelectableText(
                         _qrUrl!,
                         maxLines: 1,
-                        style: GoogleFonts.robotoMono(fontSize: 11, color: _textPrimary),
+                        style: GoogleFonts.robotoMono(
+                          fontSize: 11,
+                          color: _textPrimary,
+                        ),
                       ),
                     ),
                     const SizedBox(width: 6),
@@ -1009,10 +919,16 @@ class _QrDisplayScreenState extends State<QrDisplayScreen> {
                       borderRadius: BorderRadius.circular(3),
                       onTap: () {
                         Clipboard.setData(ClipboardData(text: _qrUrl!));
-                        M1SnackBar.show(context, 'Đã sao chép link điểm danh vào bộ nhớ tạm!');
+                        M1SnackBar.show(
+                          context,
+                          'Đã sao chép link điểm danh vào bộ nhớ tạm!',
+                        );
                       },
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 3,
+                        ),
                         decoration: BoxDecoration(
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(3),
@@ -1021,7 +937,11 @@ class _QrDisplayScreenState extends State<QrDisplayScreen> {
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Icon(Icons.copy, size: 12, color: _textPrimary),
+                            const Icon(
+                              Icons.copy,
+                              size: 12,
+                              color: _textPrimary,
+                            ),
                             const SizedBox(width: 4),
                             Text(
                               'Sao chép link',
@@ -1056,18 +976,21 @@ class _QrDisplayScreenState extends State<QrDisplayScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: const Color(0xFFFEE2E2),
+        color: NotionColors.canvasSoft,
         borderRadius: BorderRadius.circular(4),
-        border: Border.all(color: const Color(0xFFFECACA)),
+        border: Border.all(color: _borderColor),
       ),
       child: Row(
         children: [
-          const Icon(Icons.error_outline, size: 15, color: Color(0xFFB91C1C)),
+          const Icon(Icons.error_outline, size: 15, color: _textPrimary),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
               _errorMessage!,
-              style: GoogleFonts.inter(fontSize: 12, color: const Color(0xFFB91C1C)),
+              style: GoogleFonts.inter(
+                fontSize: 12,
+                color: _textPrimary,
+              ),
             ),
           ),
           InkWell(
@@ -1076,7 +999,7 @@ class _QrDisplayScreenState extends State<QrDisplayScreen> {
               'Đóng',
               style: TextStyle(
                 fontSize: 11.5,
-                color: Color(0xFFB91C1C),
+                color: _textPrimary,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -1086,147 +1009,30 @@ class _QrDisplayScreenState extends State<QrDisplayScreen> {
     );
   }
 
-  Widget _buildActionButtons() {
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      alignment: WrapAlignment.center,
-      children: [
-        if (!_isOpen && _viewState != _SessionViewState.closing)
-          InkWell(
-            onTap: _isBusy ? null : _openSession,
-            borderRadius: BorderRadius.circular(4),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-              decoration: BoxDecoration(
-                color: _isBusy ? const Color(0xFF787774) : _textPrimary,
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (_viewState == _SessionViewState.opening)
-                    const SizedBox.square(
-                      dimension: 13,
-                      child: CircularProgressIndicator(strokeWidth: 1.8, color: Colors.white),
-                    )
-                  else
-                    const Icon(Icons.play_arrow, size: 15, color: Colors.white),
-                  const SizedBox(width: 6),
-                  Text(
-                    _viewState == _SessionViewState.closed ? 'Mở lại phiên' : 'Mở phiên điểm danh',
-                    style: GoogleFonts.inter(
-                      fontSize: 12.5,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.white,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        if (_isOpen || _viewState == _SessionViewState.closing)
-          InkWell(
-            onTap: _isBusy ? null : _closeSession,
-            borderRadius: BorderRadius.circular(4),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(4),
-                border: Border.all(color: const Color(0xFFDC2626), width: 1),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (_viewState == _SessionViewState.closing)
-                    const SizedBox.square(
-                      dimension: 13,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 1.8,
-                        color: Color(0xFFDC2626),
-                      ),
-                    )
-                  else
-                    const Icon(Icons.stop, size: 15, color: Color(0xFFDC2626)),
-                  const SizedBox(width: 6),
-                  Text(
-                    'Đóng phiên',
-                    style: GoogleFonts.inter(
-                      fontSize: 12.5,
-                      fontWeight: FontWeight.w600,
-                      color: const Color(0xFFDC2626),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        // Nút Toàn màn hình
-        InkWell(
-          onTap: () => setState(() => _isFullscreen = true),
-          borderRadius: BorderRadius.circular(4),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(4),
-              border: Border.all(color: _borderColor, width: 1),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.fullscreen, size: 15, color: _textPrimary),
-                const SizedBox(width: 5),
-                Text(
-                  'Toàn Màn Hình',
-                  style: GoogleFonts.inter(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                    color: _textPrimary,
-                  ),
-                ),
-              ],
-            ),
+  Widget _buildActionButtons() => Wrap(
+    spacing: 8,
+    runSpacing: 8,
+    children: [
+      if (!_isOpen && _viewState != _SessionViewState.closing)
+        FilledButton(
+          onPressed: _isBusy ? null : _openSession,
+          child: Text(
+            _viewState == _SessionViewState.closed
+                ? 'Mở lại phiên'
+                : 'Mở phiên điểm danh',
           ),
         ),
-        // Nút Đồng bộ Google Sheet
-        InkWell(
-          onTap: _isSyncingRemote ? null : () => _syncAttendanceToStorage(isSilent: false),
-          borderRadius: BorderRadius.circular(4),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(4),
-              border: Border.all(color: _borderColor, width: 1),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (_isSyncingRemote)
-                  const SizedBox.square(
-                    dimension: 13,
-                    child: CircularProgressIndicator(strokeWidth: 1.8, color: _textPrimary),
-                  )
-                else
-                  const Icon(Icons.sync, size: 15, color: _textPrimary),
-                const SizedBox(width: 5),
-                Text(
-                  _isSyncingRemote ? 'Đang đồng bộ...' : 'Đồng Bộ Sheet',
-                  style: GoogleFonts.inter(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                    color: _textPrimary,
-                  ),
-                ),
-              ],
-            ),
+      if (_isOpen || _viewState == _SessionViewState.closing)
+        OutlinedButton(
+          onPressed: _isBusy ? null : _closeSession,
+          child: Text(
+            _viewState == _SessionViewState.closing
+                ? 'Đang Đóng…'
+                : 'Đóng phiên',
           ),
         ),
-      ],
-    );
-  }
+    ],
+  );
 
   /// Cột Phải: Bảng Sinh Viên và Điểm Danh Trực Tiếp
   Widget _buildRosterPanel() {
@@ -1238,9 +1044,10 @@ class _QrDisplayScreenState extends State<QrDisplayScreen> {
 
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(6),
+        color: NotionColors.surface,
+        borderRadius: NotionRounded.md,
         border: Border.all(color: _borderColor, width: 1),
+        boxShadow: NotionElevation.soft,
       ),
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -1249,58 +1056,53 @@ class _QrDisplayScreenState extends State<QrDisplayScreen> {
           // 1. Thẻ tóm tắt Sĩ số & Trực tiếp
           Row(
             children: [
-              _statTile('Sĩ Số Lớp', '$total SV', const Color(0xFFF7F6F3), _textPrimary),
+              _statTile(
+                'Sĩ Số Lớp',
+                '$total SV',
+                NotionColors.canvasSoft,
+                _textPrimary,
+              ),
               const SizedBox(width: 8),
-              _statTile('Có Mặt (P)', '$present ($rate%)', const Color(0xFFEBF5F0), const Color(0xFF1F7A4D)),
+              _statTile(
+                'Có Mặt (P)',
+                '$present ($rate%)',
+                NotionColors.surface,
+                _textPrimary,
+              ),
               const SizedBox(width: 8),
-              _statTile('Vắng (A)', '$absent', const Color(0xFFFDF5E6), const Color(0xFFB45309)),
+              _statTile(
+                'Vắng (A)',
+                '$absent',
+                NotionColors.canvasSoft,
+                _textSecondary,
+              ),
             ],
           ),
           const SizedBox(height: 12),
 
-          // 2. Ô tìm kiếm & Bộ lọc
-          Row(
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            crossAxisAlignment: WrapCrossAlignment.center,
             children: [
-              Expanded(
-                child: Container(
-                  height: 32,
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(4),
-                    border: Border.all(color: _borderColor),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.search, size: 14, color: _textSecondary),
-                      const SizedBox(width: 6),
-                      Expanded(
-                        child: TextField(
-                          controller: _searchController,
-                          onChanged: (val) => setState(() => _searchQuery = val),
-                          style: GoogleFonts.inter(fontSize: 12, color: _textPrimary),
-                          decoration: InputDecoration(
-                            hintText: 'Tìm theo MSSV hoặc Họ Tên...',
-                            hintStyle: GoogleFonts.inter(fontSize: 11, color: _textSecondary),
-                            border: InputBorder.none,
-                            isDense: true,
-                            contentPadding: EdgeInsets.zero,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
+              SizedBox(
+                width: 210,
+                child: WorkspaceSearch(
+                  controller: _searchController,
+                  hint: 'Tìm MSSV, họ tên…',
+                  onChanged: (v) => setState(() => _searchQuery = v),
                 ),
               ),
-              const SizedBox(width: 8),
               _filterTab('Tất cả', 'all', _statusFilter == 'all'),
-              const SizedBox(width: 4),
-              _filterTab('Có mặt ($present)', 'present', _statusFilter == 'present'),
-              const SizedBox(width: 4),
+              _filterTab(
+                'Có mặt ($present)',
+                'present',
+                _statusFilter == 'present',
+              ),
               _filterTab('Vắng ($absent)', 'absent', _statusFilter == 'absent'),
             ],
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 12),
 
           // 3. Bảng Danh Sách Sinh Viên
           Expanded(
@@ -1313,23 +1115,35 @@ class _QrDisplayScreenState extends State<QrDisplayScreen> {
                   ? Center(
                       child: Text(
                         'Không có sinh viên nào khớp kết quả tìm kiếm.',
-                        style: GoogleFonts.inter(fontSize: 12, color: _textSecondary),
+                        style: GoogleFonts.inter(
+                          fontSize: 12,
+                          color: _textSecondary,
+                        ),
                       ),
                     )
                   : ListView.separated(
                       itemCount: filtered.length,
-                      separatorBuilder: (_, _) =>
-                          const Divider(height: 1, thickness: 0.8, color: _borderColor),
+                      separatorBuilder: (_, _) => const Divider(
+                        height: 1,
+                        thickness: 0.8,
+                        color: _borderColor,
+                      ),
                       itemBuilder: (context, index) {
                         final s = filtered[index];
-                        final email = (s['studentEmail'] ?? s['email'] ?? '').toString().trim().toLowerCase();
+                        final email = (s['studentEmail'] ?? s['email'] ?? '')
+                            .toString()
+                            .trim()
+                            .toLowerCase();
                         final rollNumber = (s['rollNumber'] ?? '').toString();
                         final fullName = (s['fullName'] ?? email).toString();
                         final status = _studentStatus[email] ?? 'A';
                         final isPresent = status == 'P';
 
                         return Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 8,
+                          ),
                           child: Row(
                             children: [
                               // MSSV
@@ -1370,16 +1184,19 @@ class _QrDisplayScreenState extends State<QrDisplayScreen> {
                               ),
                               // Badge Trạng thái
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 3,
+                                ),
                                 decoration: BoxDecoration(
                                   color: isPresent
-                                      ? const Color(0xFFEBF5F0)
-                                      : const Color(0xFFFDF5E6),
+                                      ? _textPrimary
+                                      : NotionColors.canvasSoft,
                                   borderRadius: BorderRadius.circular(4),
                                   border: Border.all(
                                     color: isPresent
-                                        ? const Color(0xFFC6E7D6)
-                                        : const Color(0xFFFCD34D),
+                                        ? _textPrimary
+                                        : _borderColor,
                                     width: 0.8,
                                   ),
                                 ),
@@ -1389,15 +1206,16 @@ class _QrDisplayScreenState extends State<QrDisplayScreen> {
                                     fontSize: 11,
                                     fontWeight: FontWeight.w600,
                                     color: isPresent
-                                        ? const Color(0xFF1F7A4D)
-                                        : const Color(0xFFB45309),
+                                        ? Colors.white
+                                        : _textSecondary,
                                   ),
                                 ),
                               ),
                               const SizedBox(width: 8),
                               // Nút Giảng viên click đổi điểm danh (Manual Toggle)
                               InkWell(
-                                onTap: () => _toggleStudentAttendance(email, fullName),
+                                onTap: () =>
+                                    _toggleStudentAttendance(email, fullName),
                                 borderRadius: BorderRadius.circular(3),
                                 child: Container(
                                   padding: const EdgeInsets.symmetric(
@@ -1405,10 +1223,14 @@ class _QrDisplayScreenState extends State<QrDisplayScreen> {
                                     vertical: 4,
                                   ),
                                   decoration: BoxDecoration(
-                                    color: isPresent ? Colors.white : _textPrimary,
+                                    color: isPresent
+                                        ? Colors.white
+                                        : _textPrimary,
                                     borderRadius: BorderRadius.circular(3),
                                     border: Border.all(
-                                      color: isPresent ? _borderColor : _textPrimary,
+                                      color: isPresent
+                                          ? _borderColor
+                                          : _textPrimary,
                                       width: 1,
                                     ),
                                   ),
@@ -1418,7 +1240,9 @@ class _QrDisplayScreenState extends State<QrDisplayScreen> {
                                       Icon(
                                         isPresent ? Icons.close : Icons.check,
                                         size: 12,
-                                        color: isPresent ? _textSecondary : Colors.white,
+                                        color: isPresent
+                                            ? _textSecondary
+                                            : Colors.white,
                                       ),
                                       const SizedBox(width: 4),
                                       Text(
@@ -1426,7 +1250,9 @@ class _QrDisplayScreenState extends State<QrDisplayScreen> {
                                         style: GoogleFonts.inter(
                                           fontSize: 11,
                                           fontWeight: FontWeight.w500,
-                                          color: isPresent ? _textSecondary : Colors.white,
+                                          color: isPresent
+                                              ? _textSecondary
+                                              : Colors.white,
                                         ),
                                       ),
                                     ],
@@ -1484,7 +1310,7 @@ class _QrDisplayScreenState extends State<QrDisplayScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
         decoration: BoxDecoration(
-          color: isSelected ? _textPrimary : const Color(0xFFF7F6F3),
+          color: isSelected ? _textPrimary : NotionColors.canvasSoft,
           borderRadius: BorderRadius.circular(3),
           border: Border.all(
             color: isSelected ? _textPrimary : _borderColor,
@@ -1503,14 +1329,14 @@ class _QrDisplayScreenState extends State<QrDisplayScreen> {
     );
   }
 
-  /// Chế Độ Trình Chiếu Toàn Màn Hình Máy Chiếu (Fullscreen Projector View)
+  /// Chế Độ Trình Chiếu Toàn Màn Hình Máy Chiếu (Notion Hero Night Band View)
   Widget _buildFullscreenProjectorView() {
     final present = _presentCount;
     final total = _rosterList.length;
     final rate = total > 0 ? (present / total * 100).toStringAsFixed(1) : '0';
 
     return Scaffold(
-      backgroundColor: const Color(0xFF1E1E1E),
+      backgroundColor: NotionColors.secondary, // Deep Indigo #213183 from DESIGN.md
       body: SafeArea(
         child: Stack(
           children: [
@@ -1523,33 +1349,24 @@ class _QrDisplayScreenState extends State<QrDisplayScreen> {
                   children: [
                     Text(
                       widget.className ?? widget.classId,
-                      style: GoogleFonts.inter(
-                        fontSize: 32,
-                        fontWeight: FontWeight.w800,
-                        color: Colors.white,
-                        letterSpacing: -0.5,
-                      ),
+                      style: NotionTypography.heading1(color: Colors.white),
                     ),
                     const SizedBox(height: 6),
                     Text(
                       '${widget.lessonLabel ?? widget.sessionId} • Điểm Danh Trực Tiếp',
-                      style: GoogleFonts.inter(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w400,
-                        color: const Color(0xFFA0A0A0),
-                      ),
+                      style: NotionTypography.title(color: Colors.white70),
                     ),
                     const SizedBox(height: 24),
                     // Mã QR to rõ nét
                     Container(
                       decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(16),
-                        boxShadow: [
+                        color: NotionColors.surface,
+                        borderRadius: NotionRounded.xl,
+                        boxShadow: const [
                           BoxShadow(
-                            color: Colors.black.withAlpha(80),
-                            blurRadius: 30,
-                            offset: const Offset(0, 10),
+                            color: Color(0x33000000),
+                            blurRadius: 32,
+                            offset: Offset(0, 12),
                           ),
                         ],
                       ),
@@ -1573,18 +1390,14 @@ class _QrDisplayScreenState extends State<QrDisplayScreen> {
                             width: 8,
                             height: 8,
                             decoration: const BoxDecoration(
-                              color: Color(0xFF22C55E),
+                              color: Colors.white,
                               shape: BoxShape.circle,
                             ),
                           ),
                           const SizedBox(width: 10),
                           Text(
                             'Mã đổi sau $_secondsRemaining giây',
-                            style: GoogleFonts.inter(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.white,
-                            ),
+                            style: NotionTypography.heading3(color: Colors.white),
                           ),
                         ],
                       ),
@@ -1592,12 +1405,16 @@ class _QrDisplayScreenState extends State<QrDisplayScreen> {
                       SizedBox(
                         width: 360,
                         child: ClipRRect(
-                          borderRadius: BorderRadius.circular(4),
+                          borderRadius: NotionRounded.xs,
                           child: LinearProgressIndicator(
-                            value: _qrRefreshSeconds > 0 ? (_secondsRemaining / _qrRefreshSeconds) : 0,
+                            value: _qrRefreshSeconds > 0
+                                ? (_secondsRemaining / _qrRefreshSeconds)
+                                : 0,
                             minHeight: 6,
-                            backgroundColor: const Color(0xFF333333),
-                            valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF22C55E)),
+                            backgroundColor: Colors.white.withAlpha(40),
+                            valueColor: const AlwaysStoppedAnimation<Color>(
+                              Colors.white,
+                            ),
                           ),
                         ),
                       ),
@@ -1605,16 +1422,23 @@ class _QrDisplayScreenState extends State<QrDisplayScreen> {
                     const SizedBox(height: 24),
                     // Ticker Thống kê trực tiếp
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF2B2B2B),
-                        borderRadius: BorderRadius.circular(30),
-                        border: Border.all(color: const Color(0xFF404040)),
+                        color: Colors.white.withAlpha(25),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(color: Colors.white.withAlpha(40)),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(Icons.people_outline, size: 18, color: Colors.white),
+                          const Icon(
+                            Icons.people_outline,
+                            size: 18,
+                            color: Colors.white,
+                          ),
                           const SizedBox(width: 8),
                           Text(
                             'Đã điểm danh: $present / $total sinh viên ($rate%)',
@@ -1624,21 +1448,6 @@ class _QrDisplayScreenState extends State<QrDisplayScreen> {
                               color: Colors.white,
                             ),
                           ),
-                          if (_sessionDurationMinutes != null && _sessionRemainingSeconds > 0) ...[
-                            const SizedBox(width: 16),
-                            Container(width: 1, height: 16, color: const Color(0xFF555555)),
-                            const SizedBox(width: 16),
-                            const Icon(Icons.timer_outlined, size: 16, color: Color(0xFFFBBF24)),
-                            const SizedBox(width: 6),
-                            Text(
-                              'Đóng ca sau: ${_formatDuration(_sessionRemainingSeconds)}',
-                              style: GoogleFonts.inter(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                                color: const Color(0xFFFBBF24),
-                              ),
-                            ),
-                          ],
                         ],
                       ),
                     ),
@@ -1647,38 +1456,71 @@ class _QrDisplayScreenState extends State<QrDisplayScreen> {
               ),
             ),
 
-            // Nút Thoát toàn màn hình ở góc trên phải
+            // Nút âm thanh và Thoát toàn màn hình ở góc trên phải
             Positioned(
               top: 20,
               right: 20,
-              child: InkWell(
-                onTap: () => setState(() => _isFullscreen = false),
-                borderRadius: BorderRadius.circular(6),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF333333),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  InkWell(
+                    onTap: () => setState(() => _soundEnabled = !_soundEnabled),
                     borderRadius: BorderRadius.circular(6),
-                    border: Border.all(color: const Color(0xFF4A4A4A)),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.fullscreen_exit, size: 18, color: Colors.white),
-                      const SizedBox(width: 6),
-                      Text(
-                        'Thoát toàn màn hình',
-                        style: GoogleFonts.inter(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w500,
-                          color: Colors.white,
-                        ),
+                    child: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF333333),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(color: const Color(0xFF4A4A4A)),
                       ),
-                    ],
+                      child: Icon(
+                        _soundEnabled
+                            ? Icons.volume_up_outlined
+                            : Icons.volume_off_outlined,
+                        size: 18,
+                        color: Colors.white,
+                      ),
+                    ),
                   ),
-                ),
+                  const SizedBox(width: 8),
+                  InkWell(
+                    onTap: () => setState(() => _isFullscreen = false),
+                    borderRadius: BorderRadius.circular(6),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 8,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF333333),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(color: const Color(0xFF4A4A4A)),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.fullscreen_exit,
+                            size: 18,
+                            color: Colors.white,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            'Thoát toàn màn hình',
+                            style: GoogleFonts.inter(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
+            _buildNotificationToastOverlay(),
           ],
         ),
       ),
@@ -1697,9 +1539,10 @@ class _SessionHeader extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: const Color(0xFFE3E2DE), width: 1),
+        color: NotionColors.surface,
+        borderRadius: NotionRounded.md,
+        border: Border.all(color: NotionColors.hairline, width: 1),
+        boxShadow: NotionElevation.soft,
       ),
       child: Row(
         children: [
@@ -1707,15 +1550,15 @@ class _SessionHeader extends StatelessWidget {
             width: 32,
             height: 32,
             decoration: BoxDecoration(
-              color: const Color(0xFFF7F6F3),
-              borderRadius: BorderRadius.circular(5),
-              border: Border.all(color: const Color(0xFFE3E2DE), width: 1),
+              color: NotionColors.canvasSoft,
+              borderRadius: NotionRounded.sm,
+              border: Border.all(color: NotionColors.hairline, width: 1),
             ),
             alignment: Alignment.center,
             child: const Icon(
               Icons.qr_code_2_outlined,
               size: 18,
-              color: Color(0xFF37352F),
+              color: NotionColors.primary,
             ),
           ),
           const SizedBox(width: 10),
@@ -1726,38 +1569,25 @@ class _SessionHeader extends StatelessWidget {
               children: [
                 Text(
                   className,
-                  style: GoogleFonts.inter(
-                    fontSize: 14.5,
-                    fontWeight: FontWeight.w700,
-                    color: const Color(0xFF37352F),
-                    letterSpacing: -0.2,
-                  ),
+                  style: NotionTypography.heading3(color: NotionColors.ink),
                 ),
                 Text(
                   lessonLabel,
-                  style: GoogleFonts.inter(
-                    fontSize: 11.5,
-                    fontWeight: FontWeight.w400,
-                    color: const Color(0xFF787774),
-                  ),
+                  style: NotionTypography.caption(color: NotionColors.inkMuted),
                 ),
               ],
             ),
           ),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
             decoration: BoxDecoration(
-              color: const Color(0xFFF7F6F3),
+              color: NotionColors.tagGreenBg,
               borderRadius: BorderRadius.circular(4),
-              border: Border.all(color: const Color(0xFFE3E2DE), width: 0.8),
+              border: Border.all(color: NotionColors.accentGreen.withAlpha(80), width: 0.8),
             ),
             child: Text(
               'Trực Tiếp',
-              style: GoogleFonts.inter(
-                fontSize: 10.5,
-                fontWeight: FontWeight.w500,
-                color: const Color(0xFF787774),
-              ),
+              style: NotionTypography.eyebrow(color: NotionColors.tagGreenText),
             ),
           ),
         ],
@@ -1883,10 +1713,7 @@ class _StatusBadge extends StatelessWidget {
           Container(
             width: 6,
             height: 6,
-            decoration: BoxDecoration(
-              color: dotColor,
-              shape: BoxShape.circle,
-            ),
+            decoration: BoxDecoration(color: dotColor, shape: BoxShape.circle),
           ),
           const SizedBox(width: 5),
           Text(
@@ -1907,4 +1734,3 @@ class _ApiException implements Exception {
   final String message;
   const _ApiException(this.message);
 }
-

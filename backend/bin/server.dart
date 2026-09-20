@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:backend/controllers/app_reset_controller.dart';
 
 import 'package:backend/config/local_env.dart';
 import 'package:backend/controllers/attendance_controller.dart';
@@ -70,9 +71,18 @@ Future<void> main() async {
         (Request req, String sessionId) =>
             attendanceController.handleManualEdit(req))
     ..mount('/session/', sessionController.router.call);
+  final resetController = AppResetController(
+    resetKey: (env['APP_RESET_KEY'] ?? '').trim(),
+    reset: (key) async {
+      await hybridRepo.prepareForReset();
+      await sheetsRepo.resetApplicationData(key);
+      await localJsonRepo.resetAll();
+    },
+  );
   final handler = Pipeline()
       .addMiddleware(logRequests())
       .addMiddleware(_cors())
+      .addMiddleware(resetController.middleware)
       .addHandler(router.call);
   final port = int.tryParse(env['PORT'] ?? '') ?? 8080;
   final server = await shelf_io.serve(handler, InternetAddress.anyIPv4, port);
@@ -91,5 +101,5 @@ Middleware _cors() => (inner) => (request) async {
 const _corsHeaders = {
   'access-control-allow-origin': '*',
   'access-control-allow-methods': 'GET, POST, OPTIONS',
-  'access-control-allow-headers': 'content-type',
+  'access-control-allow-headers': 'content-type, authorization',
 };
