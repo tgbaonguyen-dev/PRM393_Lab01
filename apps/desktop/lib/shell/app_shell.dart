@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
 
+import '../config.dart';
 import '../features/import/import_screen.dart';
 import '../features/import/models/import_models.dart';
 import '../features/reports/reports_screen.dart';
@@ -151,9 +152,10 @@ class _AppShellState extends State<AppShell> {
 
   Future<void> _checkBackendHealth() async {
     try {
+      final baseUrl = AppConfig.apiBaseUrl.replaceFirst(RegExp(r'/$'), '');
       final response = await http
-          .get(Uri.parse('http://127.0.0.1:8080/health'))
-          .timeout(const Duration(seconds: 2));
+          .get(Uri.parse('$baseUrl/health'))
+          .timeout(const Duration(seconds: 3));
       final online = response.statusCode == 200;
       if (mounted && _backendOnline != online) {
         setState(() => _backendOnline = online);
