@@ -18,10 +18,23 @@ class SessionController {
     String? checkInBaseUrl,
   })  : _sessionService = sessionService ?? SessionService(),
         _qrService = qrService ?? QrService(),
-        _checkInBaseUrl = (checkInBaseUrl ??
+        _checkInBaseUrl = _normalizeCheckInUrl(checkInBaseUrl ??
                 Platform.environment['STUDENT_CHECKIN_BASE_URL'] ??
-                'http://localhost:3000/checkin')
-            .trim();
+                'http://localhost:3000/checkin');
+
+  static String _normalizeCheckInUrl(String raw) {
+    final trimmed = raw.trim();
+    if (trimmed.isEmpty) return 'http://localhost:3000/checkin';
+    final withScheme = (trimmed.startsWith('http://') || trimmed.startsWith('https://'))
+        ? trimmed
+        : 'https://$trimmed';
+    final parsed = Uri.tryParse(withScheme);
+    if (parsed == null || parsed.host.isEmpty) return withScheme;
+    if (parsed.path.isEmpty || parsed.path == '/') {
+      return parsed.replace(path: '/checkin').toString();
+    }
+    return withScheme;
+  }
 
   Router get router {
     final router = Router();
