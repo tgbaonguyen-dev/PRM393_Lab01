@@ -34,7 +34,4 @@ services:
       - key: NEXT_PUBLIC_DEMO_GOOGLE
         value: "false"
       - key: NEXT_PUBLIC_API_BASE_URL
-        fromService:
-          type: web
-          name: prm393-backend
-          property: host
+        value: https://prm393-backend-7vis.onrender.com
