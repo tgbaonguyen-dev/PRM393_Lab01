@@ -24,7 +24,10 @@ type ApiResponse = {
   data?: { email?: string; studentName?: string; status?: string };
 };
 
-const apiBaseUrl = (process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8080').replace(/\/$/, '');
+const rawApiUrl = (process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8080').trim();
+const apiBaseUrl = (rawApiUrl.startsWith('http://') || rawApiUrl.startsWith('https://')
+  ? rawApiUrl
+  : `https://${rawApiUrl}`).replace(/\/$/, '');
 
 function statusFromApi(result: ApiResponse): Status {
   switch (result.status) {

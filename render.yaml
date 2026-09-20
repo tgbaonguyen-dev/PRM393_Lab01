@@ -17,6 +17,11 @@ services:
         value: 270940891066-15h1hrnt25mlaa8u667gooeptev6vhq6.apps.googleusercontent.com
       - key: ALLOW_MOCK_GOOGLE_TOKEN
         value: "true"
+      - key: STUDENT_CHECKIN_BASE_URL
+        fromService:
+          type: web
+          name: prm393-web
+          property: host
 
   # 2. Student Web Check-in (Next.js)
   - type: web

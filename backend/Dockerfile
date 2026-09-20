@@ -8,6 +8,7 @@ RUN dart pub get
 
 # Copy source code and data
 COPY . .
+RUN mkdir -p /app/data
 RUN dart compile exe bin/server.dart -o bin/server
 
 # Final production stage
@@ -17,8 +18,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates
 
 WORKDIR /app
 
+RUN mkdir -p /app/data
 COPY --from=build /app/bin/server /app/server
-COPY --from=build /app/data /app/data
+COPY --from=build /app/data/ /app/data/
 
 ENV PORT=8080
 EXPOSE 8080
