@@ -18,10 +18,7 @@ services:
       - key: ALLOW_MOCK_GOOGLE_TOKEN
         value: "true"
       - key: STUDENT_CHECKIN_BASE_URL
-        fromService:
-          type: web
-          name: prm393-web
-          property: host
+        value: https://prm393-web.onrender.com/checkin
 
   # 2. Student Web Check-in (Next.js)
   - type: web
