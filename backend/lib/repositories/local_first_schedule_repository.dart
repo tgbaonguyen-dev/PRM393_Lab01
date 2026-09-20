@@ -47,23 +47,32 @@ class LocalFirstScheduleRepository implements ScheduleRepository {
   }
 
   @override
-  Future<bool> saveAll(List<Map<String, dynamic>> schedules) async {
+  Future<bool> saveAll(
+    List<Map<String, dynamic>> schedules, {
+    bool clearPrevious = false,
+  }) async {
     // 1. Luôn lưu nội dung lịch vào JSON local trước.
     // Việc đồng bộ lên Google Sheets sẽ do syncActiveClassIds thực hiện ngay sau đó,
     // đảm bảo danh sách lớp active đã được cập nhật chính xác (tránh gửi nhầm lớp cũ).
-    return local.saveAll(schedules);
+    return local.saveAll(schedules, clearPrevious: clearPrevious);
   }
 
   @override
-  Future<bool> syncActiveClassIds(Set<String> activeClassIds) async {
-    final synced = await local.syncActiveClassIds(activeClassIds);
+  Future<bool> syncActiveClassIds(
+    Set<String> activeClassIds, {
+    bool clearPrevious = false,
+  }) async {
+    final synced = await local.syncActiveClassIds(
+      activeClassIds,
+      clearPrevious: clearPrevious,
+    );
 
     // Khi cập nhật danh sách lớp active, luôn đồng bộ lại toàn bộ các lớp active lên Google Sheets
-    // Giúp khôi phục lại bất kỳ sheet nào bị xoá trên Google Drive
+    // Await hoàn tất để đảm bảo Google Sheets đã cập nhật xong 100% trước khi phản hồi
     if (sheetsGateway != null) {
       final allActive = await local.getAll();
       if (allActive.isNotEmpty) {
-        _syncToSheetsSafely(allActive);
+        await _executeSync(allActive, clearPrevious: clearPrevious);
       }
     }
 
@@ -86,7 +95,8 @@ class LocalFirstScheduleRepository implements ScheduleRepository {
           return await local.list();
         }
       } catch (err) {
-        stderr.writeln('[LocalFirstScheduleRepository] Fallback to remote failed: $err');
+        stderr.writeln(
+            '[LocalFirstScheduleRepository] Fallback to remote failed: $err');
       }
     }
     return const [];
@@ -100,11 +110,14 @@ class LocalFirstScheduleRepository implements ScheduleRepository {
     }
     if (sheetsGateway != null) {
       try {
-        final remote = await SheetsScheduleRepository(sheetsGateway).get(classId);
+        final remote =
+            await SheetsScheduleRepository(sheetsGateway).get(classId);
         if (remote != null) {
           final offering = remote['classOffering'];
-          final students = (remote['students'] as List? ?? []).cast<Map<String, dynamic>>();
-          final lessons = (remote['lessons'] as List? ?? []).cast<Map<String, dynamic>>();
+          final students =
+              (remote['students'] as List? ?? []).cast<Map<String, dynamic>>();
+          final lessons =
+              (remote['lessons'] as List? ?? []).cast<Map<String, dynamic>>();
           if (offering is Map) {
             await local.save(
               classOffering: Map<String, dynamic>.from(offering),
@@ -115,7 +128,8 @@ class LocalFirstScheduleRepository implements ScheduleRepository {
           return remote;
         }
       } catch (err) {
-        stderr.writeln('[LocalFirstScheduleRepository] Fallback get failed: $err');
+        stderr.writeln(
+            '[LocalFirstScheduleRepository] Fallback get failed: $err');
       }
     }
     return null;
@@ -137,7 +151,8 @@ class LocalFirstScheduleRepository implements ScheduleRepository {
           return await local.getAll();
         }
       } catch (err) {
-        stderr.writeln('[LocalFirstScheduleRepository] Fallback getAll failed: $err');
+        stderr.writeln(
+            '[LocalFirstScheduleRepository] Fallback getAll failed: $err');
       }
     }
     return const [];
@@ -157,7 +172,10 @@ class LocalFirstScheduleRepository implements ScheduleRepository {
     });
   }
 
-  void _executeSync(List<Map<String, dynamic>> schedules) async {
+  Future<void> _executeSync(
+    List<Map<String, dynamic>> schedules, {
+    bool clearPrevious = false,
+  }) async {
     if (_isSyncing) {
       _queuedSyncPayload = schedules;
       return;
@@ -204,15 +222,17 @@ class LocalFirstScheduleRepository implements ScheduleRepository {
       await sheetsGateway!.syncAllClasses(
         classes: classesPayload,
         startDate: startDateStr,
+        clearPrevious: clearPrevious,
       );
     } catch (err) {
-      stderr.writeln('[LocalFirstScheduleRepository] Google Sheets sync warning: $err');
+      stderr.writeln(
+          '[LocalFirstScheduleRepository] Google Sheets sync warning: $err');
     } finally {
       _isSyncing = false;
       if (_queuedSyncPayload != null) {
         final next = _queuedSyncPayload!;
         _queuedSyncPayload = null;
-        _executeSync(next);
+        await _executeSync(next);
       }
     }
   }

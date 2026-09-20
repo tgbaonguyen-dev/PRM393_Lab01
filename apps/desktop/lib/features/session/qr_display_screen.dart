@@ -9,6 +9,7 @@ import 'package:qr_flutter/qr_flutter.dart';
 
 import '../../config.dart';
 import '../../shared/m1_snackbar.dart';
+import '../../shell/app_shell.dart';
 import '../attendance/services/attendance_storage_service.dart';
 
 enum _SessionViewState { idle, opening, open, closing, closed }
@@ -630,6 +631,17 @@ class _QrDisplayScreenState extends State<QrDisplayScreen> {
         elevation: 0,
         backgroundColor: _canvasBg,
         surfaceTintColor: Colors.transparent,
+        leading: IconButton(
+          tooltip: 'Quay lại Lịch Giảng Dạy',
+          icon: const Icon(Icons.arrow_back, size: 20, color: _textPrimary),
+          onPressed: () {
+            if (Navigator.of(context).canPop()) {
+              Navigator.of(context).pop();
+            } else {
+              AppNavigationController.instance.navigateToTab(0);
+            }
+          },
+        ),
         bottom: const PreferredSize(
           preferredSize: Size.fromHeight(1),
           child: Divider(height: 1, thickness: 1, color: _borderColor),

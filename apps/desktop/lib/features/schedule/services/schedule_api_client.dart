@@ -57,12 +57,14 @@ class ScheduleApiClient {
   Future<String> saveSchedules({
     required List<ImportedClass> importedClasses,
     required Map<String, List<ClassLesson>> schedules,
+    bool clearPrevious = false,
   }) async {
     final response = await _send(
       _client.post(
         Uri.parse('$baseUrl/schedule/save-all'),
         headers: const {'content-type': 'application/json'},
         body: jsonEncode({
+          'clearPrevious': clearPrevious,
           'activeClassIds': importedClasses
               .map((importedClass) => importedClass.offeringId)
               .toList(),
@@ -159,7 +161,9 @@ class ScheduleApiClient {
     try {
       Directory? dir = Directory.current;
       for (var i = 0; i < 5 && dir != null; i++) {
-        final target = File('${dir.path}${Platform.pathSeparator}backend${Platform.pathSeparator}data${Platform.pathSeparator}schedules_local.json');
+        final target = File(
+          '${dir.path}${Platform.pathSeparator}backend${Platform.pathSeparator}data${Platform.pathSeparator}schedules_local.json',
+        );
         if (target.existsSync()) {
           final content = target.readAsStringSync();
           final decoded = jsonDecode(content);

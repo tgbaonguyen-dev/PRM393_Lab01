@@ -99,6 +99,7 @@ class _ScheduleGeneratorScreenState extends State<ScheduleGeneratorScreen> {
     final index = widget.initialClassIndex.clamp(0, _classes.length - 1);
     final firstLessons = _schedules[_classes[index].sourceSheetName]!;
     if (firstLessons.isNotEmpty) {
+      _selectedKey = '${_classes[index].sourceSheetName}:${firstLessons.first.lessonId}';
       _weekStart = ScheduleOverview.startOfWeek(firstLessons.first.date);
     }
   }
@@ -291,22 +292,25 @@ class _ScheduleGeneratorScreenState extends State<ScheduleGeneratorScreen> {
       roster: rosterList,
     );
 
-    await Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => QrDisplayScreen(
-          classId: item.importedClass.offeringId,
-          sessionId: item.lesson.lessonId,
-          className:
-              '${item.importedClass.subjectCode} - ${item.importedClass.classCode}',
-          lessonLabel:
-              'Buổi ${item.lesson.sequenceNumber}/${item.importedClass.lessonCount}',
-          roster: rosterList,
+    final hasShell = context.findAncestorStateOfType<State<AppShell>>() != null;
+    if (!hasShell) {
+      await Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => QrDisplayScreen(
+            classId: item.importedClass.offeringId,
+            sessionId: item.lesson.lessonId,
+            className:
+                '${item.importedClass.subjectCode} - ${item.importedClass.classCode}',
+            lessonLabel:
+                'Buổi ${item.lesson.sequenceNumber}/${item.importedClass.lessonCount}',
+            roster: rosterList,
+          ),
         ),
-      ),
-    );
+      );
 
-    // Tải lại ma trận điểm danh sau khi kết thúc phiên QR để cập nhật dấu "Đã điểm danh" ngay lập tức trên lịch
-    await _loadAttendanceStore();
+      // Tải lại ma trận điểm danh sau khi kết thúc phiên QR để cập nhật dấu "Đã điểm danh" ngay lập tức trên lịch
+      await _loadAttendanceStore();
+    }
   }
 
   int _calculateWeekNumber() {

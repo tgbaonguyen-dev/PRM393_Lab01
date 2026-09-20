@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -22,7 +24,10 @@ class _ReportsScreenState extends State<ReportsScreen> {
   final ExportReportService _exportService = ExportReportService();
   final AttendanceStorageService _storageService = AttendanceStorageService();
   final ScheduleApiClient _scheduleApiClient = ScheduleApiClient();
-  final TextEditingController _studentSearchController = TextEditingController();
+  final TextEditingController _studentSearchController =
+      TextEditingController();
+  final ScrollController _horizontalScrollController = ScrollController();
+  final ScrollController _verticalScrollController = ScrollController();
 
   List<ImportedClass> _classes = [];
   int _selectedClassIndex = 0;
@@ -30,7 +35,6 @@ class _ReportsScreenState extends State<ReportsScreen> {
   final Set<int> _selectedSlots = {};
   ReportFormat _selectedFormat = ReportFormat.xlsx;
 
-  bool _isLoading = false;
   bool _isSyncing = false;
   bool _isExporting = false;
   String _searchQuery = '';
@@ -45,12 +49,6 @@ class _ReportsScreenState extends State<ReportsScreen> {
   ImportedClass? get _currentClass {
     if (_classes.isEmpty || _selectedClassIndex >= _classes.length) return null;
     return _classes[_selectedClassIndex];
-  }
-
-  String get _currentClassKey {
-    final cls = _currentClass;
-    if (cls == null) return '';
-    return '${cls.scheduleCode}_${cls.subjectCode}_${cls.classCode}';
   }
 
   Map<int, Map<String, String>> _getClassAttendance(ImportedClass? cls) {
@@ -77,27 +75,32 @@ class _ReportsScreenState extends State<ReportsScreen> {
   @override
   void dispose() {
     _studentSearchController.dispose();
+    _horizontalScrollController.dispose();
+    _verticalScrollController.dispose();
     super.dispose();
   }
 
   Future<void> _loadInitialData() async {
     try {
       // 1. Ưu tiên lấy danh sách lớp từ AppNavigationController hoặc tải local file
-      List<ImportedClass> classes = AppNavigationController.instance.activeClasses ?? [];
+      List<ImportedClass> classes =
+          AppNavigationController.instance.activeClasses ?? [];
       if (classes.isEmpty) {
         final local = _scheduleApiClient.loadLocalSchedules();
         if (local != null && local.classes.isNotEmpty) {
           classes = local.classes;
           AppNavigationController.instance.activeClasses = classes;
           AppNavigationController.instance.activeSchedules = local.schedules;
-          AppNavigationController.instance.activeSemesterStart = local.firstLessonDate;
+          AppNavigationController.instance.activeSemesterStart =
+              local.firstLessonDate;
         } else {
           final saved = await _scheduleApiClient.loadSavedSchedules();
           if (saved.classes.isNotEmpty) {
             classes = saved.classes;
             AppNavigationController.instance.activeClasses = classes;
             AppNavigationController.instance.activeSchedules = saved.schedules;
-            AppNavigationController.instance.activeSemesterStart = saved.firstLessonDate;
+            AppNavigationController.instance.activeSemesterStart =
+                saved.firstLessonDate;
           }
         }
       }
@@ -156,6 +159,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
       if (!mounted) return;
       if (success) {
         final freshStore = await _storageService.loadStore();
+        if (!mounted) return;
         setState(() {
           _attendanceStore = freshStore;
         });
@@ -206,7 +210,8 @@ class _ReportsScreenState extends State<ReportsScreen> {
           ? 'All${sortedSlots.length}Slots'
           : 'Slots_${sortedSlots.join('_')}';
 
-      final defaultFileName = '${cls.subjectCode}_${cls.classCode}_${cls.semester}_$slotsLabel.$ext';
+      final defaultFileName =
+          '${cls.subjectCode}_${cls.classCode}_${cls.semester}_$slotsLabel.$ext';
 
       final savePath = await FilePicker.platform.saveFile(
         dialogTitle: 'Chọn nơi lưu file báo cáo điểm danh',
@@ -220,16 +225,20 @@ class _ReportsScreenState extends State<ReportsScreen> {
         return;
       }
 
-      final finalPath = savePath.endsWith('.$ext') ? savePath : '$savePath.$ext';
+      final finalPath = savePath.endsWith('.$ext')
+          ? savePath
+          : '$savePath.$ext';
 
       final rosterList = cls.students
-          .map((s) => {
-                'rollNumber': s.rollNumber,
-                'fullName': s.fullName,
-                'email': s.email,
-                'memberCode': s.memberCode,
-                'classCode': s.classCode,
-              })
+          .map(
+            (s) => {
+              'rollNumber': s.rollNumber,
+              'fullName': s.fullName,
+              'email': s.email,
+              'memberCode': s.memberCode,
+              'classCode': s.classCode,
+            },
+          )
           .toList();
 
       final classAttendance = _getClassAttendance(cls);
@@ -251,7 +260,8 @@ class _ReportsScreenState extends State<ReportsScreen> {
       // Map lessonDates
       final Map<int, String> lessonDates = {};
       final activeSchedules = AppNavigationController.instance.activeSchedules;
-      if (activeSchedules != null && activeSchedules.containsKey(cls.classCode)) {
+      if (activeSchedules != null &&
+          activeSchedules.containsKey(cls.classCode)) {
         for (final lesson in activeSchedules[cls.classCode]!) {
           lessonDates[lesson.sequenceNumber] =
               '${lesson.date.day.toString().padLeft(2, '0')}/${lesson.date.month.toString().padLeft(2, '0')}';
@@ -347,15 +357,21 @@ class _ReportsScreenState extends State<ReportsScreen> {
           studentAbsent++;
         }
       }
-      final absentRate = totalSlotsEvaluated > 0 ? (studentAbsent / totalSlotsEvaluated) * 100 : 0.0;
+      final absentRate = totalSlotsEvaluated > 0
+          ? (studentAbsent / totalSlotsEvaluated) * 100
+          : 0.0;
       if (absentRate > 20.0) {
         atRiskStudentsCount++;
       }
     }
 
     final totalEntries = totalPresents + totalAbsents;
-    final presentPct = totalEntries > 0 ? ((totalPresents / totalEntries) * 100).toStringAsFixed(1) : '100.0';
-    final absentPct = totalEntries > 0 ? ((totalAbsents / totalEntries) * 100).toStringAsFixed(1) : '0.0';
+    final presentPct = totalEntries > 0
+        ? ((totalPresents / totalEntries) * 100).toStringAsFixed(1)
+        : '100.0';
+    final absentPct = totalEntries > 0
+        ? ((totalAbsents / totalEntries) * 100).toStringAsFixed(1)
+        : '0.0';
 
     return Scaffold(
       backgroundColor: _canvasBg,
@@ -439,10 +455,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                 const SizedBox(height: 2),
                 Text(
                   'Tổng hợp dữ liệu điểm danh, theo dõi sinh viên có nguy cơ cấm thi và xuất file Excel / CSV',
-                  style: GoogleFonts.inter(
-                    fontSize: 12,
-                    color: _textSecondary,
-                  ),
+                  style: GoogleFonts.inter(fontSize: 12, color: _textSecondary),
                 ),
               ],
             ),
@@ -465,10 +478,17 @@ class _ReportsScreenState extends State<ReportsScreen> {
                   if (_isSyncing)
                     const SizedBox.square(
                       dimension: 13,
-                      child: CircularProgressIndicator(strokeWidth: 1.8, color: _textSecondary),
+                      child: CircularProgressIndicator(
+                        strokeWidth: 1.8,
+                        color: _textSecondary,
+                      ),
                     )
                   else
-                    const Icon(Icons.cloud_sync_outlined, size: 15, color: _textPrimary),
+                    const Icon(
+                      Icons.cloud_sync_outlined,
+                      size: 15,
+                      color: _textPrimary,
+                    ),
                   const SizedBox(width: 6),
                   Text(
                     _isSyncing ? 'Đang đồng bộ...' : 'Đồng bộ Google Sheet',
@@ -499,13 +519,22 @@ class _ReportsScreenState extends State<ReportsScreen> {
                   if (_isExporting)
                     const SizedBox.square(
                       dimension: 13,
-                      child: CircularProgressIndicator(strokeWidth: 1.8, color: Colors.white),
+                      child: CircularProgressIndicator(
+                        strokeWidth: 1.8,
+                        color: Colors.white,
+                      ),
                     )
                   else
-                    const Icon(Icons.download_outlined, size: 15, color: Colors.white),
+                    const Icon(
+                      Icons.download_outlined,
+                      size: 15,
+                      color: Colors.white,
+                    ),
                   const SizedBox(width: 6),
                   Text(
-                    _isExporting ? 'Đang xuất file...' : 'Xuất Báo Cáo (${_selectedFormat.name.toUpperCase()})',
+                    _isExporting
+                        ? 'Đang xuất file...'
+                        : 'Xuất Báo Cáo (${_selectedFormat.name.toUpperCase()})',
                     style: GoogleFonts.inter(
                       fontSize: 12.5,
                       fontWeight: FontWeight.w600,
@@ -606,24 +635,36 @@ class _ReportsScreenState extends State<ReportsScreen> {
                     setState(() => _resetSelectedSlots());
                   },
                   style: TextButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 6,
+                    ),
                     minimumSize: Size.zero,
                   ),
                   child: Text(
                     'Chọn tất cả slot',
-                    style: GoogleFonts.inter(fontSize: 11.5, color: _textPrimary),
+                    style: GoogleFonts.inter(
+                      fontSize: 11.5,
+                      color: _textPrimary,
+                    ),
                   ),
                 ),
                 const SizedBox(width: 6),
                 TextButton(
                   onPressed: _selectAttendedSlotsOnly,
                   style: TextButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 6,
+                    ),
                     minimumSize: Size.zero,
                   ),
                   child: Text(
                     'Chỉ slot đã điểm danh',
-                    style: GoogleFonts.inter(fontSize: 11.5, color: _textPrimary),
+                    style: GoogleFonts.inter(
+                      fontSize: 11.5,
+                      color: _textPrimary,
+                    ),
                   ),
                 ),
                 const SizedBox(width: 6),
@@ -632,12 +673,18 @@ class _ReportsScreenState extends State<ReportsScreen> {
                     setState(() => _selectedSlots.clear());
                   },
                   style: TextButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 6,
+                    ),
                     minimumSize: Size.zero,
                   ),
                   child: Text(
                     'Bỏ chọn',
-                    style: GoogleFonts.inter(fontSize: 11.5, color: _textSecondary),
+                    style: GoogleFonts.inter(
+                      fontSize: 11.5,
+                      color: _textSecondary,
+                    ),
                   ),
                 ),
               ],
@@ -669,7 +716,10 @@ class _ReportsScreenState extends State<ReportsScreen> {
                         final slotNum = index + 1;
                         final isSelected = _selectedSlots.contains(slotNum);
                         final hasAttendance =
-                            (_getClassAttendance(currentClass)[slotNum]?.isNotEmpty ?? false);
+                            (_getClassAttendance(
+                              currentClass,
+                            )[slotNum]?.isNotEmpty ??
+                            false);
 
                         return Padding(
                           padding: const EdgeInsets.only(right: 6),
@@ -696,7 +746,9 @@ class _ReportsScreenState extends State<ReportsScreen> {
                                     : const Color(0xFFF7F6F3),
                                 borderRadius: BorderRadius.circular(4),
                                 border: Border.all(
-                                  color: isSelected ? _textPrimary : _borderColor,
+                                  color: isSelected
+                                      ? _textPrimary
+                                      : _borderColor,
                                   width: 1,
                                 ),
                               ),
@@ -707,8 +759,12 @@ class _ReportsScreenState extends State<ReportsScreen> {
                                     'Slot $slotNum',
                                     style: GoogleFonts.inter(
                                       fontSize: 11,
-                                      fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                                      color: isSelected ? Colors.white : _textPrimary,
+                                      fontWeight: isSelected
+                                          ? FontWeight.w600
+                                          : FontWeight.w500,
+                                      color: isSelected
+                                          ? Colors.white
+                                          : _textPrimary,
                                     ),
                                   ),
                                   if (hasAttendance) ...[
@@ -717,7 +773,9 @@ class _ReportsScreenState extends State<ReportsScreen> {
                                       width: 5,
                                       height: 5,
                                       decoration: BoxDecoration(
-                                        color: isSelected ? const Color(0xFF86EFAC) : const Color(0xFF16A34A),
+                                        color: isSelected
+                                            ? const Color(0xFF86EFAC)
+                                            : const Color(0xFF16A34A),
                                         shape: BoxShape.circle,
                                       ),
                                     ),
@@ -772,7 +830,13 @@ class _ReportsScreenState extends State<ReportsScreen> {
           color: isSelected ? Colors.white : Colors.transparent,
           borderRadius: BorderRadius.circular(3),
           boxShadow: isSelected
-              ? [const BoxShadow(color: Colors.black12, blurRadius: 2, offset: Offset(0, 1))]
+              ? [
+                  const BoxShadow(
+                    color: Colors.black12,
+                    blurRadius: 2,
+                    offset: Offset(0, 1),
+                  ),
+                ]
               : null,
         ),
         child: Text(
@@ -840,9 +904,13 @@ class _ReportsScreenState extends State<ReportsScreen> {
           child: _metricCard(
             title: 'NGUY CƠ CẤM THI (>20%)',
             value: '$atRiskCount SV',
-            subtitle: atRiskCount > 0 ? 'Cần cảnh báo sinh viên' : 'Lớp chuyên cần tốt',
+            subtitle: atRiskCount > 0
+                ? 'Cần cảnh báo sinh viên'
+                : 'Lớp chuyên cần tốt',
             icon: Icons.warning_amber_rounded,
-            accentColor: atRiskCount > 0 ? const Color(0xFFDC2626) : const Color(0xFF16A34A),
+            accentColor: atRiskCount > 0
+                ? const Color(0xFFDC2626)
+                : const Color(0xFF16A34A),
           ),
         ),
       ],
@@ -953,10 +1021,16 @@ class _ReportsScreenState extends State<ReportsScreen> {
                           onChanged: (val) {
                             setState(() => _searchQuery = val);
                           },
-                          style: GoogleFonts.inter(fontSize: 12, color: _textPrimary),
+                          style: GoogleFonts.inter(
+                            fontSize: 12,
+                            color: _textPrimary,
+                          ),
                           decoration: const InputDecoration(
                             hintText: 'Tìm kiếm MSSV, tên, email...',
-                            hintStyle: TextStyle(fontSize: 11.5, color: _textSecondary),
+                            hintStyle: TextStyle(
+                              fontSize: 11.5,
+                              color: _textSecondary,
+                            ),
                             border: InputBorder.none,
                             isDense: true,
                             contentPadding: EdgeInsets.zero,
@@ -969,7 +1043,11 @@ class _ReportsScreenState extends State<ReportsScreen> {
                             _studentSearchController.clear();
                             setState(() => _searchQuery = '');
                           },
-                          child: const Icon(Icons.close, size: 14, color: _textSecondary),
+                          child: const Icon(
+                            Icons.close,
+                            size: 14,
+                            color: _textSecondary,
+                          ),
                         ),
                     ],
                   ),
@@ -985,7 +1063,10 @@ class _ReportsScreenState extends State<ReportsScreen> {
                 ? Center(
                     child: Text(
                       'Không tìm thấy sinh viên phù hợp với từ khóa "$_searchQuery"',
-                      style: GoogleFonts.inter(fontSize: 12.5, color: _textSecondary),
+                      style: GoogleFonts.inter(
+                        fontSize: 12.5,
+                        color: _textSecondary,
+                      ),
                     ),
                   )
                 : ClipRRect(
@@ -993,159 +1074,271 @@ class _ReportsScreenState extends State<ReportsScreen> {
                       bottomLeft: Radius.circular(5),
                       bottomRight: Radius.circular(5),
                     ),
-                    child: SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: SingleChildScrollView(
-                        child: DataTable(
-                          headingRowColor: WidgetStateProperty.all(const Color(0xFFF7F6F3)),
-                          headingRowHeight: 36,
-                          dataRowMinHeight: 34,
-                          dataRowMaxHeight: 34,
-                          dividerThickness: 0.8,
-                          columns: [
-                            DataColumn(label: _th('STT')),
-                            DataColumn(label: _th('MSSV')),
-                            DataColumn(label: _th('Họ và tên')),
-                            DataColumn(label: _th('Email')),
-                            ...sortedSlots.map((s) => DataColumn(label: _th('S$s'))),
-                            DataColumn(label: _th('Vắng (A)')),
-                            DataColumn(label: _th('Có mặt (P)')),
-                            DataColumn(label: _th('Tỉ lệ vắng')),
-                            DataColumn(label: _th('Trạng thái')),
-                          ],
-                          rows: List.generate(students.length, (idx) {
-                            final student = students[idx];
-                            final email = student.email.trim().toLowerCase();
-
-                            int absentCount = 0;
-                            int presentCount = 0;
-
-                            final slotCells = sortedSlots.map((slot) {
-                              final status = (classAttendance[slot]?[email] ?? '').toUpperCase();
-                              if (status == 'P') {
-                                presentCount++;
-                                return DataCell(
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFFDCFCE7),
-                                      borderRadius: BorderRadius.circular(3),
+                    child: ScrollConfiguration(
+                      behavior: ScrollConfiguration.of(context).copyWith(
+                        dragDevices: {
+                          PointerDeviceKind.touch,
+                          PointerDeviceKind.mouse,
+                          PointerDeviceKind.trackpad,
+                        },
+                      ),
+                      child: Scrollbar(
+                        controller: _horizontalScrollController,
+                        thumbVisibility: true,
+                        trackVisibility: true,
+                        child: SingleChildScrollView(
+                          controller: _horizontalScrollController,
+                          scrollDirection: Axis.horizontal,
+                          child: Scrollbar(
+                            controller: _verticalScrollController,
+                            thumbVisibility: true,
+                            child: SingleChildScrollView(
+                              controller: _verticalScrollController,
+                              child: DataTable(
+                                headingRowColor: WidgetStateProperty.all(
+                                  const Color(0xFFF7F6F3),
+                                ),
+                                headingRowHeight: 36,
+                                dataRowMinHeight: 34,
+                                dataRowMaxHeight: 34,
+                                columnSpacing: 18,
+                                horizontalMargin: 16,
+                                dividerThickness: 0.8,
+                                columns: [
+                                  DataColumn(
+                                    columnWidth: const FixedColumnWidth(54),
+                                    label: Flexible(child: _th('STT')),
+                                  ),
+                                  DataColumn(
+                                    columnWidth: const FixedColumnWidth(105),
+                                    label: Flexible(child: _th('MSSV')),
+                                  ),
+                                  DataColumn(
+                                    columnWidth: const FixedColumnWidth(170),
+                                    label: Flexible(child: _th('Họ và tên')),
+                                  ),
+                                  DataColumn(
+                                    columnWidth: const FixedColumnWidth(230),
+                                    label: Flexible(child: _th('Email')),
+                                  ),
+                                  ...sortedSlots.map(
+                                    (s) => DataColumn(
+                                      columnWidth: const FixedColumnWidth(44),
+                                      label: Flexible(child: _th('S$s')),
                                     ),
-                                    child: Text(
-                                      'P',
-                                      style: GoogleFonts.inter(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w700,
-                                        color: const Color(0xFF16A34A),
+                                  ),
+                                  DataColumn(
+                                    columnWidth: const FixedColumnWidth(80),
+                                    label: Flexible(child: _th('Vắng (A)')),
+                                  ),
+                                  DataColumn(
+                                    columnWidth: const FixedColumnWidth(90),
+                                    label: Flexible(child: _th('Có mặt (P)')),
+                                  ),
+                                  DataColumn(
+                                    columnWidth: const FixedColumnWidth(85),
+                                    label: Flexible(child: _th('Tỉ lệ vắng')),
+                                  ),
+                                  DataColumn(
+                                    columnWidth: const FixedColumnWidth(110),
+                                    label: Flexible(child: _th('Trạng thái')),
+                                  ),
+                                ],
+                                rows: List.generate(students.length, (idx) {
+                                  final student = students[idx];
+                                  final email = student.email
+                                      .trim()
+                                      .toLowerCase();
+
+                                  int absentCount = 0;
+                                  int presentCount = 0;
+
+                                  final slotCells = sortedSlots.map((slot) {
+                                    final status =
+                                        (classAttendance[slot]?[email] ?? '')
+                                            .toUpperCase();
+                                    if (status == 'P') {
+                                      presentCount++;
+                                      return DataCell(
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 6,
+                                            vertical: 2,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFFDCFCE7),
+                                            borderRadius: BorderRadius.circular(
+                                              3,
+                                            ),
+                                          ),
+                                          child: Text(
+                                            'P',
+                                            style: GoogleFonts.inter(
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.w700,
+                                              color: const Color(0xFF16A34A),
+                                            ),
+                                          ),
+                                        ),
+                                      );
+                                    } else if (status == 'A') {
+                                      absentCount++;
+                                      return DataCell(
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 6,
+                                            vertical: 2,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFFFEE2E2),
+                                            borderRadius: BorderRadius.circular(
+                                              3,
+                                            ),
+                                          ),
+                                          child: Text(
+                                            'A',
+                                            style: GoogleFonts.inter(
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.w700,
+                                              color: const Color(0xFFDC2626),
+                                            ),
+                                          ),
+                                        ),
+                                      );
+                                    } else {
+                                      return DataCell(
+                                        Text(
+                                          '—',
+                                          style: GoogleFonts.inter(
+                                            fontSize: 11,
+                                            color: const Color(0xFFD1D5DB),
+                                          ),
+                                        ),
+                                      );
+                                    }
+                                  }).toList();
+
+                                  final totalSlots = sortedSlots.length;
+                                  final absentRate = totalSlots > 0
+                                      ? (absentCount / totalSlots) * 100
+                                      : 0.0;
+                                  final isAtRisk = absentRate > 20.0;
+
+                                  return DataRow(
+                                    color: isAtRisk
+                                        ? WidgetStateProperty.all(
+                                            const Color(0xFFFEF2F2),
+                                          )
+                                        : null,
+                                    cells: [
+                                      DataCell(
+                                        Text(
+                                          '${idx + 1}',
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: _cellStyle(isSecondary: true),
+                                        ),
                                       ),
-                                    ),
-                                  ),
-                                );
-                              } else if (status == 'A') {
-                                absentCount++;
-                                return DataCell(
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFFFEE2E2),
-                                      borderRadius: BorderRadius.circular(3),
-                                    ),
-                                    child: Text(
-                                      'A',
-                                      style: GoogleFonts.inter(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w700,
-                                        color: const Color(0xFFDC2626),
+                                      DataCell(
+                                        Text(
+                                          student.rollNumber,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          softWrap: false,
+                                          style: GoogleFonts.inter(
+                                            fontSize: 11.5,
+                                            fontWeight: FontWeight.w600,
+                                            color: _textPrimary,
+                                          ),
+                                        ),
                                       ),
-                                    ),
-                                  ),
-                                );
-                              } else {
-                                return DataCell(
-                                  Text(
-                                    '—',
-                                    style: GoogleFonts.inter(
-                                      fontSize: 11,
-                                      color: const Color(0xFFD1D5DB),
-                                    ),
-                                  ),
-                                );
-                              }
-                            }).toList();
-
-                            final totalSlots = sortedSlots.length;
-                            final absentRate = totalSlots > 0 ? (absentCount / totalSlots) * 100 : 0.0;
-                            final isAtRisk = absentRate > 20.0;
-
-                            return DataRow(
-                              color: isAtRisk
-                                  ? WidgetStateProperty.all(const Color(0xFFFEF2F2))
-                                  : null,
-                              cells: [
-                                DataCell(Text('${idx + 1}', style: _cellStyle(isSecondary: true))),
-                                DataCell(
-                                  Text(
-                                    student.rollNumber,
-                                    style: GoogleFonts.inter(
-                                      fontSize: 11.5,
-                                      fontWeight: FontWeight.w600,
-                                      color: _textPrimary,
-                                    ),
-                                  ),
-                                ),
-                                DataCell(Text(student.fullName, style: _cellStyle())),
-                                DataCell(Text(student.email, style: _cellStyle(isSecondary: true))),
-                                ...slotCells,
-                                DataCell(
-                                  Text(
-                                    '$absentCount',
-                                    style: GoogleFonts.inter(
-                                      fontSize: 11.5,
-                                      fontWeight: FontWeight.w700,
-                                      color: absentCount > 0 ? const Color(0xFFDC2626) : _textSecondary,
-                                    ),
-                                  ),
-                                ),
-                                DataCell(
-                                  Text(
-                                    '$presentCount',
-                                    style: GoogleFonts.inter(
-                                      fontSize: 11.5,
-                                      fontWeight: FontWeight.w600,
-                                      color: const Color(0xFF16A34A),
-                                    ),
-                                  ),
-                                ),
-                                DataCell(
-                                  Text(
-                                    '${absentRate.toStringAsFixed(1)}%',
-                                    style: GoogleFonts.inter(
-                                      fontSize: 11.5,
-                                      fontWeight: FontWeight.w700,
-                                      color: isAtRisk ? const Color(0xFFDC2626) : _textPrimary,
-                                    ),
-                                  ),
-                                ),
-                                DataCell(
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                                    decoration: BoxDecoration(
-                                      color: isAtRisk ? const Color(0xFFFEE2E2) : const Color(0xFFF3F4F6),
-                                      borderRadius: BorderRadius.circular(3),
-                                    ),
-                                    child: Text(
-                                      isAtRisk ? 'Nguy cơ cấm thi' : 'Bình thường',
-                                      style: GoogleFonts.inter(
-                                        fontSize: 10.5,
-                                        fontWeight: FontWeight.w600,
-                                        color: isAtRisk ? const Color(0xFFDC2626) : _textSecondary,
+                                      DataCell(
+                                        Text(
+                                          student.fullName,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          softWrap: false,
+                                          style: _cellStyle(),
+                                        ),
                                       ),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            );
-                          }),
+                                      DataCell(
+                                        Text(
+                                          student.email,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          softWrap: false,
+                                          style: _cellStyle(isSecondary: true),
+                                        ),
+                                      ),
+                                      ...slotCells,
+                                      DataCell(
+                                        Text(
+                                          '$absentCount',
+                                          style: GoogleFonts.inter(
+                                            fontSize: 11.5,
+                                            fontWeight: FontWeight.w700,
+                                            color: absentCount > 0
+                                                ? const Color(0xFFDC2626)
+                                                : _textSecondary,
+                                          ),
+                                        ),
+                                      ),
+                                      DataCell(
+                                        Text(
+                                          '$presentCount',
+                                          style: GoogleFonts.inter(
+                                            fontSize: 11.5,
+                                            fontWeight: FontWeight.w600,
+                                            color: const Color(0xFF16A34A),
+                                          ),
+                                        ),
+                                      ),
+                                      DataCell(
+                                        Text(
+                                          '${absentRate.toStringAsFixed(1)}%',
+                                          style: GoogleFonts.inter(
+                                            fontSize: 11.5,
+                                            fontWeight: FontWeight.w700,
+                                            color: isAtRisk
+                                                ? const Color(0xFFDC2626)
+                                                : _textPrimary,
+                                          ),
+                                        ),
+                                      ),
+                                      DataCell(
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 7,
+                                            vertical: 2,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: isAtRisk
+                                                ? const Color(0xFFFEE2E2)
+                                                : const Color(0xFFF3F4F6),
+                                            borderRadius: BorderRadius.circular(
+                                              3,
+                                            ),
+                                          ),
+                                          child: Text(
+                                            isAtRisk
+                                                ? 'Nguy cơ cấm thi'
+                                                : 'Bình thường',
+                                            style: GoogleFonts.inter(
+                                              fontSize: 10.5,
+                                              fontWeight: FontWeight.w600,
+                                              color: isAtRisk
+                                                  ? const Color(0xFFDC2626)
+                                                  : _textSecondary,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  );
+                                }),
+                              ),
+                            ),
+                          ),
                         ),
                       ),
                     ),
@@ -1159,6 +1352,9 @@ class _ReportsScreenState extends State<ReportsScreen> {
   Widget _th(String label) {
     return Text(
       label,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      softWrap: false,
       style: GoogleFonts.inter(
         fontSize: 11.5,
         fontWeight: FontWeight.w700,
@@ -1187,7 +1383,11 @@ class _ReportsScreenState extends State<ReportsScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.bar_chart_outlined, size: 36, color: _textSecondary),
+            const Icon(
+              Icons.bar_chart_outlined,
+              size: 36,
+              color: _textSecondary,
+            ),
             const SizedBox(height: 12),
             Text(
               'Chưa Có Dữ Liệu Báo Cáo',
@@ -1208,10 +1408,16 @@ class _ReportsScreenState extends State<ReportsScreen> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: _textPrimary,
                 foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 10,
+                ),
               ),
-              onPressed: () => AppNavigationController.instance.navigateToTab(2),
+              onPressed: () =>
+                  AppNavigationController.instance.navigateToTab(2),
               icon: const Icon(Icons.upload_file, size: 16),
               label: const Text('Nhập Danh Sách Lớp'),
             ),

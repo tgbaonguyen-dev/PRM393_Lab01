@@ -9,7 +9,7 @@ enum M1NoticeType { success, warning, error }
 class M1SnackBar {
   const M1SnackBar._();
 
-  static const _displayDuration = Duration(seconds: 10);
+  static const _displayDuration = Duration(seconds: 5);
   static Timer? _accessibleDismissTimer;
 
   static void show(
@@ -26,19 +26,43 @@ class M1SnackBar {
     _accessibleDismissTimer?.cancel();
     _accessibleDismissTimer = null;
     messenger.hideCurrentSnackBar();
+
+    final size = MediaQuery.sizeOf(context);
+    final isCompact = size.width > 420;
+
     final controller = messenger.showSnackBar(
       SnackBar(
         duration: _displayDuration,
         backgroundColor: backgroundColor,
         behavior: SnackBarBehavior.floating,
+        margin: EdgeInsets.only(
+          left: isCompact ? size.width - 360 : 16,
+          right: 16,
+          bottom: 16,
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
         content: Row(
           children: [
-            Icon(icon, color: Colors.white),
-            const SizedBox(width: 10),
-            Expanded(child: Text(message)),
+            Icon(icon, color: Colors.white, size: 18),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                message,
+                style: const TextStyle(
+                  fontSize: 12.5,
+                  color: Colors.white,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+            const SizedBox(width: 6),
             IconButton(
               tooltip: 'Đóng thông báo',
               color: Colors.white,
+              iconSize: 16,
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(),
               onPressed: messenger.hideCurrentSnackBar,
               icon: const Icon(Icons.close),
             ),

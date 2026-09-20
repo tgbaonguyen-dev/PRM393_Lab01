@@ -45,9 +45,11 @@ class ScheduleController {
             .where((value) => value.isNotEmpty)
             .toSet();
       }
+      final clearPrevious = decoded['clearPrevious'] == true;
       final saved = await _service.saveSchedules(
         schedules,
         activeClassIds: activeClassIds,
+        clearPrevious: clearPrevious,
       );
       final skippedCount = schedules.length - saved.length;
       final message = saved.isEmpty && activeClassIds != null

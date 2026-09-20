@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:prm393_desktop/features/import/models/import_models.dart';
 import 'package:prm393_desktop/features/schedule/schedule_generator_screen.dart';
+import 'package:prm393_desktop/shell/app_shell.dart';
 
 void main() {
   testWidgets('shows all imported classes in the weekly timetable', (
@@ -61,6 +62,43 @@ void main() {
     expect(find.text('Slot 6'), findsNothing);
     expect(find.text('Slot 7'), findsNothing);
   });
+
+  testWidgets(
+    'clicking Mở điểm danh QR inside AppShell navigates directly to Tab 1',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1440, 900));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      final classes = [
+        _class('12_PRM393_SE1917', '12', 'PRM393', 'SE1917', 20),
+      ];
+
+      AppNavigationController.instance.openScheduleWithClasses(
+        classes: classes,
+        semesterStart: DateTime(2026, 9, 7),
+      );
+
+      await tester.pumpWidget(const MaterialApp(home: AppShell()));
+      await tester.pumpAndSettle();
+
+      expect(AppNavigationController.instance.currentIndex, 0);
+
+      // Tap 'Mở điểm danh QR'
+      await tester.tap(find.text('Mở điểm danh QR'));
+      await tester.pumpAndSettle();
+
+      // Verify AppNavigationController switched directly to Tab 1
+      expect(AppNavigationController.instance.currentIndex, 1);
+      expect(find.text('Trình chiếu QR điểm danh'), findsOneWidget);
+
+      // Tap back button in QrDisplayScreen's AppBar
+      await tester.tap(find.byTooltip('Quay lại Lịch Giảng Dạy'));
+      await tester.pumpAndSettle();
+
+      // Verify returned to Tab 0 (Lịch Giảng Dạy)
+      expect(AppNavigationController.instance.currentIndex, 0);
+    },
+  );
 }
 
 ImportedClass _class(

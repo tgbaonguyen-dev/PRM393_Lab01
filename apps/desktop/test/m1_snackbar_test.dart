@@ -29,12 +29,12 @@ void main() {
         await tester.pumpAndSettle();
 
         final snackBar = tester.widget<SnackBar>(find.byType(SnackBar));
-        expect(snackBar.duration, const Duration(seconds: 10));
+        expect(snackBar.duration, const Duration(seconds: 5));
         expect(snackBar.backgroundColor, entry.value);
         expect(snackBar.action, isNull);
         expect(find.byTooltip('Đóng thông báo'), findsOneWidget);
 
-        await tester.pump(const Duration(seconds: 10));
+        await tester.pump(const Duration(seconds: 5));
         await tester.pumpAndSettle();
       },
     );
@@ -64,7 +64,7 @@ void main() {
     await tester.pump();
     expect(find.byType(SnackBar), findsOneWidget);
 
-    await tester.pump(const Duration(seconds: 10));
+    await tester.pump(const Duration(seconds: 5));
     await tester.pumpAndSettle();
     expect(find.byType(SnackBar), findsNothing);
   });

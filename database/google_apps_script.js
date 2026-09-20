@@ -93,7 +93,7 @@ function doGet(e) {
 function dispatchAction(action, payload) {
   switch (action) {
     case 'syncAllClasses':
-      return DatabaseService.syncAllClassesFromDesktop(payload.classes, payload.startDate);
+      return DatabaseService.syncAllClassesFromDesktop(payload.classes, payload.startDate, payload.clearPrevious);
     case 'saveClassOffering':
       return DatabaseService.saveClassOffering(payload.offering, payload.roster, payload.lessons);
     case 'saveClassOfferings':
@@ -439,7 +439,7 @@ var DatabaseService = {
    * 3. Bảo vệ dữ liệu điểm danh: Lớp bị loại khỏi import nếu đã có điểm danh thì chuyển sang [Archived], không xoá
    * 4. Sheet trắng chưa điểm danh thì xoá an toàn
    */
-  syncAllClassesFromDesktop: function (classes, startDateStr) {
+  syncAllClassesFromDesktop: function (classes, startDateStr, clearPrevious) {
     var ss = this.getSpreadsheet();
 
     // 1. Quản lý Sheet OVERVIEW (Nếu đã có thì cập nhật, chưa có thì tạo mới)
@@ -454,6 +454,23 @@ var DatabaseService = {
       ss.setActiveSheet(overviewSheet);
       ss.moveActiveSheet(1);
     } catch (orderErr) {}
+
+    // Nếu người dùng yêu cầu xóa thông tin của các sheet trước đó khi upload markbook mới
+    if (clearPrevious === true) {
+      var allExistingSheets = ss.getSheets();
+      for (var sIdx = allExistingSheets.length - 1; sIdx >= 0; sIdx--) {
+        var sToDel = allExistingSheets[sIdx];
+        var sToDelName = sToDel.getName();
+        if (sToDelName !== 'Overview' && sToDelName.indexOf('Temp_') !== 0) {
+          try {
+            ss.deleteSheet(sToDel);
+            Logger.log('Đã xóa sheet cũ trước đó: ' + sToDelName);
+          } catch (e) {
+            Logger.log('Không thể xóa sheet cũ: ' + sToDelName + ': ' + e);
+          }
+        }
+      }
+    }
 
     // 2. Đồng bộ từng lớp học và thu thập danh sách tên sheet active
     var expectedSheetNames = {};
@@ -479,7 +496,7 @@ var DatabaseService = {
           ss.moveActiveSheet(i + 2);
         } catch (moveErr) {}
 
-        this.setupClassMarkbookSheet(classSheet, cls, startDateStr);
+        this.setupClassMarkbookSheet(classSheet, cls, startDateStr, clearPrevious);
       } catch (classErr) {
         Logger.log('Lỗi đồng bộ sheet lớp ' + i + ': ' + classErr);
       }
@@ -617,37 +634,39 @@ var DatabaseService = {
    * Thiết lập Sheet Markbook cho 1 Lớp cụ thể (như hình ảnh mong muốn)
    * Tự động bảo toàn các dấu điểm danh (P / A) đã ghi nhận trước đó
    */
-  setupClassMarkbookSheet: function (sheet, cls, startDateStr) {
+  setupClassMarkbookSheet: function (sheet, cls, startDateStr, clearPrevious) {
     var lessons = cls.lessons || [];
     var slotCount = lessons.length > 0 ? lessons.length : (cls.slotCount || 20);
     var scheduleInfo = this.getScheduleDescription(cls.scheduleCode);
 
-    // 0. Nếu sheet đã có dữ liệu trước đó, bảo toàn toàn bộ kết quả điểm danh (P / A)
+    // 0. Nếu không yêu cầu clearPrevious và sheet đã có dữ liệu trước đó, bảo toàn toàn bộ kết quả điểm danh (P / A)
     var existingAttendance = {};
-    try {
-      if (sheet.getLastRow() >= 3 && sheet.getLastColumn() >= 6) {
-        var existingData = sheet.getDataRange().getValues();
-        for (var er = 2; er < existingData.length; er++) {
-          var eRoll = String(existingData[er][1] || '').trim().toLowerCase();
-          var eEmail = String(existingData[er][3] || '').trim().toLowerCase();
-          if (!eEmail && !eRoll) continue;
+    if (!clearPrevious) {
+      try {
+        if (sheet.getLastRow() >= 3 && sheet.getLastColumn() >= 6) {
+          var existingData = sheet.getDataRange().getValues();
+          for (var er = 2; er < existingData.length; er++) {
+            var eRoll = String(existingData[er][1] || '').trim().toLowerCase();
+            var eEmail = String(existingData[er][3] || '').trim().toLowerCase();
+            if (!eEmail && !eRoll) continue;
 
-          var attMap = {};
-          for (var es = 1; es <= slotCount; es++) {
-            var colIdx = 5 + es - 1; // 0-indexed: Cột F là index 5 (Slot 1)
-            if (colIdx < existingData[er].length) {
-              var mark = String(existingData[er][colIdx] || '').trim();
-              if (mark === 'P' || mark === 'A') {
-                attMap[es] = mark;
+            var attMap = {};
+            for (var es = 1; es <= slotCount; es++) {
+              var colIdx = 5 + es - 1; // 0-indexed: Cột F là index 5 (Slot 1)
+              if (colIdx < existingData[er].length) {
+                var mark = String(existingData[er][colIdx] || '').trim();
+                if (mark === 'P' || mark === 'A') {
+                  attMap[es] = mark;
+                }
               }
             }
+            if (eEmail) existingAttendance[eEmail] = attMap;
+            if (eRoll) existingAttendance[eRoll] = attMap;
           }
-          if (eEmail) existingAttendance[eEmail] = attMap;
-          if (eRoll) existingAttendance[eRoll] = attMap;
         }
+      } catch (readErr) {
+        Logger.log('Không thể đọc dữ liệu điểm danh cũ: ' + readErr);
       }
-    } catch (readErr) {
-      Logger.log('Không thể đọc dữ liệu điểm danh cũ: ' + readErr);
     }
 
     sheet.clear();

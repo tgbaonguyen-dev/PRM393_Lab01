@@ -3,8 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
 
-import '../features/attendance/services/attendance_storage_service.dart';
-import '../features/export/export_dialog.dart';
 import '../features/import/import_screen.dart';
 import '../features/import/models/import_models.dart';
 import '../features/reports/reports_screen.dart';
@@ -12,7 +10,6 @@ import '../features/schedule/models/schedule_models.dart';
 import '../features/schedule/schedule_generator_screen.dart';
 import '../features/schedule/services/schedule_api_client.dart';
 import '../features/session/qr_display_screen.dart';
-import '../shared/m1_snackbar.dart';
 
 /// Bộ điều khiển điều hướng tập trung của EduCheck Pro
 class AppNavigationController extends ChangeNotifier {
@@ -47,6 +44,9 @@ class AppNavigationController extends ChangeNotifier {
     }
   }
 
+  int _scheduleVersion = 0;
+  int get scheduleVersion => _scheduleVersion;
+
   void openScheduleWithClasses({
     required List<ImportedClass> classes,
     Map<String, List<ClassLesson>>? schedules,
@@ -55,6 +55,7 @@ class AppNavigationController extends ChangeNotifier {
     activeClasses = classes;
     activeSchedules = schedules;
     activeSemesterStart = semesterStart;
+    _scheduleVersion++;
     _currentIndex = 0; // Tab Lịch Giảng Dạy
     notifyListeners();
   }
@@ -178,63 +179,6 @@ class _AppShellState extends State<AppShell> {
         });
       }
     } catch (_) {}
-  }
-
-  Future<void> _triggerExportDialog() async {
-    final classes = _nav.activeClasses;
-    if (classes == null || classes.isEmpty) {
-      M1SnackBar.show(
-        context,
-        'Chưa có dữ liệu lớp học để xuất báo cáo. Vui lòng nạp danh sách lớp trước.',
-        type: M1NoticeType.warning,
-      );
-      return;
-    }
-
-    final firstClass = classes.first;
-    final rosterList = firstClass.students
-        .map((s) => {
-              'rollNumber': s.rollNumber,
-              'fullName': s.fullName,
-              'email': s.email,
-              'memberCode': s.memberCode,
-            })
-        .toList();
-
-    final storage = AttendanceStorageService();
-    final store = await storage.loadStore();
-    final classAttendance = AttendanceStorageService.resolveClassAttendance(
-      store: store,
-      scheduleCode: firstClass.scheduleCode,
-      subjectCode: firstClass.subjectCode,
-      classCode: firstClass.classCode,
-    );
-
-    final Map<String, Map<int, String>> attendanceMap = {};
-    for (final s in firstClass.students) {
-      final email = s.email.trim().toLowerCase();
-      attendanceMap[email] = {};
-      for (final slotEntry in classAttendance.entries) {
-        final st = slotEntry.value[email] ?? '';
-        if (st.isNotEmpty) {
-          attendanceMap[email]![slotEntry.key] = st;
-        }
-      }
-    }
-
-    if (!mounted) return;
-
-    showDialog<bool>(
-      context: context,
-      builder: (_) => ExportDialog(
-        subjectCode: firstClass.subjectCode,
-        className: firstClass.classCode,
-        semester: firstClass.semester,
-        roster: rosterList,
-        lessonDates: const {},
-        attendanceData: attendanceMap,
-      ),
-    );
   }
 
   @override
@@ -475,50 +419,6 @@ class _AppShellState extends State<AppShell> {
     );
   }
 
-  Widget _buildActionSidebarItem({
-    required String title,
-    IconData? icon,
-    required VoidCallback onTap,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 1.5),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(5),
-          onTap: onTap,
-          hoverColor: const Color(0xFFEAE9E5),
-          child: Container(
-            height: 32,
-            padding: const EdgeInsets.symmetric(horizontal: 10),
-            child: Row(
-              children: [
-                if (icon != null) ...[
-                  Icon(
-                    icon,
-                    size: 15,
-                    color: _textSecondary,
-                  ),
-                  const SizedBox(width: 9),
-                ],
-                Expanded(
-                  child: Text(
-                    title,
-                    style: GoogleFonts.inter(
-                      fontSize: 12.5,
-                      fontWeight: FontWeight.w400,
-                      color: _textPrimary,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
   Widget _buildSidebarFooter() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -693,6 +593,9 @@ class _AppShellState extends State<AppShell> {
         // Tab 0: Lịch Giảng Dạy (ScheduleGeneratorScreen)
         _nav.activeClasses != null && _nav.activeClasses!.isNotEmpty
             ? ScheduleGeneratorScreen(
+                key: ValueKey(
+                  'schedule-${_nav.scheduleVersion}-${_nav.activeClasses!.length}-${_nav.activeClasses!.first.offeringId}',
+                ),
                 importedClasses: _nav.activeClasses!,
                 initialSchedules: _nav.activeSchedules,
                 semesterStart: _nav.activeSemesterStart ?? DateTime.now(),

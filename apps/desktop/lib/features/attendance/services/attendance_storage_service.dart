@@ -167,7 +167,7 @@ class AttendanceStorageService {
   }) {
     final candidateKeys = <String>[
       if (scheduleCode != null && scheduleCode.isNotEmpty)
-        '${scheduleCode}_${subjectCode}_${classCode}',
+        '${scheduleCode}_${subjectCode}_$classCode',
       '$subjectCode - $classCode',
       '${subjectCode}_$classCode',
       if (customClassName != null && customClassName.isNotEmpty) customClassName,

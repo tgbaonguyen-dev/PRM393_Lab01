@@ -1,11 +1,15 @@
 import 'dart:io';
+import 'dart:ui';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../schedule/models/schedule_models.dart';
 import '../schedule/schedule_generator_screen.dart';
 import '../schedule/services/schedule_api_client.dart';
+import '../schedule/services/schedule_generator.dart';
+import '../schedule/services/schedule_overview.dart';
 import '../attendance/services/attendance_storage_service.dart';
 import '../../shared/m1_snackbar.dart';
 import '../../shell/app_shell.dart';
@@ -29,6 +33,8 @@ class _ImportScreenState extends State<ImportScreen> {
   final _lessonCountController = TextEditingController(text: '20');
   final _studentSearchController = TextEditingController();
   final _classSearchController = TextEditingController();
+  final _rosterHorizontalScrollController = ScrollController();
+  final _rosterVerticalScrollController = ScrollController();
   String _studentSearchQuery = '';
   String _classSearchQuery = '';
 
@@ -58,6 +64,8 @@ class _ImportScreenState extends State<ImportScreen> {
     _lessonCountController.dispose();
     _studentSearchController.dispose();
     _classSearchController.dispose();
+    _rosterHorizontalScrollController.dispose();
+    _rosterVerticalScrollController.dispose();
     super.dispose();
   }
 
@@ -102,7 +110,8 @@ class _ImportScreenState extends State<ImportScreen> {
         });
         AppNavigationController.instance.activeClasses ??= saved.classes;
         AppNavigationController.instance.activeSchedules ??= saved.schedules;
-        AppNavigationController.instance.activeSemesterStart ??= saved.firstLessonDate;
+        AppNavigationController.instance.activeSemesterStart ??=
+            saved.firstLessonDate;
       }
     } catch (_) {}
   }
@@ -225,6 +234,85 @@ class _ImportScreenState extends State<ImportScreen> {
           _loadMetadata(result.classes.first);
         }
       });
+
+      // Tự động kiểm tra tính hợp lệ, sinh lịch và đồng bộ lên Google Sheet
+      final preparedClasses = _prepareAllClasses();
+      if (preparedClasses != null && preparedClasses.isNotEmpty) {
+        final now = DateTime.now();
+        final semesterStart =
+            AppNavigationController.instance.activeSemesterStart ??
+            ScheduleOverview.startOfWeek(
+              DateTime(now.year, now.month, now.day),
+            );
+        final semesterCode = _semesterCodeFor(semesterStart);
+        final classesForSchedule = preparedClasses
+            .map((item) => item.copyWith(semester: semesterCode))
+            .toList(growable: false);
+
+        final schedules = <String, List<ClassLesson>>{};
+        for (final item in classesForSchedule) {
+          final firstDate = ScheduleGenerator.firstTeachingDateOnOrAfter(
+            scheduleCode: item.scheduleCode,
+            semesterStart: semesterStart,
+          );
+          schedules[item.sourceSheetName] = ScheduleGenerator.generate(
+            classOfferingId: item.offeringId,
+            scheduleCode: item.scheduleCode,
+            firstDate: firstDate,
+            lessonCount: item.lessonCount,
+          );
+        }
+
+        // Tự động đồng bộ lên Google Sheet qua backend (xóa sheet cũ và chờ đồng bộ hoàn tất)
+        String? syncError;
+        try {
+          await _scheduleApiClient.saveSchedules(
+            importedClasses: classesForSchedule,
+            schedules: schedules,
+            clearPrevious: true,
+          );
+        } catch (e) {
+          syncError = e.toString();
+        }
+
+        if (!mounted) return;
+
+        // Chuyển sang màn hình Lịch Giảng Dạy ngay lập tức
+        AppNavigationController.instance.openScheduleWithClasses(
+          classes: classesForSchedule,
+          schedules: schedules,
+          semesterStart: semesterStart,
+        );
+
+        final hasShell =
+            context.findAncestorStateOfType<State<AppShell>>() != null;
+        if (!hasShell) {
+          await Navigator.of(context).push(
+            MaterialPageRoute<void>(
+              builder: (_) => ScheduleGeneratorScreen(
+                importedClasses: classesForSchedule,
+                initialSchedules: schedules,
+                semesterStart: semesterStart,
+              ),
+            ),
+          );
+        }
+
+        if (!mounted) return;
+
+        if (syncError != null) {
+          M1SnackBar.show(
+            context,
+            'Đã nạp lịch vào hệ thống. Lỗi đồng bộ Google Sheet: $syncError',
+            type: M1NoticeType.warning,
+          );
+        } else {
+          M1SnackBar.show(
+            context,
+            'Đã nhập Markbook và tự động đồng bộ ${classesForSchedule.length} lớp lên Google Sheet.',
+          );
+        }
+      }
     } catch (error) {
       if (mounted) {
         setState(() => _loadError = 'Không thể đọc Markbook: $error');
@@ -512,8 +600,11 @@ class _ImportScreenState extends State<ImportScreen> {
             if (_result == null)
               Expanded(
                 child: _EmptyState(
+                  isLoading: _isLoading,
                   onPickFile: _isLoading ? null : _pickFile,
-                  onLoadSaved: _isLoadingSavedSchedules ? null : _loadSavedClassesIntoView,
+                  onLoadSaved: _isLoadingSavedSchedules
+                      ? null
+                      : _loadSavedClassesIntoView,
                   savedCount: _savedScheduleCount,
                 ),
               )
@@ -630,7 +721,7 @@ class _ImportScreenState extends State<ImportScreen> {
                         ),
                       const SizedBox(width: 7),
                       Text(
-                        _isLoading ? 'Đang đọc...' : 'Chọn Markbook',
+                        _isLoading ? 'Đang nạp & đồng bộ...' : 'Chọn Markbook',
                         style: GoogleFonts.inter(
                           fontSize: 12.5,
                           fontWeight: FontWeight.w600,
@@ -644,7 +735,9 @@ class _ImportScreenState extends State<ImportScreen> {
 
               // Nút Tải lại CSDL
               InkWell(
-                onTap: _isLoadingSavedSchedules ? null : _loadSavedClassesIntoView,
+                onTap: _isLoadingSavedSchedules
+                    ? null
+                    : _loadSavedClassesIntoView,
                 borderRadius: BorderRadius.circular(4),
                 child: Container(
                   padding: const EdgeInsets.symmetric(
@@ -688,7 +781,8 @@ class _ImportScreenState extends State<ImportScreen> {
               ),
 
               // Nút Xem Lịch Giảng Dạy
-              if ((_savedScheduleCount ?? 0) > 0 || (_result?.classes.isNotEmpty ?? false))
+              if ((_savedScheduleCount ?? 0) > 0 ||
+                  (_result?.classes.isNotEmpty ?? false))
                 InkWell(
                   onTap: _isLoadingSavedSchedules ? null : _openSavedSchedules,
                   borderRadius: BorderRadius.circular(4),
@@ -726,23 +820,42 @@ class _ImportScreenState extends State<ImportScreen> {
 
               if (_savedScheduleCheckFailed)
                 Tooltip(
-                  message: _savedScheduleCheckError ?? 'Backend không phản hồi tại 127.0.0.1:8080.',
+                  message:
+                      _savedScheduleCheckError ??
+                      'Backend không phản hồi tại 127.0.0.1:8080.',
                   child: InkWell(
                     onTap: _refreshSavedScheduleCount,
                     borderRadius: BorderRadius.circular(4),
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 8,
+                      ),
                       decoration: BoxDecoration(
                         color: const Color(0xFFFEF3C7),
                         borderRadius: BorderRadius.circular(4),
-                        border: Border.all(color: const Color(0xFFFCD34D), width: 1),
+                        border: Border.all(
+                          color: const Color(0xFFFCD34D),
+                          width: 1,
+                        ),
                       ),
                       child: const Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.warning_amber_rounded, size: 14, color: Color(0xFFB45309)),
+                          Icon(
+                            Icons.warning_amber_rounded,
+                            size: 14,
+                            color: Color(0xFFB45309),
+                          ),
                           SizedBox(width: 5),
-                          Text('Offline', style: TextStyle(fontSize: 11.5, color: Color(0xFFB45309), fontWeight: FontWeight.w600)),
+                          Text(
+                            'Offline',
+                            style: TextStyle(
+                              fontSize: 11.5,
+                              color: Color(0xFFB45309),
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -827,11 +940,18 @@ class _ImportScreenState extends State<ImportScreen> {
                   Expanded(
                     child: TextField(
                       controller: _classSearchController,
-                      onChanged: (val) => setState(() => _classSearchQuery = val),
-                      style: GoogleFonts.inter(fontSize: 11.5, color: _textPrimary),
+                      onChanged: (val) =>
+                          setState(() => _classSearchQuery = val),
+                      style: GoogleFonts.inter(
+                        fontSize: 11.5,
+                        color: _textPrimary,
+                      ),
                       decoration: const InputDecoration(
                         hintText: 'Lọc mã lớp, môn...',
-                        hintStyle: TextStyle(fontSize: 11, color: _textSecondary),
+                        hintStyle: TextStyle(
+                          fontSize: 11,
+                          color: _textSecondary,
+                        ),
                         border: InputBorder.none,
                         isDense: true,
                         contentPadding: EdgeInsets.zero,
@@ -844,7 +964,11 @@ class _ImportScreenState extends State<ImportScreen> {
                         _classSearchController.clear();
                         setState(() => _classSearchQuery = '');
                       },
-                      child: const Icon(Icons.close, size: 12, color: _textSecondary),
+                      child: const Icon(
+                        Icons.close,
+                        size: 12,
+                        color: _textSecondary,
+                      ),
                     ),
                 ],
               ),
@@ -861,7 +985,9 @@ class _ImportScreenState extends State<ImportScreen> {
                 final item = classes[index];
                 final originalIndex = allClasses.indexOf(item);
                 final currentItem = _editedClasses[item] ?? item;
-                final errors = currentItem.issues.where((issue) => issue.isError).length;
+                final errors = currentItem.issues
+                    .where((issue) => issue.isError)
+                    .length;
                 final isSelected = originalIndex == _selectedIndex;
                 final isHovered = identical(_hoveredClass, item);
 
@@ -874,7 +1000,8 @@ class _ImportScreenState extends State<ImportScreen> {
                   },
                   child: InkWell(
                     borderRadius: BorderRadius.circular(5),
-                    onTap: () => _selectClass(originalIndex >= 0 ? originalIndex : 0),
+                    onTap: () =>
+                        _selectClass(originalIndex >= 0 ? originalIndex : 0),
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 120),
                       padding: const EdgeInsets.symmetric(
@@ -885,8 +1012,8 @@ class _ImportScreenState extends State<ImportScreen> {
                         color: isSelected
                             ? const Color(0xFFEFEFED)
                             : (isHovered
-                                ? const Color(0xFFF7F6F3)
-                                : Colors.transparent),
+                                  ? const Color(0xFFF7F6F3)
+                                  : Colors.transparent),
                         borderRadius: BorderRadius.circular(5),
                         border: isSelected
                             ? Border.all(color: _borderColor, width: 1)
@@ -937,7 +1064,10 @@ class _ImportScreenState extends State<ImportScreen> {
                             decoration: BoxDecoration(
                               color: const Color(0xFFF7F6F3),
                               borderRadius: BorderRadius.circular(3),
-                              border: Border.all(color: _borderColor, width: 0.8),
+                              border: Border.all(
+                                color: _borderColor,
+                                width: 0.8,
+                              ),
                             ),
                             child: Text(
                               'Slot ${currentItem.scheduleCode}',
@@ -1079,10 +1209,7 @@ class _ImportScreenState extends State<ImportScreen> {
           const SizedBox(height: 10),
           Text(
             'Mã PRN mặc định 22 buổi, môn khác mặc định 20 buổi. Có thể điều chỉnh số buổi từ 1 đến 60 cho từng lớp.',
-            style: GoogleFonts.inter(
-              fontSize: 11.5,
-              color: _textSecondary,
-            ),
+            style: GoogleFonts.inter(fontSize: 11.5, color: _textSecondary),
           ),
           const SizedBox(height: 14),
           // Roster Header with Search Bar
@@ -1113,11 +1240,18 @@ class _ImportScreenState extends State<ImportScreen> {
                     Expanded(
                       child: TextField(
                         controller: _studentSearchController,
-                        onChanged: (val) => setState(() => _studentSearchQuery = val),
-                        style: GoogleFonts.inter(fontSize: 12, color: _textPrimary),
+                        onChanged: (val) =>
+                            setState(() => _studentSearchQuery = val),
+                        style: GoogleFonts.inter(
+                          fontSize: 12,
+                          color: _textPrimary,
+                        ),
                         decoration: const InputDecoration(
                           hintText: 'Tìm kiếm MSSV, tên, email...',
-                          hintStyle: TextStyle(fontSize: 11.5, color: _textSecondary),
+                          hintStyle: TextStyle(
+                            fontSize: 11.5,
+                            color: _textSecondary,
+                          ),
                           border: InputBorder.none,
                           isDense: true,
                           contentPadding: EdgeInsets.zero,
@@ -1130,7 +1264,11 @@ class _ImportScreenState extends State<ImportScreen> {
                           _studentSearchController.clear();
                           setState(() => _studentSearchQuery = '');
                         },
-                        child: const Icon(Icons.close, size: 14, color: _textSecondary),
+                        child: const Icon(
+                          Icons.close,
+                          size: 14,
+                          color: _textSecondary,
+                        ),
                       ),
                   ],
                 ),
@@ -1163,146 +1301,227 @@ class _ImportScreenState extends State<ImportScreen> {
                       return Center(
                         child: Text(
                           'Không tìm thấy sinh viên nào khớp với "$_studentSearchQuery"',
-                          style: GoogleFonts.inter(fontSize: 12.5, color: _textSecondary),
+                          style: GoogleFonts.inter(
+                            fontSize: 12.5,
+                            color: _textSecondary,
+                          ),
                         ),
                       );
                     }
 
-                    return SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: SingleChildScrollView(
-                        child: DataTable(
-                          headingRowColor: WidgetStateProperty.all(
-                            const Color(0xFFF7F6F3),
+                    return ScrollConfiguration(
+                      behavior: ScrollConfiguration.of(context).copyWith(
+                        dragDevices: {
+                          PointerDeviceKind.touch,
+                          PointerDeviceKind.mouse,
+                          PointerDeviceKind.trackpad,
+                        },
+                      ),
+                      child: Scrollbar(
+                        controller: _rosterHorizontalScrollController,
+                        thumbVisibility: true,
+                        trackVisibility: true,
+                        child: SingleChildScrollView(
+                          controller: _rosterHorizontalScrollController,
+                          scrollDirection: Axis.horizontal,
+                          child: Scrollbar(
+                            controller: _rosterVerticalScrollController,
+                            thumbVisibility: true,
+                            child: SingleChildScrollView(
+                              controller: _rosterVerticalScrollController,
+                              child: DataTable(
+                                headingRowColor: WidgetStateProperty.all(
+                                  const Color(0xFFF7F6F3),
+                                ),
+                                headingRowHeight: 36,
+                                dataRowMinHeight: 34,
+                                dataRowMaxHeight: 34,
+                                columnSpacing: 18,
+                                horizontalMargin: 16,
+                                dividerThickness: 0.8,
+                                columns: [
+                                  DataColumn(
+                                    columnWidth: const FixedColumnWidth(54),
+                                    label: Flexible(
+                                      child: Text(
+                                        'STT',
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        softWrap: false,
+                                        style: GoogleFonts.inter(
+                                          fontSize: 11.5,
+                                          fontWeight: FontWeight.w700,
+                                          color: _textSecondary,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  DataColumn(
+                                    columnWidth: const FixedColumnWidth(110),
+                                    label: Flexible(
+                                      child: Text(
+                                        'MSSV',
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        softWrap: false,
+                                        style: GoogleFonts.inter(
+                                          fontSize: 11.5,
+                                          fontWeight: FontWeight.w700,
+                                          color: _textSecondary,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  DataColumn(
+                                    columnWidth: const FixedColumnWidth(180),
+                                    label: Flexible(
+                                      child: Text(
+                                        'Họ và tên',
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        softWrap: false,
+                                        style: GoogleFonts.inter(
+                                          fontSize: 11.5,
+                                          fontWeight: FontWeight.w700,
+                                          color: _textSecondary,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  DataColumn(
+                                    columnWidth: const FixedColumnWidth(230),
+                                    label: Flexible(
+                                      child: Text(
+                                        'Email FPT',
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        softWrap: false,
+                                        style: GoogleFonts.inter(
+                                          fontSize: 11.5,
+                                          fontWeight: FontWeight.w700,
+                                          color: _textSecondary,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  DataColumn(
+                                    columnWidth: const FixedColumnWidth(150),
+                                    label: Flexible(
+                                      child: Text(
+                                        'Mã FAP',
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        softWrap: false,
+                                        style: GoogleFonts.inter(
+                                          fontSize: 11.5,
+                                          fontWeight: FontWeight.w700,
+                                          color: _textSecondary,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  DataColumn(
+                                    columnWidth: const FixedColumnWidth(90),
+                                    label: Flexible(
+                                      child: Text(
+                                        'Lớp',
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        softWrap: false,
+                                        style: GoogleFonts.inter(
+                                          fontSize: 11.5,
+                                          fontWeight: FontWeight.w700,
+                                          color: _textSecondary,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                                rows: List.generate(filteredStudents.length, (
+                                  idx,
+                                ) {
+                                  final student = filteredStudents[idx];
+                                  return DataRow(
+                                    cells: [
+                                      DataCell(
+                                        Text(
+                                          '${idx + 1}',
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          softWrap: false,
+                                          style: GoogleFonts.inter(
+                                            fontSize: 11.5,
+                                            color: _textSecondary,
+                                          ),
+                                        ),
+                                      ),
+                                      DataCell(
+                                        Text(
+                                          student.rollNumber,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          softWrap: false,
+                                          style: GoogleFonts.inter(
+                                            fontSize: 11.5,
+                                            fontWeight: FontWeight.w600,
+                                            color: _textPrimary,
+                                          ),
+                                        ),
+                                      ),
+                                      DataCell(
+                                        Text(
+                                          student.fullName,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          softWrap: false,
+                                          style: GoogleFonts.inter(
+                                            fontSize: 11.5,
+                                            color: _textPrimary,
+                                          ),
+                                        ),
+                                      ),
+                                      DataCell(
+                                        Text(
+                                          student.email,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          softWrap: false,
+                                          style: GoogleFonts.inter(
+                                            fontSize: 11.5,
+                                            color: _textSecondary,
+                                          ),
+                                        ),
+                                      ),
+                                      DataCell(
+                                        Text(
+                                          student.memberCode,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          softWrap: false,
+                                          style: GoogleFonts.inter(
+                                            fontSize: 11.5,
+                                            color: _textSecondary,
+                                          ),
+                                        ),
+                                      ),
+                                      DataCell(
+                                        Text(
+                                          student.classCode,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          softWrap: false,
+                                          style: GoogleFonts.inter(
+                                            fontSize: 11.5,
+                                            color: _textPrimary,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  );
+                                }),
+                              ),
+                            ),
                           ),
-                          headingRowHeight: 36,
-                          dataRowMinHeight: 34,
-                          dataRowMaxHeight: 34,
-                          dividerThickness: 0.8,
-                          columns: [
-                            DataColumn(
-                              label: Text(
-                                'STT',
-                                style: GoogleFonts.inter(
-                                  fontSize: 11.5,
-                                  fontWeight: FontWeight.w700,
-                                  color: _textSecondary,
-                                ),
-                              ),
-                            ),
-                            DataColumn(
-                              label: Text(
-                                'MSSV',
-                                style: GoogleFonts.inter(
-                                  fontSize: 11.5,
-                                  fontWeight: FontWeight.w700,
-                                  color: _textSecondary,
-                                ),
-                              ),
-                            ),
-                            DataColumn(
-                              label: Text(
-                                'Họ và tên',
-                                style: GoogleFonts.inter(
-                                  fontSize: 11.5,
-                                  fontWeight: FontWeight.w700,
-                                  color: _textSecondary,
-                                ),
-                              ),
-                            ),
-                            DataColumn(
-                              label: Text(
-                                'Email FPT',
-                                style: GoogleFonts.inter(
-                                  fontSize: 11.5,
-                                  fontWeight: FontWeight.w700,
-                                  color: _textSecondary,
-                                ),
-                              ),
-                            ),
-                            DataColumn(
-                              label: Text(
-                                'Mã FAP',
-                                style: GoogleFonts.inter(
-                                  fontSize: 11.5,
-                                  fontWeight: FontWeight.w700,
-                                  color: _textSecondary,
-                                ),
-                              ),
-                            ),
-                            DataColumn(
-                              label: Text(
-                                'Lớp',
-                                style: GoogleFonts.inter(
-                                  fontSize: 11.5,
-                                  fontWeight: FontWeight.w700,
-                                  color: _textSecondary,
-                                ),
-                              ),
-                            ),
-                          ],
-                          rows: List.generate(filteredStudents.length, (idx) {
-                            final student = filteredStudents[idx];
-                            return DataRow(
-                              cells: [
-                                DataCell(
-                                  Text(
-                                    '${idx + 1}',
-                                    style: GoogleFonts.inter(
-                                      fontSize: 11.5,
-                                      color: _textSecondary,
-                                    ),
-                                  ),
-                                ),
-                                DataCell(
-                                  Text(
-                                    student.rollNumber,
-                                    style: GoogleFonts.inter(
-                                      fontSize: 11.5,
-                                      fontWeight: FontWeight.w600,
-                                      color: _textPrimary,
-                                    ),
-                                  ),
-                                ),
-                                DataCell(
-                                  Text(
-                                    student.fullName,
-                                    style: GoogleFonts.inter(
-                                      fontSize: 11.5,
-                                      color: _textPrimary,
-                                    ),
-                                  ),
-                                ),
-                                DataCell(
-                                  Text(
-                                    student.email,
-                                    style: GoogleFonts.inter(
-                                      fontSize: 11.5,
-                                      color: _textSecondary,
-                                    ),
-                                  ),
-                                ),
-                                DataCell(
-                                  Text(
-                                    student.memberCode,
-                                    style: GoogleFonts.inter(
-                                      fontSize: 11.5,
-                                      color: _textSecondary,
-                                    ),
-                                  ),
-                                ),
-                                DataCell(
-                                  Text(
-                                    student.classCode,
-                                    style: GoogleFonts.inter(
-                                      fontSize: 11.5,
-                                      color: _textPrimary,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            );
-                          }),
                         ),
                       ),
                     );
@@ -1357,10 +1576,7 @@ class _ImportScreenState extends State<ImportScreen> {
                 ),
                 title: Text(
                   issue.message,
-                  style: GoogleFonts.inter(
-                    fontSize: 12,
-                    color: _textPrimary,
-                  ),
+                  style: GoogleFonts.inter(fontSize: 12, color: _textPrimary),
                 ),
                 subtitle: issue.rowNumber == null
                     ? null
@@ -1411,11 +1627,13 @@ class _ImportScreenState extends State<ImportScreen> {
 }
 
 class _EmptyState extends StatelessWidget {
+  final bool isLoading;
   final VoidCallback? onPickFile;
   final VoidCallback? onLoadSaved;
   final int? savedCount;
 
   const _EmptyState({
+    this.isLoading = false,
     this.onPickFile,
     this.onLoadSaved,
     this.savedCount,
@@ -1475,12 +1693,27 @@ class _EmptyState extends StatelessWidget {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF37352F),
                   foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 10,
+                  ),
                 ),
                 onPressed: onPickFile,
-                icon: const Icon(Icons.upload_file, size: 16),
-                label: const Text('Chọn Markbook'),
+                icon: isLoading
+                    ? const SizedBox.square(
+                        dimension: 14,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Icon(Icons.upload_file, size: 16),
+                label: Text(
+                  isLoading ? 'Đang nạp & đồng bộ...' : 'Chọn Markbook',
+                ),
               ),
               if ((savedCount ?? 0) > 0) ...[
                 const SizedBox(width: 10),
@@ -1488,8 +1721,13 @@ class _EmptyState extends StatelessWidget {
                   style: OutlinedButton.styleFrom(
                     foregroundColor: const Color(0xFF37352F),
                     side: const BorderSide(color: Color(0xFFE3E2DE)),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 10,
+                    ),
                   ),
                   onPressed: onLoadSaved,
                   icon: const Icon(Icons.refresh, size: 16),

@@ -29,7 +29,9 @@ class LocalJsonScheduleRepository implements ScheduleRepository {
         final classes = decoded['classes'];
         return {
           'updatedAt': decoded['updatedAt']?.toString(),
-          'classes': classes is Map ? Map<String, dynamic>.from(classes) : <String, dynamic>{},
+          'classes': classes is Map
+              ? Map<String, dynamic>.from(classes)
+              : <String, dynamic>{},
         };
       }
     } catch (_) {
@@ -72,10 +74,15 @@ class LocalJsonScheduleRepository implements ScheduleRepository {
   }
 
   @override
-  Future<bool> saveAll(List<Map<String, dynamic>> schedules) async {
-    if (schedules.isEmpty) return true;
+  Future<bool> saveAll(
+    List<Map<String, dynamic>> schedules, {
+    bool clearPrevious = false,
+  }) async {
+    if (schedules.isEmpty && !clearPrevious) return true;
     final data = await _readRaw();
-    final classes = Map<String, dynamic>.from(data['classes'] as Map);
+    final classes = clearPrevious
+        ? <String, dynamic>{}
+        : Map<String, dynamic>.from(data['classes'] as Map);
 
     for (final item in schedules) {
       final offering = item['classOffering'] ?? item['offering'];
@@ -85,12 +92,18 @@ class LocalJsonScheduleRepository implements ScheduleRepository {
 
       final rosterRaw = item['students'] ?? item['roster'];
       final students = rosterRaw is List
-          ? rosterRaw.whereType<Map>().map((s) => Map<String, dynamic>.from(s)).toList()
+          ? rosterRaw
+              .whereType<Map>()
+              .map((s) => Map<String, dynamic>.from(s))
+              .toList()
           : <Map<String, dynamic>>[];
 
       final lessonsRaw = item['lessons'];
       final lessons = lessonsRaw is List
-          ? lessonsRaw.whereType<Map>().map((l) => Map<String, dynamic>.from(l)).toList()
+          ? lessonsRaw
+              .whereType<Map>()
+              .map((l) => Map<String, dynamic>.from(l))
+              .toList()
           : <Map<String, dynamic>>[];
 
       classes[classId] = {
@@ -106,13 +119,20 @@ class LocalJsonScheduleRepository implements ScheduleRepository {
   }
 
   @override
-  Future<bool> syncActiveClassIds(Set<String> activeClassIds) async {
+  Future<bool> syncActiveClassIds(
+    Set<String> activeClassIds, {
+    bool clearPrevious = false,
+  }) async {
     final data = await _readRaw();
     final classes = Map<String, dynamic>.from(data['classes'] as Map);
+    if (clearPrevious) {
+      classes.removeWhere((key, _) => !activeClassIds.contains(key));
+    }
     for (final entry in classes.entries) {
       final schedule = entry.value;
       if (schedule is Map && schedule['classOffering'] is Map) {
-        final offering = Map<String, dynamic>.from(schedule['classOffering'] as Map);
+        final offering =
+            Map<String, dynamic>.from(schedule['classOffering'] as Map);
         offering['active'] = activeClassIds.contains(entry.key);
         schedule['classOffering'] = offering;
       }
@@ -129,7 +149,8 @@ class LocalJsonScheduleRepository implements ScheduleRepository {
     final list = <Map<String, dynamic>>[];
     for (final schedule in classes.values) {
       if (schedule is Map && schedule['classOffering'] is Map) {
-        final offering = Map<String, dynamic>.from(schedule['classOffering'] as Map);
+        final offering =
+            Map<String, dynamic>.from(schedule['classOffering'] as Map);
         if (offering['active'] != false) {
           list.add(offering);
         }
