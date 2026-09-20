@@ -5,6 +5,7 @@
  * Cập nhật Realtime trực tiếp vào từng ô Slot của sinh viên với LockService chống đua.
  */
 
+var APP_RESET_KEY = 'mot-khoa-bi-mat-rat-dai';
 var VIETNAM_TIME_ZONE = 'Asia/Ho_Chi_Minh';
 
 function vietnamTimestamp() {
@@ -90,8 +91,202 @@ function doGet(e) {
   })).setMimeType(ContentService.MimeType.JSON);
 }
 
+/**
+ * Tạo Menu tiện ích trên Google Sheets: Cho phép đổi toàn bộ các tab sang giao diện Notion ngay lập tức
+ */
+function onOpen() {
+  try {
+    SpreadsheetApp.getUi()
+      .createMenu('✦ iPresent')
+      .addItem('Chuyển toàn bộ Sheet sang giao diện Notion', 'reformatAllSheetsToNotion')
+      .addToUi();
+  } catch (e) {}
+}
+
+/**
+ * Hàm làm mới / định dạng lại toàn bộ các tab lớp học hiện có sang chuẩn Notion Database
+ * Bảo toàn 100% dữ liệu sinh viên và kết quả điểm danh P/A
+ */
+function reformatAllSheetsToNotion() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheets = ss.getSheets();
+  var systemSheets = {
+    'Overview': true, 'Classes': true, 'Students': true,
+    'Lessons': true, 'Sessions': true, 'Attendances': true, 'App_Empty': true
+  };
+
+  var processedCount = 0;
+  for (var i = 0; i < sheets.length; i++) {
+    var sheet = sheets[i];
+    var name = sheet.getName();
+    if (systemSheets[name] || name.indexOf('Temp_') === 0 || name.indexOf('[Archived]') === 0) {
+      continue;
+    }
+
+    var lastRow = sheet.getLastRow();
+    var lastCol = sheet.getLastColumn();
+    if (lastRow < 2 || lastCol < 6) continue;
+
+    // 1. Reformat Banner (Row 1)
+    var bannerCell = sheet.getRange(1, 1);
+    var bannerVal = String(bannerCell.getValue() || '');
+    bannerVal = bannerVal.replace(/^[📚📊]\s*/, '').replace(/\|/g, '·').trim();
+    if (bannerVal.indexOf('✦') !== 0) bannerVal = '✦  ' + bannerVal;
+    bannerCell.setValue(bannerVal);
+    bannerCell.setBackground('#F1F1EF'); // Notion Callout Gray
+    bannerCell.setFontColor('#37352F'); // Notion Primary Text
+    bannerCell.setFontWeight('bold');
+    bannerCell.setFontSize(11);
+    bannerCell.setHorizontalAlignment('left');
+    bannerCell.setVerticalAlignment('middle');
+    bannerCell.setBorder(true, true, true, true, false, false, '#E9E9E7', SpreadsheetApp.BorderStyle.SOLID);
+    sheet.setRowHeight(1, 38);
+
+    // 2. Reformat Headers (Row 2)
+    var headerRange = sheet.getRange(2, 1, 1, lastCol);
+    var headerVals = headerRange.getValues()[0];
+    for (var h = 0; h < headerVals.length; h++) {
+      var hText = String(headerVals[h] || '');
+      hText = hText.replace(/\((\d{2})-(\d{2})\)/, '$2/$1');
+      hText = hText.replace('Tổng vắng (A)', 'Tổng vắng');
+      hText = hText.replace('Tỉ lệ vắng (%)', 'Tỉ lệ vắng');
+      hText = hText.replace('Kết quả FAP', 'Trạng thái');
+      headerVals[h] = hText;
+    }
+    headerRange.setValues([headerVals]);
+    headerRange.setBackground('#F7F6F3'); // Notion Database Header
+    headerRange.setFontColor('#787774'); // Notion Muted Label
+    headerRange.setFontWeight('bold');
+    headerRange.setFontSize(10);
+    headerRange.setHorizontalAlignment('center');
+    headerRange.setVerticalAlignment('middle');
+    headerRange.setWrap(true);
+    headerRange.setBorder(true, true, true, true, true, true, '#E9E9E7', SpreadsheetApp.BorderStyle.SOLID);
+    sheet.setRowHeight(2, 38);
+
+    // 3. Reformat Data Rows (Row 3..N)
+    if (lastRow >= 3) {
+      var numRows = lastRow - 2;
+      var dataRange = sheet.getRange(3, 1, numRows, lastCol);
+      dataRange.setFontColor('#37352F');
+      dataRange.setFontSize(10);
+      dataRange.setBorder(true, true, true, true, true, true, '#EDEDEB', SpreadsheetApp.BorderStyle.SOLID);
+
+      // Zebra striping Notion
+      var bgMatrix = [];
+      for (var r = 0; r < numRows; r++) {
+        var rowBg = (r % 2 === 0) ? '#FFFFFF' : '#FAFAF9';
+        var rBgs = [];
+        for (var c = 0; c < lastCol; c++) rBgs.push(rowBg);
+        bgMatrix.push(rBgs);
+      }
+      dataRange.setBackgrounds(bgMatrix);
+
+      sheet.getRange(3, 1, numRows, 1).setHorizontalAlignment('center').setFontColor('#787774');
+      sheet.getRange(3, 2, numRows, 1).setHorizontalAlignment('center').setFontColor('#37352F');
+      sheet.getRange(3, 3, numRows, 1).setHorizontalAlignment('left').setFontColor('#37352F');
+      sheet.getRange(3, 4, numRows, 1).setHorizontalAlignment('left').setFontColor('#787774');
+      sheet.getRange(3, 5, numRows, 1).setHorizontalAlignment('center').setFontColor('#787774');
+      var slotCount = Math.max(1, lastCol - 8);
+      sheet.getRange(3, 6, numRows, slotCount).setHorizontalAlignment('center').setFontWeight('bold');
+      sheet.getRange(3, 5 + slotCount + 1, numRows, 3).setHorizontalAlignment('center');
+      sheet.setRowHeights(3, numRows, 26);
+
+      // Cập nhật công thức Trạng thái không dùng emoji
+      var pctColLetter = DatabaseService.getColumnLetter(5 + slotCount + 2);
+      for (var rIdx = 3; rIdx <= lastRow; rIdx++) {
+        sheet.getRange(rIdx, lastCol).setFormula(
+          '=IF(' + pctColLetter + rIdx + '>0.20, "Cấm thi", IF(' + pctColLetter + rIdx + '>=0.15, "Cảnh báo", "Đủ điều kiện"))'
+        );
+      }
+
+      // Conditional Formatting: Notion Tag Pills
+      var slotRange = sheet.getRange(3, 6, numRows, slotCount);
+      var resultRange = sheet.getRange(3, lastCol, numRows, 1);
+
+      var ruleP = SpreadsheetApp.newConditionalFormatRule()
+        .whenTextEqualTo('P')
+        .setBackground('#DBEDDB') // Notion Green Tag
+        .setFontColor('#1C3829')
+        .setRanges([slotRange])
+        .build();
+
+      var ruleA = SpreadsheetApp.newConditionalFormatRule()
+        .whenTextEqualTo('A')
+        .setBackground('#FFE2DD') // Notion Red Tag
+        .setFontColor('#5D1715')
+        .setRanges([slotRange])
+        .build();
+
+      var ruleCamThi = SpreadsheetApp.newConditionalFormatRule()
+        .whenTextEqualTo('Cấm thi')
+        .setBackground('#FFE2DD')
+        .setFontColor('#5D1715')
+        .setRanges([resultRange])
+        .build();
+
+      var ruleCanhBao = SpreadsheetApp.newConditionalFormatRule()
+        .whenTextEqualTo('Cảnh báo')
+        .setBackground('#FDECC8')
+        .setFontColor('#402C1B')
+        .setRanges([resultRange])
+        .build();
+
+      var ruleDuDieuKien = SpreadsheetApp.newConditionalFormatRule()
+        .whenTextEqualTo('Đủ điều kiện')
+        .setBackground('#DBEDDB')
+        .setFontColor('#1C3829')
+        .setRanges([resultRange])
+        .build();
+
+      sheet.setConditionalFormatRules([ruleP, ruleA, ruleCamThi, ruleCanhBao, ruleDuDieuKien]);
+    }
+    processedCount++;
+  }
+
+  // Cập nhật Tab Overview nếu có
+  var overviewSheet = ss.getSheetByName('Overview');
+  if (overviewSheet && overviewSheet.getLastRow() >= 2) {
+    var oTitle = overviewSheet.getRange('A1');
+    var oTitleVal = String(oTitle.getValue() || '').replace(/^[📊📚]\s*/, '').replace(/\|/g, '·').trim();
+    if (oTitleVal.indexOf('✦') !== 0) oTitleVal = '✦  ' + oTitleVal;
+    oTitle.setValue(oTitleVal);
+    oTitle.setBackground('#F1F1EF');
+    oTitle.setFontColor('#37352F');
+    oTitle.setFontWeight('bold');
+    oTitle.setFontSize(11);
+    oTitle.setHorizontalAlignment('left');
+    oTitle.setBorder(true, true, true, true, false, false, '#E9E9E7', SpreadsheetApp.BorderStyle.SOLID);
+    overviewSheet.setRowHeight(1, 38);
+
+    var oHeader = overviewSheet.getRange(2, 1, 1, overviewSheet.getLastColumn());
+    oHeader.setBackground('#F7F6F3');
+    oHeader.setFontColor('#787774');
+    oHeader.setFontWeight('bold');
+    oHeader.setFontSize(10);
+    oHeader.setBorder(true, true, true, true, true, true, '#E9E9E7', SpreadsheetApp.BorderStyle.SOLID);
+    overviewSheet.setRowHeight(2, 34);
+
+    if (overviewSheet.getLastRow() >= 3) {
+      var oNum = overviewSheet.getLastRow() - 2;
+      var oData = overviewSheet.getRange(3, 1, oNum, overviewSheet.getLastColumn());
+      oData.setFontColor('#37352F');
+      oData.setFontSize(10);
+      oData.setBorder(true, true, true, true, true, true, '#EDEDEB', SpreadsheetApp.BorderStyle.SOLID);
+      overviewSheet.setRowHeights(3, oNum, 28);
+    }
+  }
+
+  SpreadsheetApp.flush();
+  return { success: true, processedCount: processedCount };
+}
+
 function dispatchAction(action, payload) {
   switch (action) {
+    case 'reformatAllSheetsToNotion':
+      return reformatAllSheetsToNotion();
+    case 'resetApplicationData':
+      return DatabaseService.resetApplicationData(payload);
     case 'syncAllClasses':
       return DatabaseService.syncAllClassesFromDesktop(payload.classes, payload.startDate, payload.clearPrevious);
     case 'saveClassOffering':
@@ -139,6 +334,33 @@ function dispatchAction(action, payload) {
  * Service Quản lý dữ liệu và Giao diện Bảng điểm Markbook trên Google Sheets
  */
 var DatabaseService = {
+  // Explicit full reset, independent of legacy presentation-only clearAllDatabase.
+  // doPost already holds the same lock used for every attendance write.
+  resetApplicationData: function (payload) {
+    var props = PropertiesService.getScriptProperties();
+    var expected = props.getProperty('APP_RESET_KEY') || (typeof APP_RESET_KEY !== 'undefined' ? APP_RESET_KEY : null);
+    if (!expected || payload.resetKey !== expected || payload.confirmation !== 'DELETE_ALL_APP_DATA') {
+      throw new Error('Reset authorization failed.');
+    }
+    var ss = this.getSpreadsheet();
+    var canonical = {Overview: true, Classes: true, Students: true,
+      Lessons: true, Sessions: true, Attendances: true};
+    // Invalidate all QR windows first, including when a later delete fails.
+    props.deleteProperty('ACTIVE_WINDOW');
+    var placeholder = ss.getSheetByName('App_Empty') || ss.insertSheet('App_Empty');
+    placeholder.showSheet();
+    ss.getSheets().forEach(function (sheet) {
+      var name = sheet.getName();
+      var owned = canonical[name] || /^[123][1-5]_/.test(name) ||
+        /^(?:\[Archived\]|_Archived_) [123][1-5]_/.test(name) || /^Temp_\d+$/.test(name);
+      if (owned) ss.deleteSheet(sheet);
+    });
+    placeholder.clear();
+    placeholder.getRange(1, 1).setValue('iPresent — Chưa có dữ liệu');
+    SpreadsheetApp.flush();
+    return {reset: true};
+  },
+
   getSpreadsheet: function () {
     return SpreadsheetApp.getActiveSpreadsheet();
   },
@@ -559,34 +781,38 @@ var DatabaseService = {
   },
 
   /**
-   * Thiết lập Sheet Overview tổng quan (đã loại bỏ cột Phòng Học không có trong Markbook FAP)
+   * Thiết lập Sheet Overview tổng quan theo chuẩn Notion Database
    */
   setupOverviewSheet: function (sheet, classes, startDateStr) {
     sheet.clear();
     sheet.clearFormats();
 
-    // Banner tiêu đề (A1:H1 cho 8 cột)
+    // Banner tiêu đề (Callout box đặc trưng của Notion)
     sheet.getRange('A1:H1').merge();
     var titleCell = sheet.getRange('A1');
-    titleCell.setValue('📊 TỔNG QUAN LỊCH GIẢNG DẠY HỌC KỲ (Bắt đầu từ: ' + (startDateStr || 'Theo lịch FAP') + ')');
-    titleCell.setBackground('#1E3A8A');
-    titleCell.setFontColor('#FFFFFF');
+    var startText = startDateStr ? '  ·  Ngày bắt đầu: ' + startDateStr : '';
+    titleCell.setValue('✦  TỔNG QUAN LỊCH GIẢNG DẠY HỌC KỲ' + startText);
+    titleCell.setBackground('#F1F1EF'); // Notion Callout Gray
+    titleCell.setFontColor('#37352F'); // Notion Primary Charcoal
     titleCell.setFontWeight('bold');
-    titleCell.setFontSize(14);
-    titleCell.setHorizontalAlignment('center');
+    titleCell.setFontSize(11);
+    titleCell.setHorizontalAlignment('left');
     titleCell.setVerticalAlignment('middle');
-    sheet.setRowHeight(1, 45);
+    titleCell.setBorder(true, true, true, true, false, false, '#E9E9E7', SpreadsheetApp.BorderStyle.SOLID);
+    sheet.setRowHeight(1, 38);
 
-    // Header bảng (8 cột chuẩn theo Markbook FAP)
-    var headers = ['STT', 'Mã Môn', 'Tên Lớp', 'Mã Lịch FAP', 'Lịch Học Chi Tiết', 'Slot 01 (Khai giảng)', 'Slot 20 (Kết thúc)', 'Sĩ Số'];
+    // Header bảng (Property headers chuẩn Notion: nền ấm #F7F6F3, chữ xám #787774)
+    var headers = ['STT', 'Mã môn', 'Tên lớp', 'Mã lịch', 'Lịch học chi tiết', 'Khai giảng', 'Kết thúc', 'Sĩ số'];
     sheet.getRange(2, 1, 1, headers.length).setValues([headers]);
     var hRange = sheet.getRange(2, 1, 1, headers.length);
-    hRange.setBackground('#2563EB');
-    hRange.setFontColor('#FFFFFF');
+    hRange.setBackground('#F7F6F3'); // Notion Database Header
+    hRange.setFontColor('#787774'); // Notion Muted Property Label
     hRange.setFontWeight('bold');
+    hRange.setFontSize(10);
     hRange.setHorizontalAlignment('center');
     hRange.setVerticalAlignment('middle');
-    sheet.setRowHeight(2, 35);
+    hRange.setBorder(true, true, true, true, true, true, '#E9E9E7', SpreadsheetApp.BorderStyle.SOLID);
+    sheet.setRowHeight(2, 34);
 
     // Dữ liệu từng lớp
     var rows = [];
@@ -614,24 +840,35 @@ var DatabaseService = {
       dataRange.setValues(rows);
       dataRange.setHorizontalAlignment('center');
       dataRange.setVerticalAlignment('middle');
-      dataRange.setBorder(true, true, true, true, true, true, '#CBD5E1', SpreadsheetApp.BorderStyle.SOLID);
+      dataRange.setFontColor('#37352F');
+      dataRange.setFontSize(10);
+      dataRange.setBorder(true, true, true, true, true, true, '#EDEDEB', SpreadsheetApp.BorderStyle.SOLID);
 
-      // RÀNG BUỘC ĐỊNH DẠNG:
-      // Cột 8 (Sĩ Số) luôn định dạng là Số nguyên thuần tuý ('0'), tránh bị Google Sheets nhớ format Date cũ biến thành 1900-02-xx
+      // Zebra striping nhẹ nhàng kiểu Notion (#FFFFFF và #FAFAF9)
+      var bgList = [];
+      for (var r = 0; r < rows.length; r++) {
+        var rowBg = (r % 2 === 0) ? '#FFFFFF' : '#FAFAF9';
+        var rBgs = [];
+        for (var col = 0; col < headers.length; col++) rBgs.push(rowBg);
+        bgList.push(rBgs);
+      }
+      dataRange.setBackgrounds(bgList);
+
       sheet.getRange(3, 8, rows.length, 1).setNumberFormat('0');
-      // Cột 6 & 7 (Ngày bắt đầu / kết thúc) định dạng Text '@'
       sheet.getRange(3, 6, rows.length, 2).setNumberFormat('@');
+      sheet.setRowHeights(3, rows.length, 28);
     }
 
     sheet.setFrozenRows(2);
-    var colWidths = [45, 90, 110, 80, 220, 140, 140, 80];
+    var colWidths = [45, 90, 115, 85, 230, 140, 140, 80];
     for (var c = 0; c < colWidths.length; c++) {
       sheet.setColumnWidth(c + 1, colWidths[c]);
     }
   },
 
   /**
-   * Thiết lập Sheet Markbook cho 1 Lớp cụ thể (như hình ảnh mong muốn)
+   * Thiết lập Sheet Markbook cho 1 Lớp cụ thể chuẩn Notion Database
+   * Tông màu ấm, typography sắc nét, tag pill pastel và viền tối giản
    * Tự động bảo toàn các dấu điểm danh (P / A) đã ghi nhận trước đó
    */
   setupClassMarkbookSheet: function (sheet, cls, startDateStr, clearPrevious) {
@@ -671,42 +908,50 @@ var DatabaseService = {
 
     sheet.clear();
 
-    // Dòng 1: Banner lớp học
+    // Dòng 1: Banner lớp học (Notion Callout Box: nền #F1F1EF, chữ than #37352F, viền #E9E9E7)
     var totalCols = 5 + slotCount + 3; // 5 cột info + N slot + 3 cột thống kê
     sheet.getRange(1, 1, 1, totalCols).merge();
     var bannerCell = sheet.getRange(1, 1);
-    bannerCell.setValue('📚 Môn: ' + (cls.subjectCode || 'PRM393') + '  |  Lớp: ' + cls.className + '  |  Lịch: ' + cls.scheduleCode + ' (' + scheduleInfo + ')  |  Sĩ số: ' + (cls.roster ? cls.roster.length : 0) + ' SV');
-    bannerCell.setBackground('#1E3A8A'); // Navy Blue
-    bannerCell.setFontColor('#FFFFFF');
+    bannerCell.setValue('✦  Môn: ' + (cls.subjectCode || 'PRM393') + '  ·  Lớp: ' + cls.className + '  ·  Lịch: ' + cls.scheduleCode + ' (' + scheduleInfo + ')  ·  ' + (cls.roster ? cls.roster.length : 0) + ' sinh viên');
+    bannerCell.setBackground('#F1F1EF'); // Notion Callout Gray
+    bannerCell.setFontColor('#37352F'); // Notion Primary Text
     bannerCell.setFontWeight('bold');
-    bannerCell.setFontSize(12);
+    bannerCell.setFontSize(11);
     bannerCell.setHorizontalAlignment('left');
     bannerCell.setVerticalAlignment('middle');
+    bannerCell.setBorder(true, true, true, true, false, false, '#E9E9E7', SpreadsheetApp.BorderStyle.SOLID);
     sheet.setRowHeight(1, 38);
 
-    // Dòng 2: Tiêu đề cột
-    var headers = ['STT', 'MSSV', 'Họ và tên', 'Email FPT', 'Mã FAP'];
+    // Dòng 2: Tiêu đề cột (Notion Database Header: nền #F7F6F3, chữ xám #787774)
+    var headers = ['STT', 'MSSV', 'Họ và tên', 'Email', 'Mã FAP'];
     for (var s = 1; s <= slotCount; s++) {
       var les = lessons[s - 1];
       var slotTitle = 'Slot ' + (s < 10 ? '0' + s : s);
       if (les && les.date) {
-        slotTitle += '\n(' + String(les.date).substring(5) + ')'; // Slot 01\n(09-07)
+        var dateParts = String(les.date).split('-');
+        if (dateParts.length === 3) {
+          slotTitle += '\n' + dateParts[2] + '/' + dateParts[1]; // 07/09 định dạng chuẩn
+        } else {
+          slotTitle += '\n' + String(les.date).substring(5);
+        }
       }
       headers.push(slotTitle);
     }
-    headers.push('Tổng vắng (A)');
-    headers.push('Tỉ lệ vắng (%)');
-    headers.push('Kết quả FAP');
+    headers.push('Tổng vắng');
+    headers.push('Tỉ lệ vắng');
+    headers.push('Trạng thái');
 
     sheet.getRange(2, 1, 1, headers.length).setValues([headers]);
     var headerRange = sheet.getRange(2, 1, 1, headers.length);
-    headerRange.setBackground('#2563EB'); // Royal Blue
-    headerRange.setFontColor('#FFFFFF');
+    headerRange.setBackground('#F7F6F3'); // Notion Database Header
+    headerRange.setFontColor('#787774'); // Notion Secondary Gray
     headerRange.setFontWeight('bold');
+    headerRange.setFontSize(10);
     headerRange.setHorizontalAlignment('center');
     headerRange.setVerticalAlignment('middle');
     headerRange.setWrap(true);
-    sheet.setRowHeight(2, 42);
+    headerRange.setBorder(true, true, true, true, true, true, '#E9E9E7', SpreadsheetApp.BorderStyle.SOLID);
+    sheet.setRowHeight(2, 38);
 
     // Dòng 3..N: Dữ liệu Sinh viên
     var roster = cls.roster || [];
@@ -742,7 +987,7 @@ var DatabaseService = {
 
       var absentFormula = '=COUNTIF(' + startColLetter + rowNum + ':' + endColLetter + rowNum + ', "A")';
       var pctFormula = '=IF(' + slotCount + '>0, ' + absentColLetter + rowNum + '/' + slotCount + ', 0)';
-      var resultFormula = '=IF(' + pctColLetter + rowNum + '>0.20, "🚫 CẤM THI", IF(' + pctColLetter + rowNum + '>=0.15, "⚠️ NGUY CƠ", "✅ ĐỦ ĐIỀU KIỆN"))';
+      var resultFormula = '=IF(' + pctColLetter + rowNum + '>0.20, "Cấm thi", IF(' + pctColLetter + rowNum + '>=0.15, "Cảnh báo", "Đủ điều kiện"))';
 
       row.push(absentFormula);
       row.push(pctFormula);
@@ -755,50 +1000,96 @@ var DatabaseService = {
       var dataRange = sheet.getRange(3, 1, rows.length, headers.length);
       dataRange.setValues(rows);
       dataRange.setVerticalAlignment('middle');
-      dataRange.setBorder(true, true, true, true, true, true, '#CBD5E1', SpreadsheetApp.BorderStyle.SOLID);
+      dataRange.setFontColor('#37352F');
+      dataRange.setFontSize(10);
+      dataRange.setBorder(true, true, true, true, true, true, '#EDEDEB', SpreadsheetApp.BorderStyle.SOLID);
 
-      // Căn giữa STT, MSSV, Mã FAP, và các cột Slot
-      sheet.getRange(3, 1, rows.length, 2).setHorizontalAlignment('center');
-      sheet.getRange(3, 5, rows.length, slotCount + 3).setHorizontalAlignment('center');
-      sheet.getRange(3, 6, rows.length, slotCount + 3).setFontWeight('bold');
+      // Zebra striping nhẹ nhàng kiểu Notion (#FFFFFF và #FAFAF9)
+      var bgMatrix = [];
+      for (var r = 0; r < rows.length; r++) {
+        var rowBg = (r % 2 === 0) ? '#FFFFFF' : '#FAFAF9';
+        var rBgs = [];
+        for (var col = 0; col < headers.length; col++) {
+          rBgs.push(rowBg);
+        }
+        bgMatrix.push(rBgs);
+      }
+      dataRange.setBackgrounds(bgMatrix);
+
+      // Căn chỉnh vị trí chuẩn Notion Table
+      sheet.getRange(3, 1, rows.length, 1).setHorizontalAlignment('center').setFontColor('#787774'); // STT mờ
+      sheet.getRange(3, 2, rows.length, 1).setHorizontalAlignment('center').setFontColor('#37352F'); // MSSV
+      sheet.getRange(3, 3, rows.length, 1).setHorizontalAlignment('left').setFontColor('#37352F');   // Họ và tên
+      sheet.getRange(3, 4, rows.length, 1).setHorizontalAlignment('left').setFontColor('#787774');   // Email (gray)
+      sheet.getRange(3, 5, rows.length, 1).setHorizontalAlignment('center').setFontColor('#787774'); // Mã FAP
+      sheet.getRange(3, 6, rows.length, slotCount).setHorizontalAlignment('center').setFontWeight('bold');
+      sheet.getRange(3, 5 + slotCount + 1, rows.length, 3).setHorizontalAlignment('center');
+
+      // Chiều cao từng hàng dữ liệu thoáng đãng
+      sheet.setRowHeights(3, rows.length, 26);
 
       // Định dạng % cho cột Tỉ lệ vắng
       var pctColIndex = 5 + slotCount + 2;
-      sheet.getRange(3, pctColIndex, rows.length, 1).setNumberFormat('0.0%');
+      sheet.getRange(3, pctColIndex, rows.length, 1).setNumberFormat('0.0%').setFontColor('#787774');
 
-      // Conditional Formatting: P = Xanh lá (#DCFCE7, text #15803D), A = Đỏ (#FEE2E2, text #B91C1C)
+      // Conditional Formatting: Tone màu Notion Tags / Pills chính hãng
       var slotRange = sheet.getRange(3, 6, rows.length, slotCount);
       var ruleP = SpreadsheetApp.newConditionalFormatRule()
         .whenTextEqualTo('P')
-        .setBackground('#DCFCE7')
-        .setFontColor('#15803D')
+        .setBackground('#DBEDDB') // Notion Green tag
+        .setFontColor('#1C3829') // Notion Green text
         .setRanges([slotRange])
         .build();
 
       var ruleA = SpreadsheetApp.newConditionalFormatRule()
         .whenTextEqualTo('A')
-        .setBackground('#FEE2E2')
-        .setFontColor('#B91C1C')
+        .setBackground('#FFE2DD') // Notion Red tag
+        .setFontColor('#5D1715') // Notion Red text
         .setRanges([slotRange])
         .build();
 
-      sheet.setConditionalFormatRules([ruleP, ruleA]);
+      // Conditional Formatting cho cột Trạng thái (Notion tag pills)
+      var resultColIndex = 5 + slotCount + 3;
+      var resultRange = sheet.getRange(3, resultColIndex, rows.length, 1);
+
+      var ruleCamThi = SpreadsheetApp.newConditionalFormatRule()
+        .whenTextEqualTo('Cấm thi')
+        .setBackground('#FFE2DD') // Notion Red tag
+        .setFontColor('#5D1715')
+        .setRanges([resultRange])
+        .build();
+
+      var ruleCanhBao = SpreadsheetApp.newConditionalFormatRule()
+        .whenTextEqualTo('Cảnh báo')
+        .setBackground('#FDECC8') // Notion Yellow/Orange tag
+        .setFontColor('#402C1B')
+        .setRanges([resultRange])
+        .build();
+
+      var ruleDuDieuKien = SpreadsheetApp.newConditionalFormatRule()
+        .whenTextEqualTo('Đủ điều kiện')
+        .setBackground('#DBEDDB') // Notion Green tag
+        .setFontColor('#1C3829')
+        .setRanges([resultRange])
+        .build();
+
+      sheet.setConditionalFormatRules([ruleP, ruleA, ruleCamThi, ruleCanhBao, ruleDuDieuKien]);
     }
 
     // Cố định dòng 2 (Header) và 3 cột đầu (STT, MSSV, Tên)
     sheet.setFrozenRows(2);
     sheet.setFrozenColumns(3);
 
-    // Độ rộng các cột
+    // Độ rộng các cột chuẩn form Notion
     sheet.setColumnWidth(1, 45);  // STT
     sheet.setColumnWidth(2, 95);  // MSSV
-    sheet.setColumnWidth(3, 180); // Họ và tên
+    sheet.setColumnWidth(3, 190); // Họ và tên
     sheet.setColumnWidth(4, 220); // Email
-    sheet.setColumnWidth(5, 85);  // MemberCode
-    sheet.setColumnWidths(6, slotCount, 68); // Các cột Slot
-    sheet.setColumnWidth(5 + slotCount + 1, 105);
-    sheet.setColumnWidth(5 + slotCount + 2, 105);
-    sheet.setColumnWidth(5 + slotCount + 3, 130);
+    sheet.setColumnWidth(5, 85);  // Mã FAP
+    sheet.setColumnWidths(6, slotCount, 64); // Các cột Slot
+    sheet.setColumnWidth(5 + slotCount + 1, 95);  // Tổng vắng
+    sheet.setColumnWidth(5 + slotCount + 2, 95);  // Tỉ lệ vắng
+    sheet.setColumnWidth(5 + slotCount + 3, 115); // Trạng thái
   },
 
   /**
@@ -850,7 +1141,22 @@ var DatabaseService = {
 
     // Cột slot tương ứng: Slot 1 là cột F (cột 6), Slot N là (5 + sequenceNumber)
     var targetCol = 5 + parts.sequenceNumber;
-    targetSheet.getRange(targetRow, targetCol).setValue(status);
+    var currentCell = targetSheet.getRange(targetRow, targetCol);
+    var currentVal = String(currentCell.getValue() || '').trim().toUpperCase();
+
+    // Nếu sinh viên đã có trạng thái P từ trước, báo đã điểm danh rồi
+    if (currentVal === 'P' && status === 'P') {
+      return {
+        success: true,
+        alreadyRecorded: true,
+        status: 'ALREADY_CHECKED_IN',
+        className: parts.className,
+        sequenceNumber: parts.sequenceNumber,
+        studentEmail: studentEmail
+      };
+    }
+
+    currentCell.setValue(status);
     SpreadsheetApp.flush();
 
     return {

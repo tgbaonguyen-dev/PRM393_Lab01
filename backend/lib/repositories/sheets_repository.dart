@@ -113,6 +113,16 @@ class SheetsRepository {
     };
   }
 
+  Future<void> resetApplicationData(String key) async {
+    final result = await _postToGateway('resetApplicationData',
+        {'resetKey': key, 'confirmation': 'DELETE_ALL_APP_DATA'});
+    if (result['success'] != true ||
+        result['data'] is! Map ||
+        result['data']['reset'] != true) {
+      throw StateError('Gateway chưa xác nhận xóa dữ liệu.');
+    }
+  }
+
   /// Khởi tạo bảng mẫu mặc định
   Future<bool> setupDatabase() async {
     final res = await _postToGateway('setupDatabase', {});

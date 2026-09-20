@@ -9,6 +9,9 @@ class LocalJsonScheduleRepository implements ScheduleRepository {
   LocalJsonScheduleRepository({File? storageFile})
       : file = storageFile ?? File('data/schedules_local.json');
 
+  Future<void> resetAll() =>
+      _writeRaw({'classes': <String, dynamic>{}, 'activeClassIds': <String>[]});
+
   Future<void> _ensureParent() async {
     if (!await file.parent.exists()) {
       await file.parent.create(recursive: true);

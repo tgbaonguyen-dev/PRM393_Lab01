@@ -21,8 +21,8 @@ void main() {
     await tester.tap(find.text('Danh Sách Lớp'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Bước 1 — Nhập danh sách lớp'), findsOneWidget);
-    expect(find.text('Chọn Markbook'), findsOneWidget);
+    expect(find.text('Danh Sách Lớp'), findsNWidgets(2));
+    expect(find.text('Nhập Markbook'), findsOneWidget);
     expect(find.text('Thêm môn đặc biệt'), findsNothing);
   });
 }

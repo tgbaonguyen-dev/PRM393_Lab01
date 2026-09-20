@@ -16,6 +16,18 @@ class LocalFirstScheduleRepository implements ScheduleRepository {
     this.sheetsGateway,
   });
 
+  /// Called only while AppResetController blocks all other requests.
+  Future<void> prepareForReset() async {
+    _syncDebounceTimer?.cancel();
+    _queuedSyncPayload = null;
+    final deadline = DateTime.now().add(const Duration(seconds: 180));
+    while (_isSyncing) {
+      if (DateTime.now().isAfter(deadline))
+        throw StateError('Đồng bộ chưa hoàn tất.');
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+    }
+  }
+
   @override
   Future<bool> save({
     required Map<String, dynamic> classOffering,

@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'dart:ui';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
@@ -12,6 +11,8 @@ import '../schedule/services/schedule_generator.dart';
 import '../schedule/services/schedule_overview.dart';
 import '../attendance/services/attendance_storage_service.dart';
 import '../../shared/m1_snackbar.dart';
+import '../../shared/notion_tokens.dart';
+import '../../shared/workspace_ui.dart';
 import '../../shell/app_shell.dart';
 import 'models/import_models.dart';
 import 'services/imported_class_validator.dart';
@@ -46,7 +47,6 @@ class _ImportScreenState extends State<ImportScreen> {
   bool _isLoadingSavedSchedules = true;
   int? _savedScheduleCount;
   bool _savedScheduleCheckFailed = false;
-  String? _savedScheduleCheckError;
   String? _loadError;
 
   ImportedClass? get _selectedClass {
@@ -121,7 +121,6 @@ class _ImportScreenState extends State<ImportScreen> {
       setState(() {
         _isLoadingSavedSchedules = true;
         _savedScheduleCheckFailed = false;
-        _savedScheduleCheckError = null;
       });
     }
     try {
@@ -130,7 +129,6 @@ class _ImportScreenState extends State<ImportScreen> {
         setState(() {
           _savedScheduleCount = schedules.length;
           _savedScheduleCheckFailed = false;
-          _savedScheduleCheckError = null;
         });
         if (_result == null && schedules.isNotEmpty) {
           _loadSavedClassesIntoView();
@@ -147,7 +145,6 @@ class _ImportScreenState extends State<ImportScreen> {
         setState(() {
           _savedScheduleCount = null;
           _savedScheduleCheckFailed = true;
-          _savedScheduleCheckError = error.toString();
         });
       }
     } finally {
@@ -235,15 +232,25 @@ class _ImportScreenState extends State<ImportScreen> {
         }
       });
 
-      // Tự động kiểm tra tính hợp lệ, sinh lịch và đồng bộ lên Google Sheet
+      // Cho phép giảng viên chọn ngày bắt đầu học kỳ trước khi sinh lịch
       final preparedClasses = _prepareAllClasses();
       if (preparedClasses != null && preparedClasses.isNotEmpty) {
+        if (!mounted) return;
         final now = DateTime.now();
-        final semesterStart =
-            AppNavigationController.instance.activeSemesterStart ??
-            ScheduleOverview.startOfWeek(
-              DateTime(now.year, now.month, now.day),
-            );
+        final pickedDate = await showDatePicker(
+          context: context,
+          helpText: 'Chọn ngày bắt đầu học kỳ để sinh lịch giảng dạy',
+          confirmText: 'Xác Nhận Ngày',
+          initialDate: DateTime(now.year, now.month, now.day),
+          firstDate: DateTime(now.year - 2),
+          lastDate: DateTime(now.year + 3, 12, 31),
+        );
+        if (!mounted) return;
+
+        final semesterStart = pickedDate != null
+            ? ScheduleOverview.startOfWeek(pickedDate)
+            : (AppNavigationController.instance.activeSemesterStart ??
+                ScheduleOverview.startOfWeek(DateTime(now.year, now.month, now.day)));
         final semesterCode = _semesterCodeFor(semesterStart);
         final classesForSchedule = preparedClasses
             .map((item) => item.copyWith(semester: semesterCode))
@@ -554,336 +561,144 @@ class _ImportScreenState extends State<ImportScreen> {
     return '$prefix${(start.year % 100).toString().padLeft(2, '0')}';
   }
 
-  // Notion Academic Minimalist Palette
-  static const _canvasBg = Color(0xFFFAF9F6);
-  static const _borderColor = Color(0xFFE3E2DE);
-  static const _textPrimary = Color(0xFF37352F);
-  static const _textSecondary = Color(0xFF787774);
+  // 100% Exact Notion Tokens from ai/DESIGN.md
+  static const _canvasBg = NotionColors.canvasSoft; // #F6F5F4
+  static const _borderColor = NotionColors.hairline; // #E6E6E6
+  static const _textPrimary = NotionColors.ink; // #000000
+  static const _textSecondary = NotionColors.inkMuted; // #615D59
 
   @override
   Widget build(BuildContext context) {
-    final selectedClass = _selectedClass;
-    final hasShell = context.findAncestorStateOfType<State<AppShell>>() != null;
-
+    final selected = _selectedClass;
     return Scaffold(
       backgroundColor: _canvasBg,
-      appBar: hasShell
-          ? null
-          : AppBar(
-              title: Text(
-                'Nhập Markbook',
-                style: GoogleFonts.inter(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: _textPrimary,
-                ),
-              ),
-              elevation: 0,
-              backgroundColor: _canvasBg,
-              surfaceTintColor: Colors.transparent,
-              bottom: const PreferredSize(
-                preferredSize: Size.fromHeight(1),
-                child: Divider(height: 1, thickness: 1, color: _borderColor),
-              ),
+      body: WorkspacePage(
+        header: [
+          _header(),
+          if (_savedScheduleCheckFailed)
+            Text(
+              'Chưa kết nối được dữ liệu đã lưu. Bạn vẫn có thể xem lớp hiện hành.',
+              style: const TextStyle(fontSize: 12, color: _textSecondary),
             ),
-      body: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _header(),
-            const SizedBox(height: 14),
-            if (_loadError != null) ...[
-              _Banner(message: _loadError!),
-              const SizedBox(height: 12),
-            ],
-            if (_result == null)
-              Expanded(
-                child: _EmptyState(
-                  isLoading: _isLoading,
-                  onPickFile: _isLoading ? null : _pickFile,
-                  onLoadSaved: _isLoadingSavedSchedules
-                      ? null
-                      : _loadSavedClassesIntoView,
-                  savedCount: _savedScheduleCount,
-                ),
-              )
-            else
-              Expanded(
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    SizedBox(width: 300, child: _classList()),
-                    const SizedBox(width: 14),
-                    if (selectedClass != null)
-                      Expanded(child: _preview(selectedClass)),
-                  ],
-                ),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _header() {
-    final result = _result;
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: _borderColor, width: 1),
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final heading = Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 38,
-                height: 38,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF7F6F3),
-                  borderRadius: BorderRadius.circular(6),
-                  border: Border.all(color: _borderColor, width: 1),
-                ),
-                alignment: Alignment.center,
-                child: const Icon(
-                  Icons.table_view_outlined,
-                  size: 20,
-                  color: _textPrimary,
-                ),
-              ),
-              const SizedBox(width: 14),
-              Flexible(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Bước 1 — Nhập danh sách lớp',
-                      style: GoogleFonts.inter(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                        color: _textPrimary,
-                        letterSpacing: -0.2,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      result == null
-                          ? 'Chọn tệp .xlsx hoặc .ods. Tệp nguồn chỉ được đọc.'
-                          : '${result.sourceFileName} • ${result.classes.length} lớp • ${result.totalStudents} sinh viên',
-                      style: GoogleFonts.inter(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w400,
-                        color: _textSecondary,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          );
-          final actions = Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              // Nút Chọn Markbook
-              InkWell(
-                onTap: _isLoading ? null : _pickFile,
-                borderRadius: BorderRadius.circular(4),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 8,
-                  ),
-                  decoration: BoxDecoration(
-                    color: _textPrimary,
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      if (_isLoading)
-                        const SizedBox.square(
-                          dimension: 14,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
-                          ),
-                        )
-                      else
-                        const Icon(
-                          Icons.upload_file,
-                          size: 15,
-                          color: Colors.white,
-                        ),
-                      const SizedBox(width: 7),
-                      Text(
-                        _isLoading ? 'Đang nạp & đồng bộ...' : 'Chọn Markbook',
-                        style: GoogleFonts.inter(
-                          fontSize: 12.5,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-
-              // Nút Tải lại CSDL
-              InkWell(
-                onTap: _isLoadingSavedSchedules
+          if (_loadError != null) _Banner(message: _loadError!),
+        ],
+        body: _result == null
+            ? _EmptyState(
+                isLoading: _isLoading,
+                onPickFile: _isLoading ? null : _pickFile,
+                onLoadSaved: _isLoadingSavedSchedules
                     ? null
                     : _loadSavedClassesIntoView,
-                borderRadius: BorderRadius.circular(4),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 8,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(4),
-                    border: Border.all(color: _borderColor, width: 1),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      if (_isLoadingSavedSchedules)
-                        const SizedBox.square(
-                          dimension: 13,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 1.8,
-                            color: _textSecondary,
-                          ),
-                        )
-                      else
-                        const Icon(
-                          Icons.refresh,
-                          size: 15,
-                          color: _textPrimary,
-                        ),
-                      const SizedBox(width: 6),
-                      Text(
-                        'Tải lại CSDL',
-                        style: GoogleFonts.inter(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                          color: _textPrimary,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-
-              // Nút Xem Lịch Giảng Dạy
-              if ((_savedScheduleCount ?? 0) > 0 ||
-                  (_result?.classes.isNotEmpty ?? false))
-                InkWell(
-                  onTap: _isLoadingSavedSchedules ? null : _openSavedSchedules,
-                  borderRadius: BorderRadius.circular(4),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 8,
-                    ),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF7F6F3),
-                      borderRadius: BorderRadius.circular(4),
-                      border: Border.all(color: _borderColor, width: 1),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
+                savedCount: _savedScheduleCount,
+              )
+            : LayoutBuilder(
+                builder: (context, size) {
+                  if (size.maxWidth < 900) {
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        const Icon(
-                          Icons.calendar_month_outlined,
-                          size: 15,
-                          color: _textPrimary,
-                        ),
-                        const SizedBox(width: 6),
-                        Text(
-                          'Xem Lịch Giảng Dạy',
-                          style: GoogleFonts.inter(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                            color: _textPrimary,
+                        DropdownButtonFormField<int>(
+                          initialValue: _selectedIndex,
+                          isExpanded: true,
+                          decoration: const InputDecoration(
+                            labelText: 'Lớp Học Phần',
                           ),
+                          items: List.generate(_result!.classes.length, (i) {
+                            final c =
+                                _editedClasses[_result!.classes[i]] ??
+                                _result!.classes[i];
+                            return DropdownMenuItem(
+                              value: i,
+                              child: Text(
+                                '${c.subjectCode} · ${c.classCode}',
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            );
+                          }),
+                          onChanged: (i) {
+                            if (i != null) _selectClass(i);
+                          },
                         ),
+                        const SizedBox(height: 12),
+                        if (selected != null)
+                          Expanded(child: _preview(selected)),
                       ],
-                    ),
-                  ),
-                ),
-
-              if (_savedScheduleCheckFailed)
-                Tooltip(
-                  message:
-                      _savedScheduleCheckError ??
-                      'Backend không phản hồi tại 127.0.0.1:8080.',
-                  child: InkWell(
-                    onTap: _refreshSavedScheduleCount,
-                    borderRadius: BorderRadius.circular(4),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 8,
-                      ),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFFEF3C7),
-                        borderRadius: BorderRadius.circular(4),
-                        border: Border.all(
-                          color: const Color(0xFFFCD34D),
-                          width: 1,
-                        ),
-                      ),
-                      child: const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.warning_amber_rounded,
-                            size: 14,
-                            color: Color(0xFFB45309),
-                          ),
-                          SizedBox(width: 5),
-                          Text(
-                            'Offline',
-                            style: TextStyle(
-                              fontSize: 11.5,
-                              color: Color(0xFFB45309),
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-            ],
-          );
-          if (constraints.maxWidth < 900) {
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                heading,
-                const SizedBox(height: 12),
-                Align(alignment: Alignment.centerRight, child: actions),
-              ],
-            );
-          }
-          return Row(
-            children: [
-              Expanded(child: heading),
-              const SizedBox(width: 16),
-              actions,
-            ],
-          );
-        },
+                    );
+                  }
+                  return Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      SizedBox(width: 240, child: _classList()),
+                      const SizedBox(width: 20),
+                      if (selected != null) Expanded(child: _preview(selected)),
+                    ],
+                  );
+                },
+              ),
+        compactBodyHeight: 720,
       ),
     );
   }
+
+  Widget _header() => WorkspaceHeader(
+    icon: Container(
+      width: 32,
+      height: 32,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: const Color(0xFFF1F1EF),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: const Icon(
+        Icons.school_outlined,
+        size: 18,
+        color: NotionColors.ink,
+      ),
+    ),
+    title: 'Danh Sách Lớp',
+    subtitle: _result == null
+        ? 'Nhập Markbook để quản lý lớp học và danh sách sinh viên.'
+        : '${_result!.classes.length} lớp học phần · ${_result!.totalStudents} sinh viên',
+    actions: Wrap(
+      spacing: 8,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: [
+        FilledButton(
+          style: FilledButton.styleFrom(
+            backgroundColor: NotionColors.ink,
+            foregroundColor: Colors.white,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+            minimumSize: const Size(0, 36),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          ),
+          onPressed: _isLoading ? null : _pickFile,
+          child: Text(
+            _isLoading ? 'Đang Nhập…' : 'Nhập Markbook',
+            style: GoogleFonts.inter(fontSize: 12.5, fontWeight: FontWeight.w600),
+          ),
+        ),
+        PopupMenuButton<String>(
+          tooltip: 'Thao Tác Danh Sách Lớp',
+          onSelected: (value) {
+            if (value == 'reload') _loadSavedClassesIntoView();
+            if (value == 'schedule') _openSavedSchedules();
+          },
+          itemBuilder: (_) => [
+            PopupMenuItem(
+              value: 'reload',
+              enabled: !_isLoadingSavedSchedules,
+              child: const Text('Tải Lại Danh Sách'),
+            ),
+            PopupMenuItem(
+              value: 'schedule',
+              enabled: !_isLoadingSavedSchedules,
+              child: const Text('Xem Lịch Đã Lưu'),
+            ),
+          ],
+        ),
+      ],
+    ),
+  );
 
   Widget _classList() {
     final allClasses = _result!.classes;
@@ -899,25 +714,21 @@ class _ImportScreenState extends State<ImportScreen> {
 
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(6),
+        color: NotionColors.surface,
+        borderRadius: NotionRounded.md,
         border: Border.all(color: _borderColor, width: 1),
+        boxShadow: NotionElevation.soft,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(14, 12, 14, 8),
+            padding: const EdgeInsets.fromLTRB(14, 14, 14, 8),
             child: Row(
               children: [
                 Text(
                   'DANH SÁCH LỚP (${allClasses.length})',
-                  style: GoogleFonts.inter(
-                    fontSize: 11.5,
-                    fontWeight: FontWeight.w700,
-                    color: _textSecondary,
-                    letterSpacing: 0.5,
-                  ),
+                  style: NotionTypography.eyebrow(color: _textSecondary),
                 ),
               ],
             ),
@@ -926,11 +737,11 @@ class _ImportScreenState extends State<ImportScreen> {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             child: Container(
-              height: 30,
+              height: 34,
               padding: const EdgeInsets.symmetric(horizontal: 8),
               decoration: BoxDecoration(
-                color: const Color(0xFFF7F6F3),
-                borderRadius: BorderRadius.circular(4),
+                color: NotionColors.canvasSoft,
+                borderRadius: NotionRounded.xs,
                 border: Border.all(color: _borderColor, width: 1),
               ),
               child: Row(
@@ -947,7 +758,7 @@ class _ImportScreenState extends State<ImportScreen> {
                         color: _textPrimary,
                       ),
                       decoration: const InputDecoration(
-                        hintText: 'Lọc mã lớp, môn...',
+                        hintText: 'Lọc lớp hoặc môn…',
                         hintStyle: TextStyle(
                           fontSize: 11,
                           color: _textSecondary,
@@ -999,7 +810,7 @@ class _ImportScreenState extends State<ImportScreen> {
                     }
                   },
                   child: InkWell(
-                    borderRadius: BorderRadius.circular(5),
+                    borderRadius: NotionRounded.sm,
                     onTap: () =>
                         _selectClass(originalIndex >= 0 ? originalIndex : 0),
                     child: AnimatedContainer(
@@ -1010,11 +821,11 @@ class _ImportScreenState extends State<ImportScreen> {
                       ),
                       decoration: BoxDecoration(
                         color: isSelected
-                            ? const Color(0xFFEFEFED)
+                            ? const Color(0xFFEBEAE7)
                             : (isHovered
-                                  ? const Color(0xFFF7F6F3)
+                                  ? NotionColors.canvasSoft
                                   : Colors.transparent),
-                        borderRadius: BorderRadius.circular(5),
+                        borderRadius: NotionRounded.sm,
                         border: isSelected
                             ? Border.all(color: _borderColor, width: 1)
                             : null,
@@ -1027,8 +838,8 @@ class _ImportScreenState extends State<ImportScreen> {
                                 : Icons.check_circle_outline,
                             size: 16,
                             color: errors > 0
-                                ? const Color(0xFFDC2626)
-                                : const Color(0xFF1F7A4D),
+                                ? NotionColors.accentOrange
+                                : NotionColors.accentGreen,
                           ),
                           const SizedBox(width: 9),
                           Expanded(
@@ -1107,431 +918,229 @@ class _ImportScreenState extends State<ImportScreen> {
   }
 
   Widget _preview(ImportedClass importedClass) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: _borderColor, width: 1),
-      ),
-      padding: const EdgeInsets.all(18),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+    final query = _studentSearchQuery.trim().toLowerCase();
+    final students = importedClass.students
+        .where(
+          (s) =>
+              query.isEmpty ||
+              '${s.rollNumber} ${s.fullName} ${s.email} ${s.memberCode}'
+                  .toLowerCase()
+                  .contains(query),
+        )
+        .toList();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          decoration: BoxDecoration(
+            color: NotionColors.surface,
+            borderRadius: BorderRadius.circular(6),
+            border: Border.all(color: _borderColor, width: 1),
+            boxShadow: NotionElevation.soft,
+          ),
+          child: Row(
             children: [
               Expanded(
                 child: Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
+                  spacing: 12,
+                  runSpacing: 10,
+                  crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
-                    _metadataField('Mã lịch', _scheduleCodeController, 105),
-                    _metadataField('Môn', _subjectCodeController, 125),
-                    _metadataField('Lớp', _classCodeController, 125),
-                    _metadataField('Số buổi', _lessonCountController, 110),
+                    _metadataField('Mã Lịch', _scheduleCodeController, 100),
+                    _metadataField('Môn', _subjectCodeController, 130),
+                    _metadataField('Lớp', _classCodeController, 130),
+                    _metadataField('Số Buổi', _lessonCountController, 100),
                   ],
                 ),
               ),
-              const SizedBox(width: 10),
-              InkWell(
-                onTap: _confirmSelectedClass,
-                borderRadius: BorderRadius.circular(4),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 8,
+              const SizedBox(width: 12),
+              FilledButton(
+                style: FilledButton.styleFrom(
+                  backgroundColor: NotionColors.ink,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(6),
                   ),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(4),
-                    border: Border.all(color: _borderColor, width: 1),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(
-                        Icons.check_circle_outline,
-                        size: 14,
-                        color: _textPrimary,
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        'Xác nhận lớp',
-                        style: GoogleFonts.inter(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                          color: _textPrimary,
-                        ),
-                      ),
-                    ],
-                  ),
+                  minimumSize: const Size(0, 36),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                ),
+                onPressed: _confirmSelectedClass,
+                child: Text(
+                  'Xác Nhận',
+                  style: GoogleFonts.inter(fontSize: 12.5, fontWeight: FontWeight.w600),
                 ),
               ),
-              const SizedBox(width: 8),
-              InkWell(
-                onTap: _continueToSchedule,
-                borderRadius: BorderRadius.circular(4),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 8,
+              const SizedBox(width: 6),
+              PopupMenuButton<String>(
+                tooltip: 'Thao Tác Lớp',
+                onSelected: (v) {
+                  if (v == 'schedule') _continueToSchedule();
+                  if (v == 'remove') _removeClass(_selectedIndex);
+                },
+                itemBuilder: (_) => const [
+                  PopupMenuItem(
+                    value: 'schedule',
+                    child: Text('Tạo / Xem Lịch Giảng Dạy'),
                   ),
-                  decoration: BoxDecoration(
-                    color: _textPrimary,
-                    borderRadius: BorderRadius.circular(4),
+                  PopupMenuItem(
+                    value: 'remove',
+                    child: Text('Bỏ Lớp Khỏi Danh Sách Nhập'),
                   ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        'Tiếp tục: Xem lịch giảng dạy',
-                        style: GoogleFonts.inter(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.white,
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      const Icon(
-                        Icons.arrow_forward,
-                        size: 14,
-                        color: Colors.white,
-                      ),
-                    ],
-                  ),
-                ),
+                ],
+                icon: const Icon(Icons.more_vert, size: 20, color: NotionColors.ink),
               ),
             ],
           ),
-          if (importedClass.issues.isNotEmpty) ...[
-            const SizedBox(height: 12),
-            _issues(importedClass.issues),
-          ],
-          const SizedBox(height: 10),
-          Text(
-            'Mã PRN mặc định 22 buổi, môn khác mặc định 20 buổi. Có thể điều chỉnh số buổi từ 1 đến 60 cho từng lớp.',
-            style: GoogleFonts.inter(fontSize: 11.5, color: _textSecondary),
-          ),
-          const SizedBox(height: 14),
-          // Roster Header with Search Bar
-          Row(
-            children: [
-              Text(
-                'Danh Sách Sinh Viên (${importedClass.students.length} SV)',
-                style: GoogleFonts.inter(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  color: _textPrimary,
-                ),
-              ),
-              const Spacer(),
-              Container(
-                width: 260,
-                height: 32,
-                padding: const EdgeInsets.symmetric(horizontal: 10),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF7F6F3),
-                  borderRadius: BorderRadius.circular(4),
-                  border: Border.all(color: _borderColor, width: 1),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.search, size: 14, color: _textSecondary),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: TextField(
-                        controller: _studentSearchController,
-                        onChanged: (val) =>
-                            setState(() => _studentSearchQuery = val),
-                        style: GoogleFonts.inter(
-                          fontSize: 12,
-                          color: _textPrimary,
-                        ),
-                        decoration: const InputDecoration(
-                          hintText: 'Tìm kiếm MSSV, tên, email...',
-                          hintStyle: TextStyle(
-                            fontSize: 11.5,
-                            color: _textSecondary,
-                          ),
-                          border: InputBorder.none,
-                          isDense: true,
-                          contentPadding: EdgeInsets.zero,
-                        ),
-                      ),
-                    ),
-                    if (_studentSearchQuery.isNotEmpty)
-                      InkWell(
-                        onTap: () {
-                          _studentSearchController.clear();
-                          setState(() => _studentSearchQuery = '');
-                        },
-                        child: const Icon(
-                          Icons.close,
-                          size: 14,
-                          color: _textSecondary,
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-            ],
-          ),
+        ),
+        if (importedClass.issues.isNotEmpty) ...[
           const SizedBox(height: 8),
-          Expanded(
-            child: Container(
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(5),
-                border: Border.all(color: _borderColor, width: 1),
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(5),
-                child: Builder(
-                  builder: (context) {
-                    final query = _studentSearchQuery.trim().toLowerCase();
-                    final filteredStudents = query.isEmpty
-                        ? importedClass.students
-                        : importedClass.students.where((s) {
-                            return s.rollNumber.toLowerCase().contains(query) ||
-                                s.fullName.toLowerCase().contains(query) ||
-                                s.email.toLowerCase().contains(query) ||
-                                s.memberCode.toLowerCase().contains(query);
-                          }).toList();
-
-                    if (filteredStudents.isEmpty) {
-                      return Center(
-                        child: Text(
-                          'Không tìm thấy sinh viên nào khớp với "$_studentSearchQuery"',
-                          style: GoogleFonts.inter(
-                            fontSize: 12.5,
-                            color: _textSecondary,
-                          ),
-                        ),
-                      );
-                    }
-
-                    return ScrollConfiguration(
-                      behavior: ScrollConfiguration.of(context).copyWith(
-                        dragDevices: {
-                          PointerDeviceKind.touch,
-                          PointerDeviceKind.mouse,
-                          PointerDeviceKind.trackpad,
-                        },
-                      ),
-                      child: Scrollbar(
-                        controller: _rosterHorizontalScrollController,
-                        thumbVisibility: true,
-                        trackVisibility: true,
-                        child: SingleChildScrollView(
-                          controller: _rosterHorizontalScrollController,
-                          scrollDirection: Axis.horizontal,
-                          child: Scrollbar(
-                            controller: _rosterVerticalScrollController,
-                            thumbVisibility: true,
-                            child: SingleChildScrollView(
-                              controller: _rosterVerticalScrollController,
-                              child: DataTable(
-                                headingRowColor: WidgetStateProperty.all(
-                                  const Color(0xFFF7F6F3),
-                                ),
-                                headingRowHeight: 36,
-                                dataRowMinHeight: 34,
-                                dataRowMaxHeight: 34,
-                                columnSpacing: 18,
-                                horizontalMargin: 16,
-                                dividerThickness: 0.8,
-                                columns: [
-                                  DataColumn(
-                                    columnWidth: const FixedColumnWidth(54),
-                                    label: Flexible(
-                                      child: Text(
-                                        'STT',
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        softWrap: false,
-                                        style: GoogleFonts.inter(
-                                          fontSize: 11.5,
-                                          fontWeight: FontWeight.w700,
-                                          color: _textSecondary,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                  DataColumn(
-                                    columnWidth: const FixedColumnWidth(110),
-                                    label: Flexible(
-                                      child: Text(
-                                        'MSSV',
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        softWrap: false,
-                                        style: GoogleFonts.inter(
-                                          fontSize: 11.5,
-                                          fontWeight: FontWeight.w700,
-                                          color: _textSecondary,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                  DataColumn(
-                                    columnWidth: const FixedColumnWidth(180),
-                                    label: Flexible(
-                                      child: Text(
-                                        'Họ và tên',
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        softWrap: false,
-                                        style: GoogleFonts.inter(
-                                          fontSize: 11.5,
-                                          fontWeight: FontWeight.w700,
-                                          color: _textSecondary,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                  DataColumn(
-                                    columnWidth: const FixedColumnWidth(230),
-                                    label: Flexible(
-                                      child: Text(
-                                        'Email FPT',
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        softWrap: false,
-                                        style: GoogleFonts.inter(
-                                          fontSize: 11.5,
-                                          fontWeight: FontWeight.w700,
-                                          color: _textSecondary,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                  DataColumn(
-                                    columnWidth: const FixedColumnWidth(150),
-                                    label: Flexible(
-                                      child: Text(
-                                        'Mã FAP',
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        softWrap: false,
-                                        style: GoogleFonts.inter(
-                                          fontSize: 11.5,
-                                          fontWeight: FontWeight.w700,
-                                          color: _textSecondary,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                  DataColumn(
-                                    columnWidth: const FixedColumnWidth(90),
-                                    label: Flexible(
-                                      child: Text(
-                                        'Lớp',
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        softWrap: false,
-                                        style: GoogleFonts.inter(
-                                          fontSize: 11.5,
-                                          fontWeight: FontWeight.w700,
-                                          color: _textSecondary,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                                rows: List.generate(filteredStudents.length, (
-                                  idx,
-                                ) {
-                                  final student = filteredStudents[idx];
-                                  return DataRow(
-                                    cells: [
-                                      DataCell(
-                                        Text(
-                                          '${idx + 1}',
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                          softWrap: false,
-                                          style: GoogleFonts.inter(
-                                            fontSize: 11.5,
-                                            color: _textSecondary,
-                                          ),
-                                        ),
-                                      ),
-                                      DataCell(
-                                        Text(
-                                          student.rollNumber,
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                          softWrap: false,
-                                          style: GoogleFonts.inter(
-                                            fontSize: 11.5,
-                                            fontWeight: FontWeight.w600,
-                                            color: _textPrimary,
-                                          ),
-                                        ),
-                                      ),
-                                      DataCell(
-                                        Text(
-                                          student.fullName,
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                          softWrap: false,
-                                          style: GoogleFonts.inter(
-                                            fontSize: 11.5,
-                                            color: _textPrimary,
-                                          ),
-                                        ),
-                                      ),
-                                      DataCell(
-                                        Text(
-                                          student.email,
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                          softWrap: false,
-                                          style: GoogleFonts.inter(
-                                            fontSize: 11.5,
-                                            color: _textSecondary,
-                                          ),
-                                        ),
-                                      ),
-                                      DataCell(
-                                        Text(
-                                          student.memberCode,
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                          softWrap: false,
-                                          style: GoogleFonts.inter(
-                                            fontSize: 11.5,
-                                            color: _textSecondary,
-                                          ),
-                                        ),
-                                      ),
-                                      DataCell(
-                                        Text(
-                                          student.classCode,
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                          softWrap: false,
-                                          style: GoogleFonts.inter(
-                                            fontSize: 11.5,
-                                            color: _textPrimary,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  );
-                                }),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ),
-            ),
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxHeight: 100),
+            child: SingleChildScrollView(child: _issues(importedClass.issues)),
           ),
         ],
-      ),
+        const SizedBox(height: 16),
+        Wrap(
+          spacing: 20,
+          runSpacing: 8,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            Text(
+              'Sinh Viên · ${students.length}/${importedClass.students.length}',
+              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+            ),
+            SizedBox(
+              width: 380,
+              child: WorkspaceSearch(
+                controller: _studentSearchController,
+                onChanged: (v) => setState(() => _studentSearchQuery = v),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Expanded(
+          child: LayoutBuilder(
+            builder: (context, size) {
+              final width = size.maxWidth < 850 ? 850.0 : size.maxWidth;
+              final widths = <int, TableColumnWidth>{
+                0: const FixedColumnWidth(48),
+                1: const FixedColumnWidth(100),
+                2: const FlexColumnWidth(1.3),
+                3: const FlexColumnWidth(1.8),
+                4: const FlexColumnWidth(1.1),
+                5: const FixedColumnWidth(85),
+              };
+              Widget cell(String text, {bool header = false}) => Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 12,
+                ),
+                child: Tooltip(
+                  message: text,
+                  child: Text(
+                    text,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: header ? _textSecondary : _textPrimary,
+                      fontWeight: header ? FontWeight.w500 : FontWeight.w400,
+                    ),
+                  ),
+                ),
+              );
+              return Container(
+                decoration: BoxDecoration(
+                  color: NotionColors.surface,
+                  border: Border.all(color: _borderColor),
+                  borderRadius: NotionRounded.md,
+                  boxShadow: NotionElevation.soft,
+                ),
+                clipBehavior: Clip.antiAlias,
+                child: Scrollbar(
+                  controller: _rosterHorizontalScrollController,
+                  thumbVisibility: true,
+                  notificationPredicate: (n) =>
+                      n.metrics.axis == Axis.horizontal,
+                  child: SingleChildScrollView(
+                    controller: _rosterHorizontalScrollController,
+                    scrollDirection: Axis.horizontal,
+                    child: SizedBox(
+                      width: width,
+                      child: Column(
+                        children: [
+                          Table(
+                            columnWidths: widths,
+                            children: [
+                              TableRow(
+                                decoration: const BoxDecoration(
+                                  color: NotionColors.canvasSoft,
+                                ),
+                                children: [
+                                  '#',
+                                  'MSSV',
+                                  'Họ Và Tên',
+                                  'Email',
+                                  'Mã FAP',
+                                  'Lớp',
+                                ].map((s) => cell(s, header: true)).toList(),
+                              ),
+                            ],
+                          ),
+                          const Divider(height: 1),
+                          Expanded(
+                            child: students.isEmpty
+                                ? const Center(
+                                    child: Text('Không Tìm Thấy Sinh Viên'),
+                                  )
+                                : Scrollbar(
+                                    controller: _rosterVerticalScrollController,
+                                    thumbVisibility: true,
+                                    child: ListView.builder(
+                                      controller:
+                                          _rosterVerticalScrollController,
+                                      itemCount: students.length,
+                                      itemBuilder: (_, i) {
+                                        final s = students[i];
+                                        return Table(
+                                          columnWidths: widths,
+                                          children: [
+                                            TableRow(
+                                              decoration: const BoxDecoration(
+                                                border: Border(
+                                                  bottom: BorderSide(
+                                                    color: Color(0xFFEDECE9),
+                                                    width: 0.5,
+                                                  ),
+                                                ),
+                                              ),
+                                              children: [
+                                                '${i + 1}',
+                                                s.rollNumber,
+                                                s.fullName,
+                                                s.email,
+                                                s.memberCode,
+                                                s.classCode,
+                                              ].map((s) => cell(s)).toList(),
+                                            ),
+                                          ],
+                                        );
+                                      },
+                                    ),
+                                  ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
 
@@ -1600,25 +1209,28 @@ class _ImportScreenState extends State<ImportScreen> {
     double width,
   ) => SizedBox(
     width: width,
+    height: 38,
     child: TextField(
       controller: controller,
       textCapitalization: TextCapitalization.characters,
       style: GoogleFonts.inter(
-        fontSize: 12,
+        fontSize: 12.5,
         fontWeight: FontWeight.w600,
         color: _textPrimary,
       ),
       decoration: InputDecoration(
         labelText: '$label *',
-        labelStyle: GoogleFonts.inter(fontSize: 11, color: _textSecondary),
+        labelStyle: GoogleFonts.inter(fontSize: 11, color: _textSecondary, fontWeight: FontWeight.w500),
         isDense: true,
         contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        filled: true,
+        fillColor: NotionColors.canvasSoft,
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(4),
+          borderRadius: BorderRadius.circular(6),
           borderSide: const BorderSide(color: _borderColor, width: 1),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(4),
+          borderRadius: BorderRadius.circular(6),
           borderSide: const BorderSide(color: _textPrimary, width: 1.2),
         ),
       ),
@@ -1645,9 +1257,10 @@ class _EmptyState extends StatelessWidget {
       constraints: const BoxConstraints(maxWidth: 480),
       padding: const EdgeInsets.all(28),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: const Color(0xFFE3E2DE), width: 1),
+        color: NotionColors.surface,
+        borderRadius: NotionRounded.lg,
+        border: Border.all(color: NotionColors.hairline, width: 1),
+        boxShadow: NotionElevation.soft,
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -1656,49 +1269,43 @@ class _EmptyState extends StatelessWidget {
             width: 56,
             height: 56,
             decoration: BoxDecoration(
-              color: const Color(0xFFF7F6F3),
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: const Color(0xFFE3E2DE), width: 1),
+              color: NotionColors.canvasSoft,
+              borderRadius: NotionRounded.md,
+              border: Border.all(color: NotionColors.hairline, width: 1),
             ),
             alignment: Alignment.center,
             child: const Icon(
               Icons.upload_file_outlined,
               size: 28,
-              color: Color(0xFF787774),
+              color: NotionColors.primary,
             ),
           ),
           const SizedBox(height: 14),
           Text(
             'Chưa có dữ liệu danh sách lớp',
-            style: GoogleFonts.inter(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: const Color(0xFF37352F),
-            ),
+            style: NotionTypography.heading3(color: NotionColors.ink),
           ),
           const SizedBox(height: 6),
           Text(
             'Chọn tệp Markbook (.xlsx, .ods) hoặc tải từ các lớp đã lưu trong CSDL.',
             textAlign: TextAlign.center,
-            style: GoogleFonts.inter(
-              fontSize: 12.5,
-              color: const Color(0xFF787774),
-            ),
+            style: NotionTypography.bodySm(color: NotionColors.inkMuted),
           ),
-          const SizedBox(height: 18),
+          const SizedBox(height: 20),
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF37352F),
-                  foregroundColor: Colors.white,
+              FilledButton.icon(
+                style: FilledButton.styleFrom(
+                  backgroundColor: NotionColors.primary,
+                  foregroundColor: NotionColors.onPrimary,
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(4),
+                    borderRadius: BorderRadius.circular(6),
                   ),
+                  minimumSize: const Size(0, 36),
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 10,
+                    horizontal: 18,
+                    vertical: 8,
                   ),
                 ),
                 onPressed: onPickFile,
@@ -1713,25 +1320,30 @@ class _EmptyState extends StatelessWidget {
                     : const Icon(Icons.upload_file, size: 16),
                 label: Text(
                   isLoading ? 'Đang nạp & đồng bộ...' : 'Chọn Markbook',
+                  style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600),
                 ),
               ),
               if ((savedCount ?? 0) > 0) ...[
                 const SizedBox(width: 10),
                 OutlinedButton.icon(
                   style: OutlinedButton.styleFrom(
-                    foregroundColor: const Color(0xFF37352F),
-                    side: const BorderSide(color: Color(0xFFE3E2DE)),
+                    foregroundColor: NotionColors.ink,
+                    side: const BorderSide(color: NotionColors.hairline),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(4),
+                      borderRadius: BorderRadius.circular(6),
                     ),
+                    minimumSize: const Size(0, 36),
                     padding: const EdgeInsets.symmetric(
                       horizontal: 14,
-                      vertical: 10,
+                      vertical: 8,
                     ),
                   ),
                   onPressed: onLoadSaved,
                   icon: const Icon(Icons.refresh, size: 16),
-                  label: Text('Tải $savedCount lớp đã lưu'),
+                  label: Text(
+                    'Tải $savedCount lớp đã lưu',
+                    style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w500),
+                  ),
                 ),
               ],
             ],

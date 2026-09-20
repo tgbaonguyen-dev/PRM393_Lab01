@@ -5,6 +5,12 @@ import '../../../config.dart';
 
 /// Dịch vụ lưu trữ và đọc kết quả điểm danh cục bộ giữa các phiên làm việc
 class AttendanceStorageService {
+  static int _writeGeneration = 0;
+  final int _generation = _writeGeneration;
+  static void invalidatePendingWrites() {
+    _writeGeneration++;
+  }
+
   static const String defaultFileName = 'attendance_database.json';
   final String? customFilePath;
   final http.Client _httpClient;
@@ -39,6 +45,7 @@ class AttendanceStorageService {
   Future<void> saveStore(
     Map<String, Map<int, Map<String, String>>> store,
   ) async {
+    if (_generation != _writeGeneration) return;
     try {
       final jsonMap = <String, dynamic>{};
       store.forEach((sheetName, slots) {
@@ -54,11 +61,13 @@ class AttendanceStorageService {
 
       final targetFile = storageFile;
       await targetFile.create(recursive: true);
+      if (_generation != _writeGeneration) return;
       await targetFile.writeAsString(jsonString);
 
       // Nếu đang chạy từ thư mục gốc, cập nhật luôn cả apps/desktop nếu có
       final desktopFile = File('apps/desktop/attendance_database.json');
-      if (desktopFile.path != targetFile.path &&
+      if (_generation == _writeGeneration &&
+          desktopFile.path != targetFile.path &&
           Directory('apps/desktop').existsSync()) {
         await desktopFile.writeAsString(jsonString);
       }
@@ -96,6 +105,41 @@ class AttendanceStorageService {
       });
     } catch (_) {}
     return store;
+  }
+
+  /// A fresh server snapshot for reports. Fail explicitly instead of exporting stale data.
+  Future<Map<String, Map<int, Map<String, String>>>> fetchLatestStore() async {
+    final response = await _httpClient
+        .get(Uri.parse('${AppConfig.apiBaseUrl}/attendance/all'))
+        .timeout(const Duration(seconds: 20));
+    final decoded = jsonDecode(utf8.decode(response.bodyBytes));
+    if (response.statusCode != 200 ||
+        decoded is! Map ||
+        decoded['success'] != true ||
+        decoded['data'] is! Map) {
+      throw StateError(
+        'Không thể lấy điểm danh mới nhất. Vui lòng kiểm tra kết nối và thử lại.',
+      );
+    }
+    final result = <String, Map<int, Map<String, String>>>{};
+    (decoded['data'] as Map).forEach((key, value) {
+      if (value is! Map) return;
+      final slots = <int, Map<String, String>>{};
+      value.forEach((number, entries) {
+        final slot = int.tryParse(number.toString());
+        if (slot == null || entries is! Map) return;
+        slots[slot] = <String, String>{};
+        entries.forEach((email, status) {
+          final normalized = status.toString().trim().toUpperCase();
+          if (normalized == 'P' || normalized == 'A') {
+            slots[slot]![email.toString().trim().toLowerCase()] = normalized;
+          }
+        });
+      });
+      result[key.toString()] = slots;
+    });
+    await saveStore(result);
+    return result;
   }
 
   /// Kéo toàn bộ ma trận điểm danh từ Google Sheets (qua Backend API) về và hợp nhất vào local storage
@@ -170,7 +214,8 @@ class AttendanceStorageService {
         '${scheduleCode}_${subjectCode}_$classCode',
       '$subjectCode - $classCode',
       '${subjectCode}_$classCode',
-      if (customClassName != null && customClassName.isNotEmpty) customClassName,
+      if (customClassName != null && customClassName.isNotEmpty)
+        customClassName,
       classCode,
     ];
 
@@ -180,7 +225,10 @@ class AttendanceStorageService {
       if (slotMap != null) {
         for (final entry in slotMap.entries) {
           final slotNum = entry.key;
-          final studentMap = merged.putIfAbsent(slotNum, () => <String, String>{});
+          final studentMap = merged.putIfAbsent(
+            slotNum,
+            () => <String, String>{},
+          );
           for (final sEntry in entry.value.entries) {
             final email = sEntry.key.trim().toLowerCase();
             final st = sEntry.value.trim().toUpperCase();

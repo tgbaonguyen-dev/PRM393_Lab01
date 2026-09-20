@@ -1,24 +1,35 @@
 @import 'tailwindcss';
 
 :root {
-  --ink: #17211b;
-  --paper: #f5f6ef;
-  --mint: #cfe8d5;
-  --orange: #e67e43;
+  --bg: #f8fafc;
+  --surface: #ffffff;
+  --surface-subtle: #f1f5f9;
+  --border: #e2e8f0;
+  --border-hover: #cbd5e1;
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #64748b;
+  --primary: #1e3a8a;
+  --accent: #2563eb;
 }
 
-* { box-sizing: border-box; }
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
 
-body {
+html, body {
   margin: 0;
-  min-width: 320px;
-  background: var(--paper);
-  color: var(--ink);
-  font-family: 'Segoe UI', 'Noto Sans', Arial, sans-serif;
-  font-kerning: normal;
-  font-synthesis: none;
-  letter-spacing: 0;
-  line-height: 1.5;
+  padding: 0;
+  min-height: 100%;
+  background-color: var(--bg);
+  color: var(--text-primary);
+  font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-button, input { font: inherit; }
+button, input {
+  font: inherit;
+}
+

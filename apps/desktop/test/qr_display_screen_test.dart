@@ -1,3 +1,4 @@
+import 'support/memory_attendance.dart';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -15,8 +16,9 @@ void main() {
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
     await tester.pumpWidget(
-      const MaterialApp(
+      MaterialApp(
         home: QrDisplayScreen(
+          storageService: MemoryAttendance(),
           classId: 'class-123',
           sessionId: 'lesson-01',
           className: 'PRM393 - SE1917',
@@ -117,6 +119,7 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         home: QrDisplayScreen(
+          storageService: MemoryAttendance(),
           classId: 'class-123',
           sessionId: 'lesson-01',
           className: 'PRM393 - SE1917',

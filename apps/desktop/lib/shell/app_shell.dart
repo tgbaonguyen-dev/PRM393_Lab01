@@ -4,6 +4,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
 
 import '../config.dart';
+import '../features/attendance/services/attendance_storage_service.dart';
+import '../features/settings/app_reset_dialog.dart';
 import '../features/import/import_screen.dart';
 import '../features/import/models/import_models.dart';
 import '../features/reports/reports_screen.dart';
@@ -11,6 +13,7 @@ import '../features/schedule/models/schedule_models.dart';
 import '../features/schedule/schedule_generator_screen.dart';
 import '../features/schedule/services/schedule_api_client.dart';
 import '../features/session/qr_display_screen.dart';
+import '../shared/notion_tokens.dart';
 
 /// Bộ điều khiển điều hướng tập trung của EduCheck Pro
 class AppNavigationController extends ChangeNotifier {
@@ -37,6 +40,29 @@ class AppNavigationController extends ChangeNotifier {
   bool showPractice = true;
   bool showMeetings = true;
   String searchQuery = '';
+
+  bool resetting = false;
+  void setResetting(bool value) {
+    resetting = value;
+    notifyListeners();
+  }
+
+  int workspaceVersion = 0;
+  void clearWorkspace() {
+    activeClasses = null;
+    activeSchedules = null;
+    activeSemesterStart = null;
+    activeSessionId = null;
+    activeClassId = null;
+    activeClassName = null;
+    activeLessonLabel = null;
+    activeRoster = null;
+    searchQuery = '';
+    _currentIndex = 0;
+    _scheduleVersion++;
+    workspaceVersion++;
+    notifyListeners();
+  }
 
   void navigateToTab(int index) {
     if (_currentIndex != index) {
@@ -91,7 +117,13 @@ class AppNavigationController extends ChangeNotifier {
 }
 
 class AppShell extends StatefulWidget {
-  const AppShell({super.key});
+  final bool loadExistingData;
+  final AttendanceStorageService? storageService;
+  const AppShell({
+    super.key,
+    this.loadExistingData = true,
+    this.storageService,
+  });
 
   @override
   State<AppShell> createState() => _AppShellState();
@@ -100,24 +132,19 @@ class AppShell extends StatefulWidget {
 class _AppShellState extends State<AppShell> {
   final AppNavigationController _nav = AppNavigationController.instance;
   final ScheduleApiClient _scheduleApiClient = ScheduleApiClient();
-  final TextEditingController _searchController = TextEditingController();
 
   bool _backendOnline = false;
   Timer? _backendCheckTimer;
 
-  // Bảng màu Notion Workspace / Academic Minimalist
-  static const _canvasBg = Color(0xFFFAF9F6); // Base Canvas
-  static const _sidebarBg = Color(0xFFF7F6F3); // Sidebar Surface
-  static const _borderColor = Color(0xFFE3E2DE); // Border / Divider 1px
-  static const _textPrimary = Color(0xFF37352F); // Than chì tự nhiên
-  static const _textSecondary = Color(0xFF787774); // Xám ấm
-  static const _textTertiary = Color(0xFF9B9A97); // Gợi ý / Breadcrumb
-  static const _activeItemBg = Color(0xFFEFEFED); // Active row
+  static const _borderColor = NotionColors.hairline;
+  static const _textPrimary = NotionColors.ink;
+  static const _textSecondary = NotionColors.inkMuted;
 
   @override
   void initState() {
     super.initState();
     _nav.addListener(_onNavChanged);
+    if (!widget.loadExistingData) return;
     _tryLoadLocalSchedulesSync();
     _checkBackendHealth();
     _backendCheckTimer = Timer.periodic(
@@ -131,7 +158,6 @@ class _AppShellState extends State<AppShell> {
   void dispose() {
     _nav.removeListener(_onNavChanged);
     _backendCheckTimer?.cancel();
-    _searchController.dispose();
     super.dispose();
   }
 
@@ -159,7 +185,9 @@ class _AppShellState extends State<AppShell> {
       final online = response.statusCode == 200;
       if (mounted && _backendOnline != online) {
         setState(() => _backendOnline = online);
-        if (online && (_nav.activeClasses == null || _nav.activeClasses!.isEmpty)) {
+        if (online &&
+            !_nav.resetting &&
+            (_nav.activeClasses == null || _nav.activeClasses!.isEmpty)) {
           _loadInitialSavedSchedule();
         }
       }
@@ -171,9 +199,13 @@ class _AppShellState extends State<AppShell> {
   }
 
   Future<void> _loadInitialSavedSchedule() async {
+    final version = _nav.workspaceVersion;
     try {
       final saved = await _scheduleApiClient.loadSavedSchedules();
-      if (saved.classes.isNotEmpty && mounted) {
+      if (saved.classes.isNotEmpty &&
+          mounted &&
+          !_nav.resetting &&
+          version == _nav.workspaceVersion) {
         setState(() {
           _nav.activeClasses = saved.classes;
           _nav.activeSchedules = saved.schedules;
@@ -184,412 +216,273 @@ class _AppShellState extends State<AppShell> {
   }
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: _canvasBg,
-      body: Row(
-        children: [
-          // 1. Notion Sidebar (240px)
-          Container(
-            width: 240,
-            decoration: const BoxDecoration(
-              color: _sidebarBg,
-              border: Border(right: BorderSide(color: _borderColor, width: 1)),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                // App Brand Card (iPresent)
-                _buildSidebarProfile(),
-                const Divider(height: 1, color: _borderColor),
-
-                // Navigation Items
-                Expanded(
-                  child: ListView(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
-                    children: [
-                      _buildSectionHeader('HỌC VỤ'),
-                      const SizedBox(height: 4),
-                      _buildSidebarItem(
-                        index: 0,
-                        title: 'Lịch Giảng Dạy',
-                        icon: Icons.calendar_today_outlined,
-                        onTap: () => _nav.navigateToTab(0),
-                      ),
-                      _buildSidebarItem(
-                        index: 1,
-                        title: 'Điểm Danh QR',
-                        icon: Icons.qr_code_scanner_outlined,
-                        onTap: () => _nav.navigateToTab(1),
-                      ),
-                      _buildSidebarItem(
-                        index: 2,
-                        title: 'Danh Sách Lớp',
-                        icon: Icons.school_outlined,
-                        onTap: () => _nav.navigateToTab(2),
-                      ),
-                      _buildSidebarItem(
-                        index: 3,
-                        title: 'Báo Cáo & Thống Kê',
-                        icon: Icons.bar_chart_outlined,
-                        onTap: () => _nav.navigateToTab(3),
-                      ),
-                    ],
-                  ),
-                ),
-
-                // Sidebar Footer (Minimal & Crisp)
-                const Divider(height: 1, color: _borderColor),
-                _buildSidebarFooter(),
-              ],
-            ),
-          ),
-
-          // 2. Main Content View with Top Bar
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _buildTopAppBar(),
-                Expanded(
-                  child: _buildCurrentView(),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSidebarProfile() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-      child: Row(
-        children: [
-          Container(
-            width: 28,
-            height: 28,
-            decoration: BoxDecoration(
-              color: const Color(0xFF37352F),
-              borderRadius: BorderRadius.circular(6),
-            ),
-            alignment: Alignment.center,
-            child: Text(
-              'iP',
-              style: GoogleFonts.inter(
-                fontSize: 12,
-                fontWeight: FontWeight.w800,
-                color: Colors.white,
-                letterSpacing: -0.5,
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, size) {
+      final compact = size.maxWidth < 1180;
+      final titles = [
+        'Lịch Giảng Dạy',
+        'Điểm Danh QR',
+        'Danh Sách Lớp',
+        'Báo Cáo & Thống Kê',
+      ];
+      final icons = [
+        Icons.calendar_month_outlined,
+        Icons.qr_code_2_outlined,
+        Icons.school_outlined,
+        Icons.insights_outlined,
+      ];
+      return Scaffold(
+        backgroundColor: NotionColors.surface,
+        body: Row(
+          children: [
+            // Notion Workspace Sidebar
+            Container(
+              width: compact ? 68 : 240,
+              decoration: const BoxDecoration(
+                color: NotionColors.canvasSoft,
+                border: Border(right: BorderSide(color: NotionColors.hairline)),
               ),
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Row(
-                  children: [
-                    Text(
-                      'iPresent',
-                      style: GoogleFonts.inter(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                        color: _textPrimary,
-                        letterSpacing: -0.2,
-                      ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // Workspace Switcher / Identity (Sidebar Top)
+                  Padding(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: compact ? 12 : 14,
+                      vertical: 12,
                     ),
-                    const SizedBox(width: 6),
-                    Container(
-                      width: 5,
-                      height: 5,
-                      decoration: const BoxDecoration(
-                        color: Color(0xFF1F7A4D),
-                        shape: BoxShape.circle,
-                      ),
+                    child: compact
+                        ? Center(
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(4),
+                              child: Image.asset(
+                                'assets/app_logo.png',
+                                width: 28,
+                                height: 28,
+                                fit: BoxFit.contain,
+                              ),
+                            ),
+                          )
+                        : Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                            child: Row(
+                              children: [
+                                ClipRRect(
+                                  borderRadius: BorderRadius.circular(4),
+                                  child: Image.asset(
+                                    'assets/app_logo.png',
+                                    width: 24,
+                                    height: 24,
+                                    fit: BoxFit.contain,
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    'iPresent Workspace',
+                                    overflow: TextOverflow.ellipsis,
+                                    style: GoogleFonts.inter(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                      color: NotionColors.ink,
+                                    ),
+                                  ),
+                                ),
+                                const Icon(
+                                  Icons.unfold_more,
+                                  size: 15,
+                                  color: NotionColors.inkMuted,
+                                ),
+                              ],
+                            ),
+                          ),
+                  ),
+
+                  // Navigation list
+                  Expanded(
+                    child: ListView(
+                      padding: const EdgeInsets.symmetric(horizontal: 10),
+                      children: [
+                        if (!compact)
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(6, 6, 6, 6),
+                            child: Text(
+                              'HỌC VỤ & LỊCH TRÌNH',
+                              style: GoogleFonts.inter(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600,
+                                color: NotionColors.inkMuted,
+                                letterSpacing: 0.8,
+                              ),
+                            ),
+                          ),
+                        for (var i = 0; i < titles.length; i++)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 2),
+                            child: Tooltip(
+                              message: compact ? titles[i] : '',
+                              child: Material(
+                                color: _nav.currentIndex == i
+                                    ? const Color(0xFFEBEBEA)
+                                    : Colors.transparent,
+                                borderRadius: BorderRadius.circular(5),
+                                child: InkWell(
+                                  borderRadius: BorderRadius.circular(5),
+                                  onTap: () => _nav.navigateToTab(i),
+                                  child: Container(
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: compact ? 8 : 10,
+                                      vertical: 7,
+                                    ),
+                                    child: Row(
+                                      mainAxisAlignment: compact
+                                          ? MainAxisAlignment.center
+                                          : MainAxisAlignment.start,
+                                      children: [
+                                        Icon(
+                                          icons[i],
+                                          size: 16,
+                                          color: _nav.currentIndex == i
+                                              ? NotionColors.ink
+                                              : NotionColors.inkMuted,
+                                        ),
+                                        if (!compact) ...[
+                                          const SizedBox(width: 9),
+                                          Expanded(
+                                            child: Text(
+                                              titles[i],
+                                              overflow: TextOverflow.ellipsis,
+                                              style: GoogleFonts.inter(
+                                                fontSize: 13,
+                                                color: _nav.currentIndex == i
+                                                    ? NotionColors.ink
+                                                    : NotionColors.inkSecondary,
+                                                fontWeight: _nav.currentIndex == i
+                                                    ? FontWeight.w600
+                                                    : FontWeight.w400,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
                     ),
-                  ],
-                ),
-                Text(
-                  'Workspace',
-                  style: GoogleFonts.inter(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w400,
-                    color: _textSecondary,
                   ),
-                ),
-              ],
-            ),
-          ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
-            decoration: BoxDecoration(
-              color: const Color(0xFFEFEFED),
-              borderRadius: BorderRadius.circular(4),
-              border: Border.all(color: _borderColor, width: 0.8),
-            ),
-            child: Text(
-              'v3.4',
-              style: GoogleFonts.inter(
-                fontSize: 9.5,
-                fontWeight: FontWeight.w500,
-                color: _textSecondary,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
-  Widget _buildSectionHeader(String title) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      child: Text(
-        title,
-        style: GoogleFonts.inter(
-          fontSize: 10,
-          fontWeight: FontWeight.w700,
-          letterSpacing: 0.8,
-          color: _textTertiary,
-        ),
-      ),
-    );
-  }
+                  const Divider(height: 1, color: NotionColors.hairline),
 
-  Widget _buildSidebarItem({
-    required int index,
-    required String title,
-    IconData? icon,
-    required VoidCallback onTap,
-  }) {
-    final isSelected = _nav.currentIndex == index;
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 1.5),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(5),
-          onTap: onTap,
-          hoverColor: const Color(0xFFEAE9E5),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 120),
-            height: 32,
-            padding: const EdgeInsets.symmetric(horizontal: 10),
-            decoration: BoxDecoration(
-              color: isSelected ? _activeItemBg : Colors.transparent,
-              borderRadius: BorderRadius.circular(5),
-            ),
-            child: Row(
-              children: [
-                if (icon != null) ...[
-                  Icon(
-                    icon,
-                    size: 15,
-                    color: isSelected ? _textPrimary : _textSecondary,
+                  // Sidebar Footer: Quick settings
+                  Padding(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: compact ? 8 : 12,
+                      vertical: 6,
+                    ),
+                    child: Row(
+                      mainAxisAlignment: compact
+                          ? MainAxisAlignment.center
+                          : MainAxisAlignment.end,
+                      children: [
+                        PopupMenuButton<String>(
+                          tooltip: 'Cài Đặt Dữ Liệu',
+                          onSelected: (value) {
+                            if (value == 'reset') _showResetDialog();
+                          },
+                          icon: const Icon(
+                            Icons.settings_outlined,
+                            size: 16,
+                            color: NotionColors.inkMuted,
+                          ),
+                          itemBuilder: (_) => [
+                            PopupMenuItem(
+                              value: 'reset',
+                              child: Text(
+                                'Xóa Toàn Bộ Dữ Liệu',
+                                style: NotionTypography.bodySm(color: const Color(0xFFB42318)),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
-                  const SizedBox(width: 9),
                 ],
-                Expanded(
-                  child: Text(
-                    title,
-                    style: GoogleFonts.inter(
-                      fontSize: 12.5,
-                      fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-                      color: _textPrimary,
-                    ),
-                  ),
-                ),
-                if (isSelected)
+              ),
+            ),
+
+            // Main Content Area
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // Notion Top Command Bar (Breadcrumb & Status)
                   Container(
-                    width: 4.5,
-                    height: 4.5,
+                    height: 40,
+                    padding: const EdgeInsets.symmetric(horizontal: 18),
                     decoration: const BoxDecoration(
-                      color: _textPrimary,
-                      shape: BoxShape.circle,
+                      color: NotionColors.surface,
+                      border: Border(bottom: BorderSide(color: NotionColors.hairline)),
                     ),
-                  ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSidebarFooter() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      child: Row(
-        children: [
-          Container(
-            width: 6,
-            height: 6,
-            decoration: BoxDecoration(
-              color: _backendOnline
-                  ? const Color(0xFF1F7A4D)
-                  : const Color(0xFFB87214),
-              shape: BoxShape.circle,
-            ),
-          ),
-          const SizedBox(width: 6),
-          Expanded(
-            child: Text(
-              _backendOnline ? 'Cloud Synced' : 'Offline Mode',
-              overflow: TextOverflow.ellipsis,
-              style: GoogleFonts.inter(
-                fontSize: 11,
-                fontWeight: FontWeight.w500,
-                color: _textSecondary,
-              ),
-            ),
-          ),
-          Text(
-            'v3.4',
-            style: GoogleFonts.inter(
-              fontSize: 10.5,
-              fontWeight: FontWeight.w400,
-              color: _textTertiary,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTopAppBar() {
-    final titles = [
-      'Lịch Giảng Dạy Tuần',
-      'Điểm Danh QR Trực Tiếp',
-      'Nhập Danh Sách Lớp & Markbook',
-      'Báo Cáo & Thống Kê Điểm Danh',
-    ];
-    final currentTitle = titles[_nav.currentIndex.clamp(0, titles.length - 1)];
-
-    return Container(
-      height: 48,
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      decoration: const BoxDecoration(
-        color: _canvasBg,
-        border: Border(bottom: BorderSide(color: _borderColor, width: 1)),
-      ),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final isCompact = constraints.maxWidth < 640;
-          final showSearch = constraints.maxWidth > 780;
-
-          return Row(
-            children: [
-              // Breadcrumb
-              if (!isCompact) ...[
-                Text(
-                  'Học Kỳ 2 (2024–2025)',
-                  style: GoogleFonts.inter(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w400,
-                    color: _textTertiary,
-                  ),
-                ),
-                const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 8),
-                  child: Text('/', style: TextStyle(color: _borderColor, fontSize: 13)),
-                ),
-              ],
-              Flexible(
-                child: Text(
-                  currentTitle,
-                  overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.inter(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: _textPrimary,
-                  ),
-                ),
-              ),
-              const Spacer(),
-
-              // Search Bar (⌘K)
-              if (showSearch) ...[
-                Container(
-                  width: 220,
-                  height: 32,
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(4),
-                    border: Border.all(color: _borderColor, width: 1),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.search, size: 14, color: _textTertiary),
-                      const SizedBox(width: 6),
-                      Expanded(
-                        child: TextField(
-                          controller: _searchController,
-                          onChanged: (val) => _nav.updateSearch(val),
-                          style: const TextStyle(fontSize: 12, color: _textPrimary),
-                          decoration: const InputDecoration(
-                            hintText: 'Tìm Kiếm... (⌘K)',
-                            hintStyle: TextStyle(fontSize: 11.5, color: _textTertiary),
-                            border: InputBorder.none,
-                            isDense: true,
-                            contentPadding: EdgeInsets.zero,
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.article_outlined,
+                          size: 14,
+                          color: NotionColors.inkMuted,
+                        ),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            'iPresent  /  ${titles[_nav.currentIndex.clamp(0, 3)]}',
+                            overflow: TextOverflow.ellipsis,
+                            style: GoogleFonts.inter(
+                              fontSize: 12,
+                              color: NotionColors.inkSecondary,
+                              fontWeight: FontWeight.w500,
+                            ),
                           ),
                         ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 10),
-              ],
-
-              // Status Chip: Đã Đồng Bộ
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: _backendOnline ? const Color(0xFFEBF5F0) : const Color(0xFFFDF5E6),
-                  borderRadius: BorderRadius.circular(4),
-                  border: Border.all(
-                    color: _backendOnline ? const Color(0xFFC6E7D6) : const Color(0xFFF6DEB8),
-                    width: 1,
-                  ),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      width: 6,
-                      height: 6,
-                      decoration: BoxDecoration(
-                        color: _backendOnline ? const Color(0xFF1F7A4D) : const Color(0xFFB87214),
-                        shape: BoxShape.circle,
-                      ),
+                        IconButton(
+                          tooltip: 'Làm mới dữ liệu',
+                          onPressed: () => _checkBackendHealth(),
+                          icon: const Icon(Icons.refresh, size: 15, color: NotionColors.inkMuted),
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                        ),
+                      ],
                     ),
-                    const SizedBox(width: 5),
-                    Text(
-                      _backendOnline ? 'Đã Đồng Bộ' : 'Ngoại Tuyến',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w500,
-                        color: _backendOnline ? const Color(0xFF1F7A4D) : const Color(0xFFB87214),
-                      ),
-                    ),
-                  ],
-                ),
+                  ),
+                  Expanded(child: _buildCurrentView()),
+                ],
               ),
-            ],
-          );
+            ),
+          ],
+        ),
+      );
+    },
+  );
+
+  Future<void> _showResetDialog() async {
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => AppResetDialog(
+        onReset: () {
+          _nav.clearWorkspace();
         },
       ),
     );
   }
 
   Widget _buildCurrentView() {
+    if (_nav.resetting) return const Center(child: Text('Đang Xóa Dữ Liệu…'));
     return IndexedStack(
+      key: ValueKey(_nav.workspaceVersion),
       index: _nav.currentIndex.clamp(0, 3),
       children: [
         // Tab 0: Lịch Giảng Dạy (ScheduleGeneratorScreen)
@@ -613,6 +506,7 @@ class _AppShellState extends State<AppShell> {
                 className: _nav.activeClassName,
                 lessonLabel: _nav.activeLessonLabel,
                 roster: _nav.activeRoster,
+                storageService: widget.storageService,
               )
             : _buildEmptyQrPlaceholder(),
 
@@ -620,7 +514,7 @@ class _AppShellState extends State<AppShell> {
         const ImportScreen(),
 
         // Tab 3: Báo Cáo & Thống Kê (ReportsScreen)
-        const ReportsScreen(),
+        ReportsScreen(storageService: widget.storageService),
       ],
     );
   }
@@ -631,38 +525,43 @@ class _AppShellState extends State<AppShell> {
         constraints: const BoxConstraints(maxWidth: 440),
         padding: const EdgeInsets.all(28),
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(6),
+          color: NotionColors.surface,
+          borderRadius: NotionRounded.lg,
           border: Border.all(color: _borderColor, width: 1),
+          boxShadow: NotionElevation.soft,
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text(
+            Text(
               'Chưa Có Dữ Liệu Lịch Giảng Dạy',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: _textPrimary,
-              ),
+              style: NotionTypography.heading3(color: _textPrimary),
             ),
             const SizedBox(height: 8),
-            const Text(
+            Text(
               'Vui lòng nạp file Markbook để hệ thống tạo thời khóa biểu và danh sách lớp học.',
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 13, color: _textSecondary),
+              style: NotionTypography.bodySm(color: _textSecondary),
             ),
             const SizedBox(height: 18),
-            OutlinedButton(
-              style: OutlinedButton.styleFrom(
-                backgroundColor: _textPrimary,
-                foregroundColor: Colors.white,
-                side: const BorderSide(color: _textPrimary),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: NotionColors.primary,
+                foregroundColor: NotionColors.onPrimary,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                minimumSize: const Size(0, 36),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 18,
+                  vertical: 8,
+                ),
               ),
               onPressed: () => _nav.navigateToTab(2),
-              child: const Text('Nhập File Lớp', style: TextStyle(fontSize: 13)),
+              child: const Text(
+                'Nhập File Lớp',
+                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+              ),
             ),
           ],
         ),
@@ -673,41 +572,61 @@ class _AppShellState extends State<AppShell> {
   Widget _buildEmptyQrPlaceholder() {
     return Center(
       child: Container(
-        constraints: const BoxConstraints(maxWidth: 440),
+        constraints: const BoxConstraints(maxWidth: 420),
         padding: const EdgeInsets.all(28),
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(6),
-          border: Border.all(color: _borderColor, width: 1),
+          color: NotionColors.surface,
+          borderRadius: NotionRounded.lg,
+          border: Border.all(color: NotionColors.hairline, width: 1),
+          boxShadow: NotionElevation.soft,
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text(
-              'Sẵn Sàng Phát Mã QR',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: _textPrimary,
+            Container(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(
+                color: NotionColors.canvasSoft,
+                borderRadius: NotionRounded.md,
+                border: Border.all(color: NotionColors.hairline, width: 1),
               ),
+              child: const Icon(
+                Icons.qr_code_2_outlined,
+                size: 28,
+                color: NotionColors.inkMuted,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Chưa có buổi học nào được chọn',
+              style: NotionTypography.heading3(color: _textPrimary),
             ),
             const SizedBox(height: 8),
-            const Text(
+            Text(
               'Chọn một buổi học từ tab "Lịch Giảng Dạy" và nhấn "Tạo Phiên Điểm Danh" để mở màn hình quét mã QR.',
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 13, color: _textSecondary),
+              style: NotionTypography.bodySm(color: _textSecondary),
             ),
             const SizedBox(height: 18),
-            OutlinedButton(
-              style: OutlinedButton.styleFrom(
-                backgroundColor: _textPrimary,
-                foregroundColor: Colors.white,
-                side: const BorderSide(color: _textPrimary),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: NotionColors.primary,
+                foregroundColor: NotionColors.onPrimary,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                minimumSize: const Size(0, 36),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 18,
+                  vertical: 8,
+                ),
               ),
               onPressed: () => _nav.navigateToTab(0),
-              child: const Text('Xem Lịch & Chọn Buổi Học', style: TextStyle(fontSize: 13)),
+              child: const Text(
+                'Xem Lịch & Chọn Buổi Học',
+                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+              ),
             ),
           ],
         ),
