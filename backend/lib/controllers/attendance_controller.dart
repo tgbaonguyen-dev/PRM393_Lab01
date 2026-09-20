@@ -6,6 +6,7 @@ import '../services/attendance_service.dart';
 import '../services/auth_service.dart';
 import '../services/qr_service.dart';
 import '../services/schedule_service.dart';
+import '../services/session_service.dart';
 
 // Controller tiếp nhận Request liên quan đến Điểm danh & Sửa kết quả
 
@@ -15,6 +16,7 @@ class AttendanceController {
   final SheetsRepository _sheetsRepository;
   final ScheduleRepository? _scheduleRepository;
   final QrService _qrService;
+  final SessionService? _sessionService;
 
   AttendanceController({
     AttendanceService? attendanceService,
@@ -23,12 +25,14 @@ class AttendanceController {
     ScheduleRepository? scheduleRepository,
     String? qrSecret,
     QrService? qrService,
+    SessionService? sessionService,
   })  : _sheetsRepository = sheetsRepository ?? SheetsRepository(),
         _attendanceService = attendanceService ??
             AttendanceService(sheetsRepository: sheetsRepository),
         _authService = authService ?? AuthService(),
         _scheduleRepository = scheduleRepository,
-        _qrService = qrService ?? QrService(secret: qrSecret);
+        _qrService = qrService ?? QrService(secret: qrSecret),
+        _sessionService = sessionService;
 
   Router get router {
     final router = Router();
@@ -45,6 +49,8 @@ class AttendanceController {
     router.post('/<sessionId>/attendances/manual-override', handleManualEdit);
     router.post('/manual-edit', handleManualEdit);
     router.post('/attendance/manual-edit', handleManualEdit);
+    router.post('/init-absent', handleInitAbsent);
+    router.post('/attendance/init-absent', handleInitAbsent);
     router.post('/checkin', _handleCheckIn);
     router.post('/attendance/checkin', _handleCheckIn);
 
@@ -162,6 +168,47 @@ class AttendanceController {
     }
   }
 
+  // Xử lý POST /attendance/init-absent: Khởi tạo tất cả sinh viên chưa điểm danh thành 'A'
+  Future<Response> handleInitAbsent(Request request) async {
+    try {
+      final bodyString = await request.readAsString();
+      if (bodyString.isEmpty) {
+        return Response.badRequest(
+          body:
+              jsonEncode({'success': false, 'error': 'Request body is empty'}),
+          headers: {'Content-Type': 'application/json'},
+        );
+      }
+
+      final Map<String, dynamic> data = jsonDecode(bodyString);
+      final String? sessionId = data['sessionId']?.toString();
+
+      if (sessionId == null || sessionId.trim().isEmpty) {
+        return Response.badRequest(
+          body: jsonEncode(
+              {'success': false, 'error': 'sessionId is required'}),
+          headers: {'Content-Type': 'application/json'},
+        );
+      }
+
+      // Kích hoạt openAttendanceWindow trên Google Sheets để batch điền 'A' cho các ô trống
+      await _sheetsRepository.openAttendanceWindow(sessionId.trim());
+
+      return Response.ok(
+        jsonEncode({
+          'success': true,
+          'message': 'Đã khởi tạo trạng thái vắng (A) cho ca học thành công',
+        }),
+        headers: {'Content-Type': 'application/json'},
+      );
+    } catch (e) {
+      return Response.internalServerError(
+        body: jsonEncode({'success': false, 'error': e.toString()}),
+        headers: {'Content-Type': 'application/json'},
+      );
+    }
+  }
+
   Future<Response> _handleCheckIn(Request request) async {
     try {
       final body = jsonDecode(await request.readAsString());
@@ -230,17 +277,38 @@ class AttendanceController {
             'Email Google (${identity.email}) không thuộc danh sách lớp học phần $classId.');
       }
 
+      // Xác định phiên điểm danh đang mở: ưu tiên từ SessionService trong bộ nhớ
+      String? activeWindowId;
+      bool isOpen = false;
+
+      if (_sessionService != null) {
+        try {
+          final sessionWindow = await _sessionService!.requireOpenSession(
+            sessionId: sessionId,
+            classId: classId,
+          );
+          isOpen = sessionWindow.isOpen;
+          activeWindowId = sessionWindow.windowId;
+        } catch (_) {}
+      }
+
       final activeWindow = await _sheetsRepository.getActiveWindow(sessionId);
-      if (activeWindow == null || activeWindow['isOpen'] != true) {
+      if (activeWindow != null && activeWindow['isOpen'] == true) {
+        isOpen = true;
+        final gatewayWindowId =
+            (activeWindow['windowId'] ?? activeWindow['id'])?.toString().trim();
+        activeWindowId ??= gatewayWindowId;
+        if (qr.windowId == gatewayWindowId) {
+          activeWindowId = gatewayWindowId;
+        }
+      }
+
+      if (!isOpen || activeWindowId == null || activeWindowId.isEmpty) {
         return _jsonError(409, 'SESSION_CLOSED',
             'Phiên điểm danh đã đóng hoặc chưa được mở.');
       }
 
-      final activeWindowId =
-          (activeWindow['windowId'] ?? activeWindow['id'])?.toString().trim();
-      if (activeWindowId == null ||
-          activeWindowId.isEmpty ||
-          qr.windowId != activeWindowId) {
+      if (qr.windowId != activeWindowId) {
         return _jsonError(400, 'QR_EXPIRED',
             'Mã QR thuộc phiên cũ. Vui lòng quét mã mới nhất.');
       }

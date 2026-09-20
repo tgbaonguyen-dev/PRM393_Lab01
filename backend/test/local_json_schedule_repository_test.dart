@@ -62,7 +62,8 @@ void main() {
     expect((retrieved['lessons'] as List), hasLength(1));
   });
 
-  test('saveAll stores multiple schedules and list/getAll returns active only', () async {
+  test('saveAll stores multiple schedules and list/getAll returns active only',
+      () async {
     final schedule1 = {
       'classOffering': {
         'classId': 'CLASS_1',
@@ -99,5 +100,36 @@ void main() {
     final updatedAll = await repository.getAll();
     expect(updatedAll, hasLength(1));
     expect(updatedAll.first['classOffering']['classId'], 'CLASS_2');
+  });
+
+  test('saveAll with clearPrevious resets old classes', () async {
+    final oldSchedule = {
+      'classOffering': {
+        'classId': 'OLD_CLASS',
+        'classCode': 'OLD001',
+        'active': true,
+      },
+      'students': [],
+      'lessons': [],
+    };
+    await repository.saveAll([oldSchedule]);
+    expect((await repository.getAll()), hasLength(1));
+
+    final newSchedule = {
+      'classOffering': {
+        'classId': 'NEW_CLASS',
+        'classCode': 'NEW001',
+        'active': true,
+      },
+      'students': [],
+      'lessons': [],
+    };
+    await repository.saveAll([newSchedule], clearPrevious: true);
+    await repository.syncActiveClassIds({'NEW_CLASS'}, clearPrevious: true);
+
+    expect(await repository.get('OLD_CLASS'), isNull);
+    final all = await repository.getAll();
+    expect(all, hasLength(1));
+    expect(all.first['classOffering']['classId'], 'NEW_CLASS');
   });
 }

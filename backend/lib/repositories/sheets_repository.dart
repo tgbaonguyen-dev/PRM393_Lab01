@@ -98,10 +98,12 @@ class SheetsRepository {
   Future<Map<String, dynamic>> syncAllClasses({
     required List<dynamic> classes,
     required String startDate,
+    bool clearPrevious = false,
   }) async {
     final res = await _postToGateway('syncAllClasses', {
       'classes': classes,
       'startDate': startDate,
+      'clearPrevious': clearPrevious,
     });
     return {
       'success': res['success'] == true,

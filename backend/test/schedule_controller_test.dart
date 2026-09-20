@@ -37,10 +37,18 @@ class _ControllerFakeRepository implements ScheduleRepository {
       true;
 
   @override
-  Future<bool> saveAll(List<Map<String, dynamic>> schedules) async => true;
+  Future<bool> saveAll(
+    List<Map<String, dynamic>> schedules, {
+    bool clearPrevious = false,
+  }) async =>
+      true;
 
   @override
-  Future<bool> syncActiveClassIds(Set<String> activeClassIds) async => true;
+  Future<bool> syncActiveClassIds(
+    Set<String> activeClassIds, {
+    bool clearPrevious = false,
+  }) async =>
+      true;
 
   @override
   Future<Map<String, dynamic>?> get(String classId) async => null;

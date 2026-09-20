@@ -108,6 +108,8 @@ class _StudentAttendanceTableState extends State<StudentAttendanceTable> {
             SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: DataTable(
+                columnSpacing: 18,
+                horizontalMargin: 16,
                 headingRowColor: WidgetStateProperty.all(
                   const Color(0xFFF8FAFC),
                 ),
@@ -119,13 +121,83 @@ class _StudentAttendanceTableState extends State<StudentAttendanceTable> {
                 dataRowMinHeight: 52,
                 dataRowMaxHeight: 56,
                 columns: const [
-                  DataColumn(label: Text('STT')),
-                  DataColumn(label: Text('MSSV')),
-                  DataColumn(label: Text('Họ và Tên')),
-                  DataColumn(label: Text('Email')),
-                  DataColumn(label: Text('Trạng thái')),
-                  DataColumn(label: Text('Nguồn gốc')),
-                  DataColumn(label: Text('Thao tác')),
+                  DataColumn(
+                    columnWidth: FixedColumnWidth(54),
+                    label: Flexible(
+                      child: Text(
+                        'STT',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        softWrap: false,
+                      ),
+                    ),
+                  ),
+                  DataColumn(
+                    columnWidth: FixedColumnWidth(110),
+                    label: Flexible(
+                      child: Text(
+                        'MSSV',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        softWrap: false,
+                      ),
+                    ),
+                  ),
+                  DataColumn(
+                    columnWidth: FixedColumnWidth(180),
+                    label: Flexible(
+                      child: Text(
+                        'Họ và Tên',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        softWrap: false,
+                      ),
+                    ),
+                  ),
+                  DataColumn(
+                    columnWidth: FixedColumnWidth(230),
+                    label: Flexible(
+                      child: Text(
+                        'Email',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        softWrap: false,
+                      ),
+                    ),
+                  ),
+                  DataColumn(
+                    columnWidth: FixedColumnWidth(120),
+                    label: Flexible(
+                      child: Text(
+                        'Trạng thái',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        softWrap: false,
+                      ),
+                    ),
+                  ),
+                  DataColumn(
+                    columnWidth: FixedColumnWidth(110),
+                    label: Flexible(
+                      child: Text(
+                        'Nguồn gốc',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        softWrap: false,
+                      ),
+                    ),
+                  ),
+                  DataColumn(
+                    columnWidth: FixedColumnWidth(120),
+                    label: Flexible(
+                      child: Text(
+                        'Thao tác',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        softWrap: false,
+                      ),
+                    ),
+                  ),
                 ],
                 rows: List<DataRow>.generate(filteredStudents.length, (index) {
                   final s = filteredStudents[index];

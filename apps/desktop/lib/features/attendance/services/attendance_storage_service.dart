@@ -156,4 +156,43 @@ class AttendanceStorageService {
   Future<void> resetStore() async {
     await saveStore(<String, Map<int, Map<String, String>>>{});
   }
+
+  /// Lấy ma trận điểm danh hợp nhất cho một lớp từ tất cả các alias key khả dĩ trong store
+  static Map<int, Map<String, String>> resolveClassAttendance({
+    required Map<String, Map<int, Map<String, String>>> store,
+    String? scheduleCode,
+    required String subjectCode,
+    required String classCode,
+    String? customClassName,
+  }) {
+    final candidateKeys = <String>[
+      if (scheduleCode != null && scheduleCode.isNotEmpty)
+        '${scheduleCode}_${subjectCode}_$classCode',
+      '$subjectCode - $classCode',
+      '${subjectCode}_$classCode',
+      if (customClassName != null && customClassName.isNotEmpty) customClassName,
+      classCode,
+    ];
+
+    final merged = <int, Map<String, String>>{};
+    for (final key in candidateKeys) {
+      final slotMap = store[key];
+      if (slotMap != null) {
+        for (final entry in slotMap.entries) {
+          final slotNum = entry.key;
+          final studentMap = merged.putIfAbsent(slotNum, () => <String, String>{});
+          for (final sEntry in entry.value.entries) {
+            final email = sEntry.key.trim().toLowerCase();
+            final st = sEntry.value.trim().toUpperCase();
+            if (st == 'P') {
+              studentMap[email] = 'P';
+            } else if (st == 'A') {
+              studentMap.putIfAbsent(email, () => 'A');
+            }
+          }
+        }
+      }
+    }
+    return merged;
+  }
 }

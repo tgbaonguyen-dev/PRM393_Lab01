@@ -93,7 +93,7 @@ function doGet(e) {
 function dispatchAction(action, payload) {
   switch (action) {
     case 'syncAllClasses':
-      return DatabaseService.syncAllClassesFromDesktop(payload.classes, payload.startDate);
+      return DatabaseService.syncAllClassesFromDesktop(payload.classes, payload.startDate, payload.clearPrevious);
     case 'saveClassOffering':
       return DatabaseService.saveClassOffering(payload.offering, payload.roster, payload.lessons);
     case 'saveClassOfferings':
@@ -126,6 +126,8 @@ function dispatchAction(action, payload) {
       return DatabaseService.getActiveWindow(payload.lessonId || payload.sessionId);
     case 'isStudentInClass':
       return DatabaseService.isStudentInClass(payload.classId, payload.studentEmail);
+    case 'resetSlotAttendance':
+      return DatabaseService.resetSlotAttendance(payload.lessonId || payload.sessionId, payload.status || 'A');
     case 'clearAllDatabase':
       return DatabaseService.clearAllDatabase();
     default:
@@ -437,7 +439,7 @@ var DatabaseService = {
    * 3. Bảo vệ dữ liệu điểm danh: Lớp bị loại khỏi import nếu đã có điểm danh thì chuyển sang [Archived], không xoá
    * 4. Sheet trắng chưa điểm danh thì xoá an toàn
    */
-  syncAllClassesFromDesktop: function (classes, startDateStr) {
+  syncAllClassesFromDesktop: function (classes, startDateStr, clearPrevious) {
     var ss = this.getSpreadsheet();
 
     // 1. Quản lý Sheet OVERVIEW (Nếu đã có thì cập nhật, chưa có thì tạo mới)
@@ -452,6 +454,23 @@ var DatabaseService = {
       ss.setActiveSheet(overviewSheet);
       ss.moveActiveSheet(1);
     } catch (orderErr) {}
+
+    // Nếu người dùng yêu cầu xóa thông tin của các sheet trước đó khi upload markbook mới
+    if (clearPrevious === true) {
+      var allExistingSheets = ss.getSheets();
+      for (var sIdx = allExistingSheets.length - 1; sIdx >= 0; sIdx--) {
+        var sToDel = allExistingSheets[sIdx];
+        var sToDelName = sToDel.getName();
+        if (sToDelName !== 'Overview' && sToDelName.indexOf('Temp_') !== 0) {
+          try {
+            ss.deleteSheet(sToDel);
+            Logger.log('Đã xóa sheet cũ trước đó: ' + sToDelName);
+          } catch (e) {
+            Logger.log('Không thể xóa sheet cũ: ' + sToDelName + ': ' + e);
+          }
+        }
+      }
+    }
 
     // 2. Đồng bộ từng lớp học và thu thập danh sách tên sheet active
     var expectedSheetNames = {};
@@ -477,7 +496,7 @@ var DatabaseService = {
           ss.moveActiveSheet(i + 2);
         } catch (moveErr) {}
 
-        this.setupClassMarkbookSheet(classSheet, cls, startDateStr);
+        this.setupClassMarkbookSheet(classSheet, cls, startDateStr, clearPrevious);
       } catch (classErr) {
         Logger.log('Lỗi đồng bộ sheet lớp ' + i + ': ' + classErr);
       }
@@ -615,37 +634,39 @@ var DatabaseService = {
    * Thiết lập Sheet Markbook cho 1 Lớp cụ thể (như hình ảnh mong muốn)
    * Tự động bảo toàn các dấu điểm danh (P / A) đã ghi nhận trước đó
    */
-  setupClassMarkbookSheet: function (sheet, cls, startDateStr) {
+  setupClassMarkbookSheet: function (sheet, cls, startDateStr, clearPrevious) {
     var lessons = cls.lessons || [];
     var slotCount = lessons.length > 0 ? lessons.length : (cls.slotCount || 20);
     var scheduleInfo = this.getScheduleDescription(cls.scheduleCode);
 
-    // 0. Nếu sheet đã có dữ liệu trước đó, bảo toàn toàn bộ kết quả điểm danh (P / A)
+    // 0. Nếu không yêu cầu clearPrevious và sheet đã có dữ liệu trước đó, bảo toàn toàn bộ kết quả điểm danh (P / A)
     var existingAttendance = {};
-    try {
-      if (sheet.getLastRow() >= 3 && sheet.getLastColumn() >= 6) {
-        var existingData = sheet.getDataRange().getValues();
-        for (var er = 2; er < existingData.length; er++) {
-          var eRoll = String(existingData[er][1] || '').trim().toLowerCase();
-          var eEmail = String(existingData[er][3] || '').trim().toLowerCase();
-          if (!eEmail && !eRoll) continue;
+    if (!clearPrevious) {
+      try {
+        if (sheet.getLastRow() >= 3 && sheet.getLastColumn() >= 6) {
+          var existingData = sheet.getDataRange().getValues();
+          for (var er = 2; er < existingData.length; er++) {
+            var eRoll = String(existingData[er][1] || '').trim().toLowerCase();
+            var eEmail = String(existingData[er][3] || '').trim().toLowerCase();
+            if (!eEmail && !eRoll) continue;
 
-          var attMap = {};
-          for (var es = 1; es <= slotCount; es++) {
-            var colIdx = 5 + es - 1; // 0-indexed: Cột F là index 5 (Slot 1)
-            if (colIdx < existingData[er].length) {
-              var mark = String(existingData[er][colIdx] || '').trim();
-              if (mark === 'P' || mark === 'A') {
-                attMap[es] = mark;
+            var attMap = {};
+            for (var es = 1; es <= slotCount; es++) {
+              var colIdx = 5 + es - 1; // 0-indexed: Cột F là index 5 (Slot 1)
+              if (colIdx < existingData[er].length) {
+                var mark = String(existingData[er][colIdx] || '').trim();
+                if (mark === 'P' || mark === 'A') {
+                  attMap[es] = mark;
+                }
               }
             }
+            if (eEmail) existingAttendance[eEmail] = attMap;
+            if (eRoll) existingAttendance[eRoll] = attMap;
           }
-          if (eEmail) existingAttendance[eEmail] = attMap;
-          if (eRoll) existingAttendance[eRoll] = attMap;
         }
+      } catch (readErr) {
+        Logger.log('Không thể đọc dữ liệu điểm danh cũ: ' + readErr);
       }
-    } catch (readErr) {
-      Logger.log('Không thể đọc dữ liệu điểm danh cũ: ' + readErr);
     }
 
     sheet.clear();
@@ -855,19 +876,39 @@ var DatabaseService = {
     var data = targetSheet.getDataRange().getValues();
     if (data.length <= 2) return [];
 
-    var colIndex = 5 + parts.sequenceNumber - 1; // 0-indexed
+    var targetCol = 5 + parts.sequenceNumber;
+    var numRows = data.length - 2;
+    var range = targetSheet.getRange(3, targetCol, numRows, 1);
+    var colValues = range.getValues();
     var results = [];
+    var hasBlankChanges = false;
 
-    for (var r = 2; r < data.length; r++) {
-      var email = String(data[r][3]).trim().toLowerCase();
-      var val = String(data[r][colIndex] || '').trim();
-      if (email && val) {
+    for (var r = 0; r < colValues.length; r++) {
+      var email = String(data[r + 2][3] || '').trim().toLowerCase();
+      var rollNumber = String(data[r + 2][1] || '').trim();
+      var fullName = String(data[r + 2][2] || '').trim();
+      var val = String(colValues[r][0] || '').trim().toUpperCase();
+
+      if (email) {
+        // Tự động khởi tạo 'A' cho sinh viên chưa điểm danh để không bị ô trống trên Google Sheet
+        if (val === '') {
+          colValues[r][0] = 'A';
+          val = 'A';
+          hasBlankChanges = true;
+        }
         results.push({
           studentEmail: email,
+          rollNumber: rollNumber,
+          fullName: fullName,
           status: val,
           isManualOverride: false
         });
       }
+    }
+
+    if (hasBlankChanges) {
+      range.setValues(colValues);
+      SpreadsheetApp.flush();
     }
 
     return results;
@@ -887,9 +928,9 @@ var DatabaseService = {
       var sheetName = sheet.getName();
       var lowerName = sheetName.toLowerCase();
 
-      // Bỏ qua các sheet hệ thống
+      // Bỏ qua các sheet hệ thống và sheet đã lưu trữ (Archived)
       if (lowerName === 'overview' || lowerName.indexOf('temp_') === 0 ||
-          lowerName.indexOf('[archived]') === 0 || lowerName === 'classes' ||
+          lowerName.indexOf('archived') !== -1 || lowerName === 'classes' ||
           lowerName === 'students' || lowerName === 'lessons') {
         continue;
       }
@@ -963,19 +1004,39 @@ var DatabaseService = {
       var ss = this.getSpreadsheet();
       var targetSheet = this.findClassSheet(ss, parts);
       if (targetSheet) {
-        var data = targetSheet.getDataRange().getValues();
-        var targetCol = 5 + parts.sequenceNumber;
-        for (var r = 2; r < data.length; r++) {
-          var currentVal = String(data[r][targetCol - 1] || '').trim();
-          if (currentVal === '') {
-            targetSheet.getRange(r + 1, targetCol).setValue('A');
+        var numRows = targetSheet.getLastRow() - 2;
+        if (numRows > 0) {
+          var targetCol = 5 + parts.sequenceNumber;
+          var range = targetSheet.getRange(3, targetCol, numRows, 1);
+          var vals = range.getValues();
+          var hasChanges = false;
+          for (var r = 0; r < vals.length; r++) {
+            var currentVal = String(vals[r][0] || '').trim().toUpperCase();
+            if (currentVal === '') {
+              vals[r][0] = 'A';
+              hasChanges = true;
+            }
+          }
+          if (hasChanges) {
+            range.setValues(vals);
+            SpreadsheetApp.flush();
           }
         }
-        SpreadsheetApp.flush();
       }
     }
 
     var props = PropertiesService.getScriptProperties();
+    // Nếu ca này đã đang mở và trùng lessonId thì giữ nguyên windowId hiện tại
+    var windowStr = props.getProperty('ACTIVE_WINDOW');
+    if (windowStr) {
+      try {
+        var existingWin = JSON.parse(windowStr);
+        if (existingWin.isOpen && (!lessonId || existingWin.lessonId === lessonId) && existingWin.id) {
+          return existingWin;
+        }
+      } catch (e) {}
+    }
+
     var windowId = 'win_' + new Date().getTime();
     var windowData = {
       id: windowId,
@@ -1021,7 +1082,7 @@ var DatabaseService = {
       var sheet = sheets[i];
       var sheetName = sheet.getName().toLowerCase();
       if (sheetName === 'overview' || sheetName.indexOf('temp_') === 0 ||
-          sheetName.indexOf('[archived]') === 0 ||
+          sheetName.indexOf('archived') !== -1 ||
           sheetName === 'classes' || sheetName === 'students' || sheetName === 'lessons') continue;
 
       // Khớp theo classId (ví dụ 11_PRN232_SE1917 hoặc PRN232_SE1917_FA26)
@@ -1047,6 +1108,39 @@ var DatabaseService = {
     return false;
   },
 
+  /**
+   * Reset toàn bộ trạng thái điểm danh của 1 slot về 'A' (hoặc giá trị chỉ định)
+   * Giúp khởi tạo buổi học mới hoặc sửa lại toàn bộ ô bị lỗi
+   */
+  resetSlotAttendance: function (lessonId, defaultStatus) {
+    var ss = this.getSpreadsheet();
+    var parts = this.parseLessonId(lessonId);
+    if (!parts) return { success: false, error: 'Sai định dạng lessonId: ' + lessonId };
+
+    var targetSheet = this.findClassSheet(ss, parts);
+    if (!targetSheet) return { success: false, error: 'Không tìm thấy sheet của lớp' };
+
+    var numRows = targetSheet.getLastRow() - 2;
+    if (numRows <= 0) return { success: false, error: 'Sheet không có dữ liệu sinh viên' };
+
+    var targetCol = 5 + parts.sequenceNumber;
+    var range = targetSheet.getRange(3, targetCol, numRows, 1);
+    var st = defaultStatus || 'A';
+    var vals = [];
+    for (var r = 0; r < numRows; r++) {
+      vals.push([st]);
+    }
+    range.setValues(vals);
+    SpreadsheetApp.flush();
+
+    return {
+      success: true,
+      className: parts.className,
+      sequenceNumber: parts.sequenceNumber,
+      count: numRows,
+      status: st
+    };
+  },
 
   /**
    * Khởi tạo bảng mẫu mặc định nếu chạy lần đầu
@@ -1074,55 +1168,108 @@ var DatabaseService = {
   },
 
   /**
-   * Tìm sheet của lớp bằng cách khớp cả className và subjectCode
+   * Tìm sheet của lớp bằng cách khớp cả className và subjectCode, loại bỏ triệt để các sheet Archived
    */
   findClassSheet: function (ss, parts) {
     var sheets = ss.getSheets();
+    var nonArchivedSheets = [];
+
     for (var i = 0; i < sheets.length; i++) {
       var sName = sheets[i].getName();
-      if (sName === 'Overview' || sName.indexOf('Temp_') === 0 || sName.indexOf('[Archived]') === 0 ||
-          sName === 'Classes' || sName === 'Students' || sName === 'Lessons') continue;
-      var matchClass = sName.toLowerCase().indexOf(parts.className.toLowerCase()) !== -1;
-      var matchSubject = !parts.subjectCode || sName.toLowerCase().indexOf(parts.subjectCode.toLowerCase()) !== -1;
-      if (matchClass && matchSubject) {
-        return sheets[i];
+      var lower = sName.toLowerCase();
+      if (lower === 'overview' || lower.indexOf('temp_') === 0 || lower.indexOf('archived') !== -1 ||
+          lower === 'classes' || lower === 'students' || lower === 'lessons') {
+        continue;
+      }
+      nonArchivedSheets.push(sheets[i]);
+    }
+
+    var targetClassName = parts.className ? parts.className.toLowerCase() : '';
+    var targetSubject = parts.subjectCode ? parts.subjectCode.toLowerCase() : '';
+    var targetSchedule = parts.scheduleCode ? String(parts.scheduleCode) : '';
+
+    // Pass 1: Khớp chính xác scheduleCode + subjectCode + className (ví dụ 14_PRM393_SE1920)
+    if (targetSchedule && targetSubject && targetClassName) {
+      for (var i = 0; i < nonArchivedSheets.length; i++) {
+        var lower = nonArchivedSheets[i].getName().toLowerCase();
+        if (lower.indexOf(targetSchedule) !== -1 && lower.indexOf(targetSubject) !== -1 && lower.indexOf(targetClassName) !== -1) {
+          return nonArchivedSheets[i];
+        }
       }
     }
+
+    // Pass 2: Khớp cả className và subjectCode (tránh nhầm môn giữa SE1917 của PRN232 và PRM393)
+    if (targetSubject && targetClassName) {
+      for (var i = 0; i < nonArchivedSheets.length; i++) {
+        var lower = nonArchivedSheets[i].getName().toLowerCase();
+        if (lower.indexOf(targetSubject) !== -1 && lower.indexOf(targetClassName) !== -1) {
+          return nonArchivedSheets[i];
+        }
+      }
+    }
+
+    // Pass 3: Khớp tên lớp className
+    if (targetClassName) {
+      for (var i = 0; i < nonArchivedSheets.length; i++) {
+        var lower = nonArchivedSheets[i].getName().toLowerCase();
+        if (lower.indexOf(targetClassName) !== -1) {
+          return nonArchivedSheets[i];
+        }
+      }
+    }
+
     return null;
   },
 
   /**
-   * Phân tích lessonId dạng 'PRM393_SE1917_Lesson_1' thành subjectCode, className và sequenceNumber
+   * Phân tích lessonId dạng '11_PRN232_SE1917-L03' hoặc 'PRM393_SE1917-L01' thành scheduleCode, subjectCode, className và sequenceNumber
    */
   parseLessonId: function (lessonId) {
     if (!lessonId) return null;
-    // M1 canonical ID: SUBJECT_CLASS_SEMESTER-L01.
-    // Keep the older SUBJECT_CLASS_Lesson_1 form for existing attendance code.
-    var m1Match = lessonId.match(/^([A-Za-z0-9]+)_([A-Za-z0-9]+)(?:_[A-Za-z0-9]+)?-L(\d+)$/i);
-    if (m1Match) {
+    var str = String(lessonId).trim();
+
+    // Pattern 1: [optional scheduleCode_] subjectCode _ classCode [optional _semester] -L sequenceNumber
+    // E.g. 11_PRN232_SE1917-L03, PRM393_SE1917-L01, 11_PRN232_SE1917_FA26-L03, 14_PRM393_SE1920-L01
+    var m1 = str.match(/^(?:(\d+)_)?([A-Za-z0-9]+)_([A-Za-z0-9]+)(?:_[A-Za-z0-9]+)?-L(\d+)$/i);
+    if (m1) {
       return {
-        subjectCode: m1Match[1],
-        className: m1Match[2],
-        sequenceNumber: parseInt(m1Match[3], 10)
+        scheduleCode: m1[1] || '',
+        subjectCode: m1[2],
+        className: m1[3],
+        sequenceNumber: parseInt(m1[4], 10)
       };
     }
-    var match = lessonId.match(/^([A-Za-z0-9]+)_([A-Za-z0-9]+)_Lesson_(\d+)/i);
-    if (match) {
+
+    // Pattern 2: [optional scheduleCode_] subjectCode _ classCode _Lesson_ sequenceNumber
+    var m2 = str.match(/^(?:(\d+)_)?([A-Za-z0-9]+)_([A-Za-z0-9]+)_Lesson_(\d+)$/i);
+    if (m2) {
       return {
-        subjectCode: match[1],
-        className: match[2],
-        sequenceNumber: parseInt(match[3], 10)
+        scheduleCode: m2[1] || '',
+        subjectCode: m2[2],
+        className: m2[3],
+        sequenceNumber: parseInt(m2[4], 10)
       };
     }
-    var fallback = lessonId.match(/_([A-Za-z0-9]+)_Lesson_(\d+)/i);
-    if (fallback) {
+
+    // Pattern 3: Explicit slot suffix like -slot-1 or _slot1
+    var m3 = str.match(/(?:-|_)(?:slot|lesson|l)(\d+)$/i);
+    if (m3) {
       return {
+        scheduleCode: '',
         subjectCode: '',
-        className: fallback[1],
-        sequenceNumber: parseInt(fallback[2], 10)
+        className: str.replace(m3[0], ''),
+        sequenceNumber: parseInt(m3[1], 10)
       };
     }
-    return null;
+
+    // Pattern 4: Fallback - Do NOT treat 4-digit class years (like 1920) as slot sequence!
+    var seqMatch = str.match(/-(?:L)?(\d{1,2})$/i);
+    return {
+      scheduleCode: '',
+      subjectCode: '',
+      className: str,
+      sequenceNumber: seqMatch ? parseInt(seqMatch[1], 10) : 1
+    };
   },
 
   getScheduleDescription: function (code) {

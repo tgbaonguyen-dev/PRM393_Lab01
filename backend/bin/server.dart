@@ -32,8 +32,9 @@ Future<void> main() async {
   final qrService = QrService(
     secret: qrSecret.isNotEmpty ? qrSecret : 'dev-secret-key-prm393-attendance',
   );
+  final sessionService = SessionService(repository: sheetsRepo);
   final sessionController = SessionController(
-    sessionService: SessionService(repository: sheetsRepo),
+    sessionService: sessionService,
     qrService: qrService,
     checkInBaseUrl: env['STUDENT_CHECKIN_BASE_URL'],
   );
@@ -48,6 +49,7 @@ Future<void> main() async {
       allowMockToken: env['ALLOW_MOCK_GOOGLE_TOKEN'] == 'true',
     ),
     qrService: qrService,
+    sessionService: sessionService,
   );
 
   final router = Router()

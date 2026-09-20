@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:http/http.dart' as http;
 
@@ -56,12 +57,14 @@ class ScheduleApiClient {
   Future<String> saveSchedules({
     required List<ImportedClass> importedClasses,
     required Map<String, List<ClassLesson>> schedules,
+    bool clearPrevious = false,
   }) async {
     final response = await _send(
       _client.post(
         Uri.parse('$baseUrl/schedule/save-all'),
         headers: const {'content-type': 'application/json'},
         body: jsonEncode({
+          'clearPrevious': clearPrevious,
           'activeClassIds': importedClasses
               .map((importedClass) => importedClass.offeringId)
               .toList(),
@@ -113,14 +116,69 @@ class ScheduleApiClient {
   }
 
   Future<SavedSchedules> loadSavedSchedules() async {
-    final response = await _send(
-      _client.get(Uri.parse('$baseUrl/schedule/all')),
-    );
-    final body = _decode(response);
-    if (response.statusCode != 200 || body['data'] is! List) {
-      throw Exception(body['error'] ?? 'Không thể tải lịch đã lưu.');
+    try {
+      final response = await _send(
+        _client.get(Uri.parse('$baseUrl/schedule/all')),
+        timeout: const Duration(seconds: 2),
+      );
+      final body = _decode(response);
+      if (response.statusCode == 200 && body['data'] is List) {
+        final saved = _savedSchedulesFromData(body['data'] as List);
+        if (saved.classes.isNotEmpty) return saved;
+      }
+    } catch (_) {}
+
+    // Fallback: Nạp trực tiếp từ file JSON lưu trữ cục bộ nếu backend chưa kịp mở
+    final local = loadLocalSchedules();
+    if (local != null && local.classes.isNotEmpty) {
+      return local;
     }
-    return _savedSchedulesFromData(body['data'] as List);
+    return const SavedSchedules(classes: [], schedules: {});
+  }
+
+  SavedSchedules? loadLocalSchedules() {
+    final candidatePaths = [
+      '../../backend/data/schedules_local.json',
+      '../backend/data/schedules_local.json',
+      'backend/data/schedules_local.json',
+      'schedules_local.json',
+    ];
+    for (final path in candidatePaths) {
+      final file = File(path);
+      if (file.existsSync()) {
+        try {
+          final content = file.readAsStringSync();
+          final decoded = jsonDecode(content);
+          if (decoded is Map && decoded['classes'] is Map) {
+            final list = (decoded['classes'] as Map).values.toList();
+            return _savedSchedulesFromData(list);
+          }
+        } catch (_) {}
+      }
+    }
+
+    // Walk up from Directory.current
+    try {
+      Directory? dir = Directory.current;
+      for (var i = 0; i < 5 && dir != null; i++) {
+        final target = File(
+          '${dir.path}${Platform.pathSeparator}backend${Platform.pathSeparator}data${Platform.pathSeparator}schedules_local.json',
+        );
+        if (target.existsSync()) {
+          final content = target.readAsStringSync();
+          final decoded = jsonDecode(content);
+          if (decoded is Map && decoded['classes'] is Map) {
+            final list = (decoded['classes'] as Map).values.toList();
+            return _savedSchedulesFromData(list);
+          }
+        }
+        final parent = dir.parent;
+        if (parent.path == dir.path) break;
+        dir = parent;
+      }
+    } catch (_) {}
+
+    return null;
   }
 
   SavedSchedules _savedSchedulesFromData(List data) {
@@ -132,6 +190,7 @@ class ScheduleApiClient {
       final offering = Map<String, dynamic>.from(
         schedule['classOffering'] as Map,
       );
+      if (offering['active'] == false) continue;
       final students = (schedule['students'] as List? ?? const [])
           .whereType<Map>()
           .map(
@@ -177,8 +236,11 @@ class SavedSchedules {
 
   const SavedSchedules({required this.classes, required this.schedules});
 
-  DateTime get firstLessonDate => schedules.values
-      .expand((lessons) => lessons)
-      .map((lesson) => lesson.date)
-      .reduce((left, right) => left.isBefore(right) ? left : right);
+  DateTime get firstLessonDate {
+    final allLessons = schedules.values.expand((lessons) => lessons).toList();
+    if (allLessons.isEmpty) return DateTime.now();
+    return allLessons
+        .map((lesson) => lesson.date)
+        .reduce((left, right) => left.isBefore(right) ? left : right);
+  }
 }
