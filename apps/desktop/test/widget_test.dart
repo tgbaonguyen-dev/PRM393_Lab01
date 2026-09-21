@@ -5,16 +5,24 @@
 // gestures. You can also use WidgetTester to find child widgets in the widget
 // tree, read text, and verify that the values of widget properties are correct.
 
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:prm393_desktop/main.dart';
 
 void main() {
   testWidgets('shows the Markbook import screen', (WidgetTester tester) async {
-    await tester.pumpWidget(const Prm393DesktopApp());
+    await tester.binding.setSurfaceSize(const Size(1440, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
 
-    expect(find.text('Bước 1 — Nhập danh sách lớp'), findsOneWidget);
-    expect(find.text('Chọn Markbook'), findsOneWidget);
+    await tester.pumpWidget(const Prm393DesktopApp());
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Danh Sách Lớp'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Danh Sách Lớp'), findsNWidgets(2));
+    expect(find.text('Nhập Markbook'), findsOneWidget);
     expect(find.text('Thêm môn đặc biệt'), findsNothing);
   });
 }

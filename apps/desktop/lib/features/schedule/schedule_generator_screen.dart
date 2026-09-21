@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 
 import '../import/models/import_models.dart';
@@ -6,6 +9,9 @@ import '../session/qr_display_screen.dart';
 import '../export/export_dialog.dart';
 import '../attendance/services/attendance_storage_service.dart';
 import '../../shared/m1_snackbar.dart';
+import '../../shared/notion_tokens.dart';
+import '../../shared/workspace_ui.dart';
+import '../../shell/app_shell.dart';
 import 'models/schedule_models.dart';
 import 'services/schedule_code_parser.dart';
 import 'services/schedule_api_client.dart';
@@ -43,14 +49,16 @@ class _ScheduleGeneratorScreenState extends State<ScheduleGeneratorScreen> {
     'CHỦ NHẬT',
   ];
 
-  late final List<ImportedClass> _classes;
+  late List<ImportedClass> _classes;
   final Map<String, List<ClassLesson>> _schedules = {};
   late DateTime _weekStart;
   String _filter = _allClasses;
   String? _selectedKey;
   String? _suggestedKey;
   bool _isSaving = false;
+  bool _isSyncingAttendance = false;
   final _apiClient = ScheduleApiClient();
+  Map<String, Map<int, Map<String, String>>> _attendanceStore = {};
 
   ScheduledLessonView? get _selectedLesson => ScheduleOverview.findByKey(
     key: _selectedKey,
@@ -75,6 +83,8 @@ class _ScheduleGeneratorScreenState extends State<ScheduleGeneratorScreen> {
     _classes = List<ImportedClass>.unmodifiable(widget.importedClasses);
     _weekStart = ScheduleOverview.startOfWeek(widget.semesterStart);
     _generateAllSchedules();
+    _loadAttendanceStore();
+    AppNavigationController.instance.addListener(_onNavigationChanged);
 
     final current = ScheduleOverview.findCurrentLesson(
       classes: _classes,
@@ -91,7 +101,138 @@ class _ScheduleGeneratorScreenState extends State<ScheduleGeneratorScreen> {
     final index = widget.initialClassIndex.clamp(0, _classes.length - 1);
     final firstLessons = _schedules[_classes[index].sourceSheetName]!;
     if (firstLessons.isNotEmpty) {
+      _selectedKey =
+          '${_classes[index].sourceSheetName}:${firstLessons.first.lessonId}';
       _weekStart = ScheduleOverview.startOfWeek(firstLessons.first.date);
+    }
+  }
+
+  @override
+  void dispose() {
+    AppNavigationController.instance.removeListener(_onNavigationChanged);
+    super.dispose();
+  }
+
+  void _onNavigationChanged() {
+    if (mounted && AppNavigationController.instance.currentIndex == 0) {
+      _loadAttendanceStore();
+    }
+  }
+
+  /// Nạp ma trận điểm danh từ local storage
+  Future<void> _loadAttendanceStore() async {
+    try {
+      final storage = AttendanceStorageService();
+      final store = await storage.loadStore();
+      if (mounted) {
+        setState(() {
+          _attendanceStore = store;
+        });
+      }
+    } catch (_) {}
+  }
+
+  /// Kiểm tra thông tin điểm danh của một buổi học trên lịch
+  ({bool isAttended, int presentCount, int totalCount})
+  _getLessonAttendanceInfo(ScheduledLessonView item) {
+    final compositeKey =
+        '${item.importedClass.subjectCode} - ${item.importedClass.classCode}';
+    final candidateKeys = [
+      compositeKey,
+      item.importedClass.sourceSheetName,
+      item.importedClass.classCode,
+      if (item.importedClass.sourceSheetName.contains('_'))
+        item.importedClass.sourceSheetName.split('_').last,
+      '${item.importedClass.scheduleCode}_${item.importedClass.subjectCode}_${item.importedClass.classCode}',
+    ];
+
+    Map<int, Map<String, String>> classAttendance = const {};
+    for (final key in candidateKeys) {
+      if (_attendanceStore.containsKey(key)) {
+        classAttendance = _attendanceStore[key]!;
+        break;
+      }
+    }
+
+    final slotAttendance = classAttendance[item.lesson.sequenceNumber];
+    if (slotAttendance == null || slotAttendance.isEmpty) {
+      return (
+        isAttended: false,
+        presentCount: 0,
+        totalCount: item.importedClass.students.length,
+      );
+    }
+
+    final presentCount = slotAttendance.values
+        .where((status) => status == 'P')
+        .length;
+    final isAttended =
+        presentCount > 0 ||
+        (slotAttendance.length >= item.importedClass.students.length &&
+            slotAttendance.isNotEmpty);
+
+    final total = item.importedClass.students.isNotEmpty
+        ? item.importedClass.students.length
+        : slotAttendance.length;
+
+    return (
+      isAttended: isAttended,
+      presentCount: presentCount,
+      totalCount: total,
+    );
+  }
+
+  /// Đồng bộ toàn bộ dữ liệu điểm danh và lịch học mới nhất từ Google Sheet (qua Backend)
+  Future<void> _syncFromGoogleSheet({bool showToast = true}) async {
+    if (_isSyncingAttendance) return;
+    if (mounted) setState(() => _isSyncingAttendance = true);
+    try {
+      final success = await AttendanceStorageService().pullFromRemote();
+      await _loadAttendanceStore();
+
+      if (_classes.isEmpty) {
+        try {
+          final saved = await _apiClient.loadSavedSchedules();
+          if (saved.classes.isNotEmpty && mounted) {
+            setState(() {
+              _classes = saved.classes;
+              _schedules.clear();
+              _schedules.addAll(saved.schedules);
+            });
+            AppNavigationController.instance.activeClasses = saved.classes;
+            AppNavigationController.instance.activeSchedules = saved.schedules;
+          }
+        } catch (_) {}
+      }
+
+      if (!mounted) return;
+      if (showToast) {
+        if (success) {
+          M1SnackBar.show(
+            context,
+            'Đã đồng bộ dữ liệu mới nhất từ Google Sheet.',
+          );
+        } else {
+          M1SnackBar.show(
+            context,
+            'Không thể kết nối với Google Sheet để đồng bộ.',
+            type: M1NoticeType.warning,
+          );
+        }
+      }
+    } catch (e) {
+      if (!mounted) return;
+      if (showToast) {
+        M1SnackBar.show(
+          context,
+          'Lỗi khi đồng bộ Google Sheet: $e',
+          type: M1NoticeType.error,
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isSyncingAttendance = false);
+      }
     }
   }
 
@@ -146,9 +287,10 @@ class _ScheduleGeneratorScreenState extends State<ScheduleGeneratorScreen> {
     setState(() {
       _selectedKey = item.key;
     });
+    _loadAttendanceStore();
   }
 
-  void _openQrScreen(ScheduledLessonView item) {
+  Future<void> _openQrScreen(ScheduledLessonView item) async {
     final rosterList = item.importedClass.students
         .map(
           (s) => {
@@ -160,19 +302,43 @@ class _ScheduleGeneratorScreenState extends State<ScheduleGeneratorScreen> {
         )
         .toList();
 
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => QrDisplayScreen(
-          classId: item.importedClass.offeringId,
-          sessionId: item.lesson.lessonId,
-          className:
-              '${item.importedClass.subjectCode} - ${item.importedClass.classCode}',
-          lessonLabel:
-              'Buổi ${item.lesson.sequenceNumber}/${item.importedClass.lessonCount}',
-          roster: rosterList,
-        ),
-      ),
+    AppNavigationController.instance.openQrForSession(
+      sessionId: item.lesson.lessonId,
+      classId: item.importedClass.offeringId,
+      className:
+          '${item.importedClass.subjectCode} - ${item.importedClass.classCode}',
+      lessonLabel:
+          'Buổi ${item.lesson.sequenceNumber}/${item.importedClass.lessonCount}',
+      roster: rosterList,
     );
+
+    final hasShell = context.findAncestorStateOfType<State<AppShell>>() != null;
+    if (!hasShell) {
+      await Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => QrDisplayScreen(
+            classId: item.importedClass.offeringId,
+            sessionId: item.lesson.lessonId,
+            className:
+                '${item.importedClass.subjectCode} - ${item.importedClass.classCode}',
+            lessonLabel:
+                'Buổi ${item.lesson.sequenceNumber}/${item.importedClass.lessonCount}',
+            roster: rosterList,
+          ),
+        ),
+      );
+
+      // Tải lại ma trận điểm danh sau khi kết thúc phiên QR để cập nhật dấu "Đã điểm danh" ngay lập tức trên lịch
+      await _loadAttendanceStore();
+    }
+  }
+
+  int _calculateWeekNumber() {
+    final diffDays = _weekStart
+        .difference(ScheduleOverview.startOfWeek(widget.semesterStart))
+        .inDays;
+    final num = (diffDays / 7).floor() + 1;
+    return num > 0 ? num : 1;
   }
 
   Future<void> _changeSelectedLessonDate() async {
@@ -262,116 +428,257 @@ class _ScheduleGeneratorScreenState extends State<ScheduleGeneratorScreen> {
     );
   }
 
+  static const _borderColor = NotionColors.hairline;
+  static const _textPrimary = NotionColors.ink;
+  static const _textSecondary = NotionColors.inkSecondary;
+  static const _textTertiary = NotionColors.inkMuted;
+
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Lịch giảng dạy'),
-        backgroundColor: const Color(0xFFE0F2FE),
-        foregroundColor: const Color(0xFF1D4ED8),
-        actions: [
-          Tooltip(
-            message:
-                'Lưu lớp, danh sách sinh viên và lịch đã điều chỉnh vào hệ thống.',
-            child: Padding(
-              padding: const EdgeInsets.only(right: 12),
-              child: FilledButton.icon(
-                onPressed: _isSaving ? null : _saveSchedules,
-                icon: const Icon(Icons.save_outlined),
-                label: Text(_isSaving ? 'Đang lưu...' : 'Lưu lịch học'),
-              ),
+  Widget build(BuildContext context) => Scaffold(
+    backgroundColor: NotionColors.surface,
+    body: WorkspacePage(
+      header: [
+        _pageHeader(),
+        _notionControlsBar(),
+        _selectionPanel(),
+      ],
+      body: _weeklyTable(),
+      compactBodyHeight: 560,
+    ),
+  );
+
+  Widget _pageHeader() {
+    return WorkspaceHeader(
+      icon: Container(
+        width: 32,
+        height: 32,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: const Color(0xFFF1F1EF),
+          borderRadius: BorderRadius.circular(6),
+        ),
+        child: const Icon(
+          Icons.calendar_month_outlined,
+          size: 18,
+          color: NotionColors.ink,
+        ),
+      ),
+      title: 'Lịch Giảng Dạy Tuần ${_calculateWeekNumber()}',
+      subtitle:
+          '${_classes.length} lớp học phần · Chọn một buổi học trên lịch để xem thông tin chi tiết và tiến hành điểm danh.',
+      actions: Wrap(
+        spacing: 8,
+        runSpacing: 6,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        children: [
+          Container(
+            decoration: BoxDecoration(
+              color: NotionColors.surface,
+              borderRadius: BorderRadius.circular(5),
+              border: Border.all(color: NotionColors.hairline),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  tooltip: 'Tuần Trước',
+                  onPressed: () => _changeWeek(-1),
+                  icon: const Icon(Icons.chevron_left, size: 16, color: NotionColors.ink),
+                  constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                  padding: EdgeInsets.zero,
+                ),
+                InkWell(
+                  onTap: () => setState(() {
+                    _weekStart = ScheduleOverview.startOfWeek(DateTime.now());
+                  }),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    child: Text(
+                      'Hôm Nay',
+                      style: GoogleFonts.inter(
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w600,
+                        color: NotionColors.ink,
+                      ),
+                    ),
+                  ),
+                ),
+                IconButton(
+                  tooltip: 'Tuần Sau',
+                  onPressed: () => _changeWeek(1),
+                  icon: const Icon(Icons.chevron_right, size: 16, color: NotionColors.ink),
+                  constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                  padding: EdgeInsets.zero,
+                ),
+              ],
             ),
           ),
+          OutlinedButton.icon(
+            style: OutlinedButton.styleFrom(
+              foregroundColor: NotionColors.ink,
+              side: const BorderSide(color: NotionColors.hairline),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              minimumSize: const Size(0, 36),
+            ),
+            onPressed: _isSyncingAttendance ? null : () => _syncFromGoogleSheet(),
+            icon: _isSyncingAttendance
+                ? const SizedBox(
+                    width: 13,
+                    height: 13,
+                    child: CircularProgressIndicator(strokeWidth: 1.8, color: NotionColors.ink),
+                  )
+                : const Icon(Icons.sync, size: 14, color: NotionColors.ink),
+            label: Text(
+              _isSyncingAttendance ? 'Đang Đồng Bộ…' : 'Đồng Bộ Từ Google',
+              style: GoogleFonts.inter(fontSize: 12.5, fontWeight: FontWeight.w500),
+            ),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: NotionColors.ink,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              minimumSize: const Size(0, 36),
+            ),
+            onPressed: _isSaving ? null : _saveSchedules,
+            child: Text(
+              _isSaving ? 'Đang Lưu…' : 'Lưu Lịch Học',
+              style: GoogleFonts.inter(fontSize: 12.5, fontWeight: FontWeight.w600),
+            ),
+          ),
+          PopupMenuButton<String>(
+            tooltip: 'Thao Tác Lịch',
+            onSelected: (action) {
+              switch (action) {
+                case 'save':
+                  _saveSchedules();
+                case 'export':
+                  _openExportDialogFromSchedule();
+                case 'import':
+                  AppNavigationController.instance.navigateToTab(2);
+                case 'refresh':
+                  _syncFromGoogleSheet();
+              }
+            },
+            itemBuilder: (_) => [
+              PopupMenuItem(
+                value: 'save',
+                enabled: !_isSaving,
+                child: Text(_isSaving ? 'Đang Lưu…' : 'Lưu Lịch Học'),
+              ),
+              const PopupMenuItem(value: 'export', child: Text('Xuất Báo Cáo')),
+              const PopupMenuItem(value: 'import', child: Text('Nhập File Lớp')),
+              PopupMenuItem(
+                value: 'refresh',
+                enabled: !_isSyncingAttendance,
+                child: const Text('Làm Mới Điểm Danh'),
+              ),
+            ],
+            icon: const Icon(Icons.more_horiz, size: 18, color: NotionColors.ink),
+          ),
         ],
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _toolbar(),
-            const SizedBox(height: 12),
-            _selectionPanel(),
-            const SizedBox(height: 12),
-            Expanded(child: _weeklyTable()),
-          ],
-        ),
       ),
     );
   }
 
-  Widget _toolbar() {
-    final weekEnd = _weekStart.add(const Duration(days: 6));
-    final range =
-        '${DateFormat('dd/MM').format(_weekStart)} – ${DateFormat('dd/MM').format(weekEnd)}';
-    final totalLessons = _classes.fold<int>(
-      0,
-      (total, item) => total + item.lessonCount,
-    );
-    return Card(
-      elevation: 0,
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Wrap(
-          spacing: 10,
-          runSpacing: 10,
-          crossAxisAlignment: WrapCrossAlignment.center,
-          children: [
-            Chip(
-              avatar: const Icon(Icons.school_outlined, size: 18),
-              label: Text('${_classes.length} lớp • $totalLessons buổi'),
+  Widget _notionControlsBar() {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: const Color(0xFFEBEBEA),
+              borderRadius: BorderRadius.circular(4),
             ),
-            OutlinedButton(
-              onPressed: () => _changeWeek(-1),
-              child: const Icon(Icons.chevron_left),
-            ),
-            Chip(
-              avatar: const Icon(Icons.calendar_view_week_outlined, size: 18),
-              label: Text('Tuần $range • ${_weekStart.year}'),
-            ),
-            OutlinedButton(
-              onPressed: () => _changeWeek(1),
-              child: const Icon(Icons.chevron_right),
-            ),
-            TextButton.icon(
-              onPressed: () {
-                setState(() {
-                  _weekStart = ScheduleOverview.startOfWeek(DateTime.now());
-                });
-              },
-              icon: const Icon(Icons.today_outlined),
-              label: const Text('Tuần hiện tại'),
-            ),
-            SizedBox(
-              width: 245,
-              child: DropdownButtonFormField<String>(
-                initialValue: _filter,
-                isExpanded: true,
-                decoration: const InputDecoration(
-                  labelText: 'Lọc lớp',
-                  isDense: true,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(
+                  Icons.calendar_view_week_outlined,
+                  size: 13,
+                  color: NotionColors.ink,
                 ),
-                items: [
-                  DropdownMenuItem(
-                    value: _allClasses,
-                    child: Text('Tất cả ${_classes.length} lớp'),
+                const SizedBox(width: 5),
+                Text(
+                  'Lịch Tuần',
+                  style: GoogleFonts.inter(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w600,
+                    color: NotionColors.ink,
                   ),
-                  ..._classes.map(
-                    (item) => DropdownMenuItem(
-                      value: item.sourceSheetName,
-                      child: Text(
-                        '${item.subjectCode} • ${item.classCode}',
-                        overflow: TextOverflow.ellipsis,
-                      ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 10),
+          Container(width: 1, height: 16, color: NotionColors.hairline),
+          const SizedBox(width: 10),
+          _filterChip(
+            label: 'Tất cả (${_classes.length})',
+            isSelected: _filter == _allClasses,
+            onTap: () => setState(() => _filter = _allClasses),
+          ),
+          ..._classes.map((item) {
+            final isSelected = _filter == item.sourceSheetName;
+            return Padding(
+              padding: const EdgeInsets.only(left: 6),
+              child: InkWell(
+                onTap: () => setState(() => _filter = item.sourceSheetName),
+                borderRadius: BorderRadius.circular(4),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: isSelected ? NotionColors.ink : const Color(0xFFF7F7F5),
+                    borderRadius: BorderRadius.circular(4),
+                    border: Border.all(
+                      color: isSelected ? NotionColors.ink : NotionColors.hairline,
                     ),
                   ),
-                ],
-                onChanged: (value) {
-                  if (value != null) setState(() => _filter = value);
-                },
+                  child: Text(
+                    '${item.subjectCode} · ${item.classCode}',
+                    style: GoogleFonts.inter(
+                      fontSize: 11,
+                      fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                      color: isSelected ? Colors.white : NotionColors.ink,
+                    ),
+                  ),
+                ),
               ),
-            ),
-          ],
+            );
+          }),
+        ],
+      ),
+    );
+  }
+
+  Widget _filterChip({
+    required String label,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(4),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: isSelected ? NotionColors.ink : const Color(0xFFF7F7F5),
+          borderRadius: BorderRadius.circular(4),
+          border: Border.all(
+            color: isSelected ? NotionColors.ink : NotionColors.hairline,
+          ),
+        ),
+        child: Text(
+          label,
+          style: GoogleFonts.inter(
+            fontSize: 11,
+            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+            color: isSelected ? Colors.white : NotionColors.ink,
+          ),
         ),
       ),
     );
@@ -379,85 +686,115 @@ class _ScheduleGeneratorScreenState extends State<ScheduleGeneratorScreen> {
 
   Widget _selectionPanel() {
     final selected = _selectedLesson;
-    return Card(
-      elevation: 0,
-      color: selected == null ? Colors.blueGrey.shade50 : Colors.blue.shade50,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              children: [
-                Icon(
-                  selected?.key == _suggestedKey
-                      ? Icons.schedule
-                      : Icons.info_outline,
-                  color: selected?.key == _suggestedKey
-                      ? Colors.green.shade700
-                      : Colors.blueGrey,
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: selected == null
-                      ? const Text(
-                          'Không có buổi đang diễn ra. Hãy chọn một ô lịch để chọn buổi cần điểm danh.',
-                        )
-                      : Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              '${selected.importedClass.subjectCode} • ${selected.importedClass.classCode} • Buổi ${selected.lesson.sequenceNumber}/${selected.importedClass.lessonCount}',
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                            Text(
-                              '${DateFormat('dd/MM/yyyy').format(selected.lesson.date)} • ${selected.lesson.startTime}–${selected.lesson.endTime}'
-                              '${selected.key == _suggestedKey ? ' • Đang diễn ra' : ''}',
-                            ),
-                          ],
-                        ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            Wrap(
-              alignment: WrapAlignment.spaceBetween,
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                OutlinedButton.icon(
-                  onPressed: selected == null
-                      ? null
-                      : _changeSelectedLessonDate,
-                  icon: const Icon(Icons.edit_calendar_outlined),
-                  label: const Text('Đổi lịch buổi đã chọn'),
-                ),
-                OutlinedButton.icon(
-                  onPressed: _openExportDialogFromSchedule,
-                  icon: const Icon(
-                    Icons.file_download_outlined,
-                    color: Color(0xFF2563EB),
+    if (selected == null) {
+      return const SizedBox.shrink();
+    }
+    final info = _getLessonAttendanceInfo(selected);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF7F7F5),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: NotionColors.hairline),
+      ),
+      child: LayoutBuilder(
+        builder: (context, size) {
+          final details = Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(
+                    Icons.bookmark_border_outlined,
+                    size: 15,
+                    color: NotionColors.ink,
                   ),
-                  label: const Text('Xuất báo cáo Excel / CSV'),
+                  const SizedBox(width: 6),
+                  Text(
+                    '${selected.importedClass.subjectCode} · ${selected.importedClass.classCode}',
+                    style: GoogleFonts.inter(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: NotionColors.ink,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 3),
+              Text(
+                'Buổi ${selected.lesson.sequenceNumber}/${selected.importedClass.lessonCount} · Slot ${selected.lesson.dailySlot} (${selected.lesson.startTime}–${selected.lesson.endTime}) · ${DateFormat('dd/MM/yyyy').format(selected.lesson.date)}'
+                '${info.isAttended ? ' · Có mặt ${info.presentCount}/${info.totalCount}' : ''}',
+                style: GoogleFonts.inter(
+                  fontSize: 11.5,
+                  color: NotionColors.inkSecondary,
                 ),
-                FilledButton.icon(
-                  onPressed: selected == null
-                      ? null
-                      : () => _openQrScreen(selected),
-                  icon: const Icon(Icons.qr_code_2),
-                  label: const Text('Mở điểm danh QR'),
+              ),
+            ],
+          );
+          final actions = Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              OutlinedButton(
+                style: OutlinedButton.styleFrom(
+                  backgroundColor: NotionColors.surface,
+                  foregroundColor: NotionColors.ink,
+                  side: const BorderSide(color: NotionColors.hairline),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  minimumSize: const Size(0, 36),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                 ),
-              ],
-            ),
-          ],
-        ),
+                onPressed: _changeSelectedLessonDate,
+                child: Text(
+                  'Đổi Lịch',
+                  style: GoogleFonts.inter(fontSize: 12.5, fontWeight: FontWeight.w500),
+                ),
+              ),
+              const SizedBox(width: 8),
+              FilledButton(
+                style: FilledButton.styleFrom(
+                  backgroundColor: NotionColors.ink,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  minimumSize: const Size(0, 36),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                ),
+                onPressed: () => _openQrScreen(selected),
+                child: Text(
+                  'Mở điểm danh QR',
+                  style: GoogleFonts.inter(fontSize: 12.5, fontWeight: FontWeight.w600),
+                ),
+              ),
+            ],
+          );
+
+          if (size.maxWidth < 760) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [details, const SizedBox(height: 10), actions],
+            );
+          }
+          return Row(
+            children: [
+              Expanded(child: details),
+              const SizedBox(width: 12),
+              actions,
+            ],
+          );
+        },
       ),
     );
   }
 
   Future<void> _openExportDialogFromSchedule() async {
+    // Kéo dữ liệu mới nhất từ Google Sheet trước khi mở hộp thoại xuất
+    await _syncFromGoogleSheet(showToast: false);
+
     final storage = AttendanceStorageService();
     final persistentStore = await storage.loadStore();
 
@@ -501,9 +838,10 @@ class _ScheduleGeneratorScreenState extends State<ScheduleGeneratorScreen> {
       }
 
       return ExportClassOption(
+        scheduleCode: c.scheduleCode,
         subjectCode: c.subjectCode,
         className: c.classCode,
-        semester: 'FA26',
+        semester: c.semester,
         roster: rosterList,
         lessonDates: lessonDates,
         attendanceData: attendanceData,
@@ -523,6 +861,7 @@ class _ScheduleGeneratorScreenState extends State<ScheduleGeneratorScreen> {
     showDialog(
       context: context,
       builder: (ctx) => ExportDialog(
+        scheduleCode: initialOption.scheduleCode,
         subjectCode: initialOption.subjectCode,
         className: initialOption.className,
         semester: initialOption.semester,
@@ -535,29 +874,58 @@ class _ScheduleGeneratorScreenState extends State<ScheduleGeneratorScreen> {
     );
   }
 
+  double _calendarRowHeight = 112;
+
   Widget _weeklyTable() {
     final visibleSlots = _visibleSlots;
     final days = List.generate(
       7,
       (index) => _weekStart.add(Duration(days: index)),
     );
-    return Card(
-      elevation: 0,
+    final now = DateTime.now();
+
+    return Container(
+      decoration: BoxDecoration(
+        color: NotionColors.surface,
+        borderRadius: NotionRounded.lg,
+        border: Border.all(color: _borderColor, width: 1),
+        boxShadow: NotionElevation.soft,
+      ),
       clipBehavior: Clip.antiAlias,
       child: LayoutBuilder(
         builder: (context, constraints) {
-          final tableWidth = constraints.maxWidth < 1180
-              ? 1180.0
+          final availableHeight = constraints.maxHeight.isFinite
+              ? constraints.maxHeight
+              : 560.0;
+          _calendarRowHeight =
+              ((availableHeight - 64) / visibleSlots.length.clamp(1, 5)).clamp(
+                136.0,
+                190.0,
+              );
+          final tableWidth = constraints.maxWidth < 1080
+              ? 1080.0
               : constraints.maxWidth;
           return SingleChildScrollView(
+            padding: const EdgeInsets.only(bottom: 8),
+            primary: false,
             child: SingleChildScrollView(
+              primary: false,
               scrollDirection: Axis.horizontal,
               child: SizedBox(
                 width: tableWidth,
                 child: Table(
-                  border: TableBorder.all(color: const Color(0xFFDCE3ED)),
+                  border: const TableBorder(
+                    horizontalInside: BorderSide(
+                      color: NotionColors.hairline,
+                      width: 1,
+                    ),
+                    verticalInside: BorderSide(
+                      color: NotionColors.hairline,
+                      width: 1,
+                    ),
+                  ),
                   columnWidths: const {
-                    0: FixedColumnWidth(100),
+                    0: FixedColumnWidth(110),
                     1: FlexColumnWidth(),
                     2: FlexColumnWidth(),
                     3: FlexColumnWidth(),
@@ -569,50 +937,57 @@ class _ScheduleGeneratorScreenState extends State<ScheduleGeneratorScreen> {
                   defaultVerticalAlignment: TableCellVerticalAlignment.middle,
                   children: [
                     TableRow(
-                      decoration: const BoxDecoration(color: Color(0xFF2557A7)),
+                      decoration: const BoxDecoration(color: NotionColors.canvasSoft),
                       children: [
-                        const _HeaderCell(title: 'CA / TUẦN'),
-                        ...List.generate(
-                          7,
-                          (index) => _HeaderCell(
+                        const _HeaderCell(title: 'KHUNG GIỜ'),
+                        ...List.generate(7, (index) {
+                          final day = days[index];
+                          final isToday =
+                              day.year == now.year &&
+                              day.month == now.month &&
+                              day.day == now.day;
+                          return _HeaderCell(
                             title: _dayNames[index],
-                            subtitle: DateFormat('dd/MM').format(days[index]),
-                          ),
-                        ),
+                            subtitle: DateFormat('dd/MM').format(day),
+                            isToday: isToday,
+                          );
+                        }),
                       ],
                     ),
-                    ...visibleSlots.indexed.map((entry) {
-                      final index = entry.$1;
-                      final slot = entry.$2;
+                    ...visibleSlots.map((slot) {
                       final time = ScheduleCodeParser.slotTimes[slot]!;
                       return TableRow(
-                        decoration: BoxDecoration(
-                          color: index.isEven
-                              ? Colors.white
-                              : const Color(0xFFF8FAFC),
+                        decoration: const BoxDecoration(
+                          color: NotionColors.surface,
                         ),
                         children: [
                           Container(
-                            constraints: const BoxConstraints(minHeight: 120),
-                            color: const Color(0xFFF1F5F9),
+                            constraints: BoxConstraints(
+                              minHeight: _calendarRowHeight,
+                            ),
+                            color: NotionColors.canvasSoft,
                             alignment: Alignment.center,
-                            padding: const EdgeInsets.all(8),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 8,
+                            ),
                             child: Column(
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 Text(
                                   'Slot $slot',
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.w700,
-                                  ),
+                                  style: NotionTypography.eyebrow(
+                                    color: _textPrimary,
+                                  ).copyWith(fontSize: 12),
                                 ),
-                                const SizedBox(height: 4),
+                                const SizedBox(height: 3),
                                 Text(
-                                  '${time.$1}\n${time.$2}',
+                                  '${time.$1}–${time.$2}',
                                   textAlign: TextAlign.center,
-                                  style: const TextStyle(
+                                  style: GoogleFonts.inter(
                                     fontSize: 11,
-                                    color: Colors.blueGrey,
+                                    color: _textSecondary,
+                                    fontWeight: FontWeight.w400,
                                   ),
                                 ),
                               ],
@@ -633,27 +1008,85 @@ class _ScheduleGeneratorScreenState extends State<ScheduleGeneratorScreen> {
   }
 
   Widget _scheduleCell(DateTime day, int slot) {
-    final lessons = ScheduleOverview.lessonsForCell(
+    var lessons = ScheduleOverview.lessonsForCell(
       classes: _classes,
       schedules: _schedules,
       date: day,
       dailySlot: slot,
       classFilter: _classFilter,
     );
+
+    // Filter by searchQuery if any
+    final query = AppNavigationController.instance.searchQuery
+        .trim()
+        .toLowerCase();
+    if (query.isNotEmpty) {
+      lessons = lessons.where((item) {
+        final sub = item.importedClass.subjectCode.toLowerCase();
+        final cls = item.importedClass.classCode.toLowerCase();
+        return sub.contains(query) || cls.contains(query);
+      }).toList();
+    }
+
     if (lessons.isEmpty) {
-      return const SizedBox(
-        height: 120,
+      return SizedBox(
+        height: _calendarRowHeight,
         child: Center(
-          child: Text('—', style: TextStyle(color: Color(0xFFCBD5E1))),
+          child: Text(
+            '—',
+            style: TextStyle(color: Color(0xFFE3E2DE), fontSize: 13),
+          ),
         ),
       );
     }
+
+    final hasConflict = lessons.length > 1;
+
     return Container(
-      constraints: const BoxConstraints(minHeight: 120),
-      padding: const EdgeInsets.all(4),
+      constraints: BoxConstraints(minHeight: _calendarRowHeight),
+      padding: const EdgeInsets.all(10),
+      decoration: hasConflict
+          ? BoxDecoration(
+              color: const Color(0xFFFFFBEB).withValues(alpha: 0.35),
+            )
+          : null,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: lessons.map(_lessonCard).toList(growable: false),
+        children: [
+          if (hasConflict)
+            Container(
+              margin: const EdgeInsets.only(bottom: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFEF3C7),
+                borderRadius: BorderRadius.circular(3),
+                border: Border.all(color: const Color(0xFFFCD34D), width: 0.8),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(
+                    Icons.warning_amber_rounded,
+                    size: 11,
+                    color: Color(0xFFB45309),
+                  ),
+                  const SizedBox(width: 3),
+                  Expanded(
+                    child: Text(
+                      'Trùng slot (${lessons.length} lớp)',
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.inter(
+                        fontSize: 9.5,
+                        fontWeight: FontWeight.w600,
+                        color: const Color(0xFF92400E),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ...lessons.map(_lessonCard),
+        ],
       ),
     );
   }
@@ -661,62 +1094,190 @@ class _ScheduleGeneratorScreenState extends State<ScheduleGeneratorScreen> {
   Widget _lessonCard(ScheduledLessonView item) {
     final selected = item.key == _selectedKey;
     final suggested = item.key == _suggestedKey;
-    final borderColor = suggested
-        ? Colors.green
-        : selected
-        ? const Color(0xFF2563EB)
-        : const Color(0xFFCBD5E1);
+    final attInfo = _getLessonAttendanceInfo(item);
+
+    final borderColor = selected
+        ? NotionColors.ink
+        : (suggested
+            ? NotionColors.inkSecondary
+            : (attInfo.isAttended ? const Color(0xFFC4C4C2) : _borderColor));
+
     return Padding(
-      padding: const EdgeInsets.only(bottom: 4),
+      padding: const EdgeInsets.only(bottom: 6),
       child: Material(
-        color: selected ? const Color(0xFFEFF6FF) : Colors.white,
+        color: selected
+            ? const Color(0xFFF1F1EF)
+            : (suggested
+                  ? const Color(0xFFF7F7F5)
+                  : (attInfo.isAttended
+                        ? const Color(0xFFFAFAFA)
+                        : NotionColors.surface)),
+        elevation: 0,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8),
-          side: BorderSide(color: borderColor, width: selected ? 2 : 1),
+          borderRadius: BorderRadius.circular(5),
+          side: BorderSide(
+            color: borderColor,
+            width: selected ? 1.5 : 1,
+          ),
         ),
         child: InkWell(
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(5),
           onTap: () => _selectLesson(item),
           onDoubleTap: () {
             _selectLesson(item);
             _openQrScreen(item);
           },
           child: Padding(
-            padding: const EdgeInsets.all(8),
+            padding: const EdgeInsets.symmetric(
+              horizontal: 8,
+              vertical: 7,
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // Top row: Subject code + Status Badge
                 Row(
                   children: [
                     Expanded(
                       child: Text(
                         item.importedClass.subjectCode,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontWeight: FontWeight.w800),
+                        style: GoogleFonts.inter(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w700,
+                          color: _textPrimary,
+                          letterSpacing: -0.1,
+                        ),
                       ),
                     ),
+                    if (suggested) ...[
+                      const SizedBox(width: 4),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 4,
+                          vertical: 1.5,
+                        ),
+                        decoration: BoxDecoration(
+                          color: NotionColors.ink,
+                          borderRadius: BorderRadius.circular(3),
+                        ),
+                        child: Text(
+                          'Đang Diễn Ra',
+                          style: GoogleFonts.inter(
+                            fontSize: 8.5,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ],
                   ],
                 ),
-                Text(
-                  item.importedClass.classCode,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 11,
-                    color: Color(0xFF2557A7),
+                const SizedBox(height: 2),
+
+                // Class code badge
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 4,
+                    vertical: 1,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF1F1EF),
+                    borderRadius: BorderRadius.circular(3),
+                    border: Border.all(color: NotionColors.hairline, width: 0.8),
+                  ),
+                  child: Text(
+                    item.importedClass.classCode,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.inter(
+                      fontSize: 10.5,
+                      color: NotionColors.ink,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 4),
+
+                // Sequence: Buổi 01 / 20 (satisfies test expectation)
                 Text(
                   'Buổi ${item.lesson.sequenceNumber.toString().padLeft(2, '0')} / ${item.importedClass.lessonCount}',
-                  style: const TextStyle(fontSize: 11),
-                ),
-                Text(
-                  '${item.lesson.startTime}–${item.lesson.endTime}',
-                  style: const TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w700,
+                  style: GoogleFonts.inter(
+                    fontSize: 11,
+                    color: _textPrimary,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
+                const SizedBox(height: 2),
+
+                // Time and student count
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        '${item.lesson.startTime}–${item.lesson.endTime}',
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.inter(
+                          fontSize: 10,
+                          color: _textSecondary,
+                        ),
+                      ),
+                    ),
+                    if (item.importedClass.students.isNotEmpty) ...[
+                      const SizedBox(width: 4),
+                      Text(
+                        '${item.importedClass.students.length} SV',
+                        style: GoogleFonts.inter(
+                          fontSize: 9.5,
+                          color: _textTertiary,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+
+                // Đánh dấu đã điểm danh trên card lịch
+                if (attInfo.isAttended) ...[
+                  const SizedBox(height: 3),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 4,
+                      vertical: 1.5,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF1F1EF),
+                      borderRadius: BorderRadius.circular(3),
+                      border: Border.all(
+                        color: NotionColors.hairline,
+                        width: 0.8,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.check,
+                          size: 10,
+                          color: NotionColors.ink,
+                        ),
+                        const SizedBox(width: 3),
+                        Flexible(
+                          child: Text(
+                            attInfo.presentCount > 0
+                                ? 'Đã điểm danh (${attInfo.presentCount}/${attInfo.totalCount})'
+                                : 'Đã điểm danh',
+                            overflow: TextOverflow.ellipsis,
+                            style: GoogleFonts.inter(
+                              fontSize: 9,
+                              fontWeight: FontWeight.w600,
+                              color: NotionColors.ink,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
@@ -729,30 +1290,63 @@ class _ScheduleGeneratorScreenState extends State<ScheduleGeneratorScreen> {
 class _HeaderCell extends StatelessWidget {
   final String title;
   final String? subtitle;
+  final bool isToday;
 
-  const _HeaderCell({required this.title, this.subtitle});
+  const _HeaderCell({required this.title, this.subtitle, this.isToday = false});
 
   @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 10),
-    child: Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(
-          title,
-          textAlign: TextAlign.center,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 11,
-            fontWeight: FontWeight.w800,
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+      alignment: Alignment.center,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Wrap(
+            alignment: WrapAlignment.center,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 4,
+            runSpacing: 2,
+            children: [
+              Text(
+                title,
+                textAlign: TextAlign.center,
+                style: NotionTypography.eyebrow(
+                  color: isToday ? NotionColors.ink : NotionColors.inkSecondary,
+                ),
+              ),
+              if (isToday)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 4,
+                    vertical: 1,
+                  ),
+                  decoration: BoxDecoration(
+                    color: NotionColors.ink,
+                    borderRadius: BorderRadius.circular(3),
+                  ),
+                  child: Text(
+                    'Hôm Nay',
+                    style: GoogleFonts.inter(
+                      fontSize: 9,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+            ],
           ),
-        ),
-        if (subtitle != null)
-          Text(
-            subtitle!,
-            style: const TextStyle(color: Colors.white70, fontSize: 11),
-          ),
-      ],
-    ),
-  );
+          if (subtitle != null) ...[
+            const SizedBox(height: 2),
+            Text(
+              subtitle!,
+              style: NotionTypography.caption(
+                color: NotionColors.inkMuted,
+              ).copyWith(fontSize: 11),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
 }

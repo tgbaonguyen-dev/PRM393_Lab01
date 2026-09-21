@@ -6,8 +6,14 @@ abstract class ScheduleRepository {
     required List<Map<String, dynamic>> students,
     required List<Map<String, dynamic>> lessons,
   });
-  Future<bool> saveAll(List<Map<String, dynamic>> schedules);
-  Future<bool> syncActiveClassIds(Set<String> activeClassIds);
+  Future<bool> saveAll(
+    List<Map<String, dynamic>> schedules, {
+    bool clearPrevious = false,
+  });
+  Future<bool> syncActiveClassIds(
+    Set<String> activeClassIds, {
+    bool clearPrevious = false,
+  });
 
   Future<List<Map<String, dynamic>>> list();
   Future<Map<String, dynamic>?> get(String classId);
@@ -34,11 +40,17 @@ class SheetsScheduleRepository implements ScheduleRepository {
   }
 
   @override
-  Future<bool> saveAll(List<Map<String, dynamic>> schedules) =>
+  Future<bool> saveAll(
+    List<Map<String, dynamic>> schedules, {
+    bool clearPrevious = false,
+  }) =>
       _repository.saveClassOfferings(schedules);
 
   @override
-  Future<bool> syncActiveClassIds(Set<String> activeClassIds) =>
+  Future<bool> syncActiveClassIds(
+    Set<String> activeClassIds, {
+    bool clearPrevious = false,
+  }) =>
       _repository.syncActiveClassIds(activeClassIds);
 
   @override
@@ -93,6 +105,7 @@ class ScheduleService {
   Future<List<Map<String, dynamic>>> saveSchedules(
     List<Map<String, dynamic>> payloads, {
     Set<String>? activeClassIds,
+    bool clearPrevious = false,
   }) async {
     if (payloads.isEmpty) {
       throw const ScheduleValidationException('Cần có ít nhất một lớp để lưu.');
@@ -112,37 +125,53 @@ class ScheduleService {
         'activeClassIds phải thuộc danh sách lớp đang import.',
       );
     }
+
+    if (clearPrevious) {
+      _cache.clear();
+    }
+
     List<Map<String, dynamic>> existingSchedules;
-    try {
-      existingSchedules = await _repository.getAll();
-    } catch (_) {
-      // Comparing with persisted data is an optimization. If the gateway
-      // cannot restore all schedules, still attempt the idempotent upsert so
-      // new or changed classes can be saved.
+    if (clearPrevious) {
       existingSchedules = const [];
+    } else {
+      try {
+        existingSchedules = await _repository.getAll();
+      } catch (_) {
+        // Comparing with persisted data is an optimization. If the gateway
+        // cannot restore all schedules, still attempt the idempotent upsert so
+        // new or changed classes can be saved.
+        existingSchedules = const [];
+      }
     }
     final existingByClassId = <String, Map<String, dynamic>>{
       for (final schedule in existingSchedules)
         if (_classIdOf(schedule).isNotEmpty) _classIdOf(schedule): schedule,
     };
-    final changedSchedules = schedules.where((schedule) {
-      final classId = schedule['classOffering']['classId'] as String;
-      final existing = existingByClassId[classId];
-      return existing == null || !_sameSchedule(existing, schedule);
-    }).toList(growable: false);
+    final changedSchedules = clearPrevious
+        ? schedules
+        : schedules.where((schedule) {
+            final classId = schedule['classOffering']['classId'] as String;
+            final existing = existingByClassId[classId];
+            return existing == null || !_sameSchedule(existing, schedule);
+          }).toList(growable: false);
 
-    if (changedSchedules.isNotEmpty) {
-      final saved = await _repository.saveAll(changedSchedules
-          .map((schedule) => {
-                'offering': schedule['classOffering'],
-                'roster': schedule['students'],
-                'lessons': schedule['lessons'],
-              })
-          .toList(growable: false));
+    if (changedSchedules.isNotEmpty || clearPrevious) {
+      final saved = await _repository.saveAll(
+        changedSchedules
+            .map((schedule) => {
+                  'offering': schedule['classOffering'],
+                  'roster': schedule['students'],
+                  'lessons': schedule['lessons'],
+                })
+            .toList(growable: false),
+        clearPrevious: clearPrevious,
+      );
       if (!saved) throw StateError('Repository không lưu được lịch.');
     }
-    final activeSynced =
-        await _repository.syncActiveClassIds(effectiveActiveClassIds);
+    final activeSynced = await _repository.syncActiveClassIds(
+      effectiveActiveClassIds,
+      clearPrevious: clearPrevious,
+    );
     if (!activeSynced) {
       throw StateError('Repository không đồng bộ được trạng thái lớp.');
     }

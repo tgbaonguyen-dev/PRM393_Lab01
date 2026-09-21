@@ -1,7 +1,9 @@
 import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import '../../shared/notion_tokens.dart';
 import 'export_report_service.dart';
+import '../attendance/services/attendance_storage_service.dart';
 
 enum ExportFormat { xlsx, csv }
 
@@ -13,6 +15,7 @@ enum ExportSlotMode {
 
 /// Dữ liệu lớp học phục vụ xuất báo cáo
 class ExportClassOption {
+  final String? scheduleCode;
   final String subjectCode;
   final String className;
   final String semester;
@@ -21,6 +24,7 @@ class ExportClassOption {
   final Map<String, Map<int, String>> attendanceData;
 
   const ExportClassOption({
+    this.scheduleCode,
     required this.subjectCode,
     required this.className,
     this.semester = 'FA26',
@@ -33,6 +37,7 @@ class ExportClassOption {
 }
 
 class ExportDialog extends StatefulWidget {
+  final String? scheduleCode;
   final String subjectCode;
   final String className;
   final String semester;
@@ -44,6 +49,7 @@ class ExportDialog extends StatefulWidget {
 
   const ExportDialog({
     super.key,
+    this.scheduleCode,
     required this.subjectCode,
     required this.className,
     this.semester = 'FA26',
@@ -62,6 +68,7 @@ class _ExportDialogState extends State<ExportDialog> {
   final ExportReportService _exportService = ExportReportService();
 
   // 1. Quản lý Môn & Lớp học
+  String? _selectedScheduleCode;
   late String _selectedSubjectCode;
   late String _selectedClassName;
   late String _selectedSemester;
@@ -83,6 +90,7 @@ class _ExportDialogState extends State<ExportDialog> {
   @override
   void initState() {
     super.initState();
+    _selectedScheduleCode = widget.scheduleCode;
     _selectedSubjectCode = widget.subjectCode;
     _selectedClassName = widget.className;
     _selectedSemester = widget.semester;
@@ -104,12 +112,20 @@ class _ExportDialogState extends State<ExportDialog> {
   void _onClassChanged(ExportClassOption? opt) {
     if (opt == null) return;
     setState(() {
+      _selectedScheduleCode = opt.scheduleCode;
       _selectedSubjectCode = opt.subjectCode;
       _selectedClassName = opt.className;
       _selectedSemester = opt.semester;
       _currentRoster = opt.roster;
       _currentLessonDates = opt.lessonDates;
       _currentAttendanceData = opt.attendanceData;
+      final valid = _currentLessonDates.keys.toSet();
+      if (valid.isNotEmpty) {
+        if (!valid.contains(_singleSelectedSlot)) {
+          _singleSelectedSlot = valid.reduce((a, b) => a < b ? a : b);
+        }
+        _multiSelectedSlots.removeWhere((n) => !valid.contains(n));
+      }
     });
   }
 
@@ -147,7 +163,7 @@ class _ExportDialogState extends State<ExportDialog> {
           ? 'Slot${_singleSelectedSlot.toString().padLeft(2, '0')}'
           : (_slotMode == ExportSlotMode.multiSlots
                 ? 'MultiSlots'
-                : 'All20Slots');
+                : 'All${_targetLessons.length}Slots');
 
       final defaultFileName =
           '${_selectedSubjectCode}_${_selectedClassName}_${_selectedSemester}_$slotsLabel.$ext';
@@ -168,6 +184,29 @@ class _ExportDialogState extends State<ExportDialog> {
       final finalPath = savePath.endsWith('.$ext')
           ? savePath
           : '$savePath.$ext';
+
+      final store = await AttendanceStorageService().fetchLatestStore();
+      if (!mounted) return;
+      final latest = AttendanceStorageService.resolveClassAttendance(
+        store: store,
+        scheduleCode: _selectedScheduleCode,
+        subjectCode: _selectedSubjectCode,
+        classCode: _selectedClassName,
+      );
+      _currentAttendanceData = {
+        for (final student in _currentRoster)
+          (student['email'] ?? '').toString().trim().toLowerCase(): {
+            for (final slot in latest.entries)
+              if (slot.value.containsKey(
+                (student['email'] ?? '').toString().trim().toLowerCase(),
+              ))
+                slot.key:
+                    slot.value[(student['email'] ?? '')
+                        .toString()
+                        .trim()
+                        .toLowerCase()]!,
+          },
+      };
 
       // 2. Gọi Service xuất file
       late final ExportResult result;
@@ -233,379 +272,194 @@ class _ExportDialogState extends State<ExportDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final hasMultiClasses =
-        widget.availableClasses != null && widget.availableClasses!.length > 1;
-
-    return AlertDialog(
-      titlePadding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
-      contentPadding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
-      actionsPadding: const EdgeInsets.fromLTRB(24, 16, 24, 16),
-      title: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: const Color(0xFFEFF6FF),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: const Icon(
-              Icons.file_download_outlined,
-              color: Color(0xFF2563EB),
+    final lessons = _currentLessonDates.isEmpty
+        ? List.generate(20, (i) => i + 1)
+        : (_currentLessonDates.keys.toList()..sort());
+    return PopScope(
+      canPop: !_isExporting,
+      child: AlertDialog(
+        backgroundColor: NotionColors.surface,
+        surfaceTintColor: Colors.transparent,
+        insetPadding: const EdgeInsets.all(20),
+        shape: RoundedRectangleBorder(
+          borderRadius: NotionRounded.lg,
+          side: const BorderSide(color: NotionColors.hairline),
+        ),
+        title: Text(
+          'Xuất Báo Cáo Điểm Danh',
+          style: NotionTypography.heading3(color: NotionColors.ink),
+        ),
+        content: SizedBox(
+          width: 520,
+          child: SingleChildScrollView(
+            child: AbsorbPointer(
+              absorbing: _isExporting,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    'Điểm danh mới nhất sẽ được lấy tự động trước khi lưu file.',
+                    style: NotionTypography.caption(color: NotionColors.inkMuted),
+                  ),
+                  const SizedBox(height: 20),
+                  if (widget.availableClasses != null &&
+                      widget.availableClasses!.isNotEmpty)
+                    DropdownButtonFormField<ExportClassOption>(
+                      initialValue: widget.availableClasses!.firstWhere(
+                        (c) =>
+                            c.subjectCode == _selectedSubjectCode &&
+                            c.className == _selectedClassName,
+                        orElse: () => widget.availableClasses!.first,
+                      ),
+                      isExpanded: true,
+                      decoration: const InputDecoration(
+                        labelText: 'Lớp Học Phần',
+                      ),
+                      items: widget.availableClasses!
+                          .map(
+                            (c) => DropdownMenuItem(
+                              value: c,
+                              child: Text(
+                                c.displayName,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(fontSize: 13),
+                              ),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: _onClassChanged,
+                    )
+                  else
+                    Text(
+                      '$_selectedSubjectCode · $_selectedClassName · $_selectedSemester',
+                    ),
+                  const SizedBox(height: 16),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      for (final format in ExportFormat.values)
+                        ChoiceChip(
+                          label: Text(
+                            format == ExportFormat.xlsx
+                                ? 'Excel (.xlsx)'
+                                : 'CSV (.csv)',
+                          ),
+                          selected: _selectedFormat == format,
+                          onSelected: (_) =>
+                              setState(() => _selectedFormat = format),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  DropdownButtonFormField<ExportSlotMode>(
+                    initialValue: _slotMode,
+                    isExpanded: true,
+                    decoration: const InputDecoration(
+                      labelText: 'Phạm Vi Xuất',
+                    ),
+                    items: const [
+                      DropdownMenuItem(
+                        value: ExportSlotMode.all20Slots,
+                        child: Text('Tất Cả Buổi Học'),
+                      ),
+                      DropdownMenuItem(
+                        value: ExportSlotMode.singleSlot,
+                        child: Text('Một Buổi Học'),
+                      ),
+                      DropdownMenuItem(
+                        value: ExportSlotMode.multiSlots,
+                        child: Text('Chọn Nhiều Buổi'),
+                      ),
+                    ],
+                    onChanged: (mode) {
+                      if (mode != null) setState(() => _slotMode = mode);
+                    },
+                  ),
+                  if (_slotMode != ExportSlotMode.all20Slots) ...[
+                    const SizedBox(height: 12),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      children: lessons
+                          .map(
+                            (n) => FilterChip(
+                              label: Text(
+                                'Buổi $n',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: (_slotMode == ExportSlotMode.singleSlot
+                                          ? n == _singleSelectedSlot
+                                          : _multiSelectedSlots.contains(n))
+                                      ? FontWeight.w600
+                                      : FontWeight.w400,
+                                ),
+                              ),
+                              selected: _slotMode == ExportSlotMode.singleSlot
+                                  ? n == _singleSelectedSlot
+                                  : _multiSelectedSlots.contains(n),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              showCheckmark: false,
+                              selectedColor: NotionColors.canvasSoft,
+                              backgroundColor: NotionColors.surface,
+                              side: BorderSide(
+                                color: (_slotMode == ExportSlotMode.singleSlot
+                                        ? n == _singleSelectedSlot
+                                        : _multiSelectedSlots.contains(n))
+                                    ? NotionColors.ink
+                                    : NotionColors.hairline,
+                              ),
+                              onSelected: (v) => setState(() {
+                                if (_slotMode == ExportSlotMode.singleSlot) {
+                                  _singleSelectedSlot = n;
+                                } else if (v) {
+                                  _multiSelectedSlots.add(n);
+                                } else {
+                                  _multiSelectedSlots.remove(n);
+                                }
+                              }),
+                            ),
+                          )
+                          .toList(),
+                    ),
+                  ],
+                  const SizedBox(height: 16),
+                  Text(
+                    '${_currentRoster.length} sinh viên · ${_targetLessons.length} buổi học',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: Color(0xFF787774),
+                    ),
+                  ),
+                  if (_errorMessage != null) ...[
+                    const SizedBox(height: 12),
+                    Text(
+                      _errorMessage!,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Color(0xFFB42318),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
             ),
           ),
-          const SizedBox(width: 12),
-          const Text(
-            'Xuất Báo Cáo Điểm Danh',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
+        actions: [
+          TextButton(
+            onPressed: _isExporting ? null : () => Navigator.pop(context),
+            child: const Text('Hủy'),
+          ),
+          FilledButton(
+            onPressed: _isExporting ? null : _handleExport,
+            child: Text(_isExporting ? 'Đang Cập Nhật Và Xuất…' : 'Lưu File'),
           ),
         ],
       ),
-      content: SizedBox(
-        width: 520,
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // 1. Chọn Môn học & Lớp học
-              const Text(
-                'Môn học & Lớp:',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-              ),
-              const SizedBox(height: 6),
-              if (hasMultiClasses) ...[
-                DropdownButtonFormField<ExportClassOption>(
-                  initialValue: widget.availableClasses!.firstWhere(
-                    (c) =>
-                        c.subjectCode == _selectedSubjectCode &&
-                        c.className == _selectedClassName,
-                    orElse: () => widget.availableClasses!.first,
-                  ),
-                  decoration: const InputDecoration(
-                    contentPadding: EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 8,
-                    ),
-                    border: OutlineInputBorder(),
-                    isDense: true,
-                  ),
-                  items: widget.availableClasses!.map((c) {
-                    return DropdownMenuItem(
-                      value: c,
-                      child: Text(
-                        'Môn: ${c.subjectCode} | Lớp: ${c.className} (${c.roster.length} SV)',
-                        style: const TextStyle(fontSize: 13),
-                      ),
-                    );
-                  }).toList(),
-                  onChanged: _onClassChanged,
-                ),
-              ] else ...[
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 10,
-                  ),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF1F5F9),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: const Color(0xFFE2E8F0)),
-                  ),
-                  child: Text(
-                    'Môn: $_selectedSubjectCode  •  Lớp: $_selectedClassName  •  Học kỳ: $_selectedSemester  (${_currentRoster.length} sinh viên)',
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF334155),
-                      fontSize: 13,
-                    ),
-                  ),
-                ),
-              ],
-              const SizedBox(height: 16),
-
-              // 2. Chọn Định dạng file xuất
-              const Text(
-                'Định dạng file xuất:',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-              ),
-              const SizedBox(height: 6),
-              SizedBox(
-                width: double.infinity,
-                child: SegmentedButton<ExportFormat>(
-                  segments: const [
-                    ButtonSegment(
-                      value: ExportFormat.xlsx,
-                      label: Text('Excel (.xlsx)'),
-                      icon: Icon(Icons.table_chart_outlined, size: 18),
-                    ),
-                    ButtonSegment(
-                      value: ExportFormat.csv,
-                      label: Text('CSV (.csv)'),
-                      icon: Icon(Icons.description_outlined, size: 18),
-                    ),
-                  ],
-                  selected: {_selectedFormat},
-                  onSelectionChanged: (set) =>
-                      setState(() => _selectedFormat = set.first),
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              // 3. Chọn Chế độ Slot (3 trường hợp)
-              const Text(
-                'Chọn Buổi học (Slots) cần xuất:',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-              ),
-              const SizedBox(height: 6),
-              SizedBox(
-                width: double.infinity,
-                child: SegmentedButton<ExportSlotMode>(
-                  segments: const [
-                    ButtonSegment(
-                      value: ExportSlotMode.singleSlot,
-                      label: Text('1 Slot'),
-                      icon: Icon(Icons.today_outlined, size: 16),
-                    ),
-                    ButtonSegment(
-                      value: ExportSlotMode.multiSlots,
-                      label: Text('Nhiều Slot'),
-                      icon: Icon(Icons.checklist_rounded, size: 16),
-                    ),
-                    ButtonSegment(
-                      value: ExportSlotMode.all20Slots,
-                      label: Text('Cả 20 Slot'),
-                      icon: Icon(Icons.calendar_month_outlined, size: 16),
-                    ),
-                  ],
-                  selected: {_slotMode},
-                  onSelectionChanged: (set) =>
-                      setState(() => _slotMode = set.first),
-                ),
-              ),
-              const SizedBox(height: 12),
-
-              // Chi tiết theo từng chế độ Slot
-              if (_slotMode == ExportSlotMode.singleSlot) ...[
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF8FAFC),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: const Color(0xFFE2E8F0)),
-                  ),
-                  child: Row(
-                    children: [
-                      const Text(
-                        'Chọn slot duy nhất:',
-                        style: TextStyle(fontSize: 13),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: DropdownButtonFormField<int>(
-                          initialValue: _singleSelectedSlot,
-                          decoration: const InputDecoration(
-                            contentPadding: EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 6,
-                            ),
-                            border: OutlineInputBorder(),
-                            isDense: true,
-                          ),
-                          items: List.generate(20, (i) => i + 1).map((slot) {
-                            final date = _currentLessonDates[slot];
-                            final dateText = date != null ? ' ($date)' : '';
-                            return DropdownMenuItem(
-                              value: slot,
-                              child: Text(
-                                'Slot ${slot.toString().padLeft(2, '0')}$dateText',
-                              ),
-                            );
-                          }).toList(),
-                          onChanged: (val) {
-                            if (val != null) {
-                              setState(() => _singleSelectedSlot = val);
-                            }
-                          },
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ] else if (_slotMode == ExportSlotMode.multiSlots) ...[
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF8FAFC),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: const Color(0xFFE2E8F0)),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            'Đã chọn ${_multiSelectedSlots.length}/20 slot',
-                            style: const TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFF2563EB),
-                            ),
-                          ),
-                          Row(
-                            children: [
-                              InkWell(
-                                onTap: () {
-                                  setState(() {
-                                    _multiSelectedSlots.addAll(
-                                      List.generate(20, (i) => i + 1),
-                                    );
-                                  });
-                                },
-                                child: const Text(
-                                  'Chọn hết',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: Color(0xFF2563EB),
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ),
-                              const Text(
-                                ' • ',
-                                style: TextStyle(color: Color(0xFF94A3B8)),
-                              ),
-                              InkWell(
-                                onTap: () =>
-                                    setState(() => _multiSelectedSlots.clear()),
-                                child: const Text(
-                                  'Bỏ chọn',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: Color(0xFF64748B),
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Wrap(
-                        spacing: 6,
-                        runSpacing: 6,
-                        children: List.generate(20, (i) {
-                          final slot = i + 1;
-                          final isSelected = _multiSelectedSlots.contains(slot);
-                          return FilterChip(
-                            label: Text(
-                              slot.toString().padLeft(2, '0'),
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: isSelected
-                                    ? FontWeight.bold
-                                    : FontWeight.normal,
-                              ),
-                            ),
-                            selected: isSelected,
-                            showCheckmark: false,
-                            selectedColor: const Color(0xFFDBEAFE),
-                            onSelected: (selected) {
-                              setState(() {
-                                if (selected) {
-                                  _multiSelectedSlots.add(slot);
-                                } else {
-                                  _multiSelectedSlots.remove(slot);
-                                }
-                              });
-                            },
-                          );
-                        }),
-                      ),
-                    ],
-                  ),
-                ),
-              ] else ...[
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF0FDF4),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: const Color(0xFFBBF7D0)),
-                  ),
-                  child: const Row(
-                    children: [
-                      Icon(
-                        Icons.check_circle_outline,
-                        color: Color(0xFF16A34A),
-                        size: 18,
-                      ),
-                      SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          'Sẽ xuất toàn bộ 20 cột điểm danh (Slot 01 đến Slot 20).',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Color(0xFF15803D),
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-
-              if (_errorMessage != null) ...[
-                const SizedBox(height: 12),
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFFEE2E2),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Text(
-                    _errorMessage!,
-                    style: const TextStyle(
-                      color: Color(0xFFB91C1C),
-                      fontSize: 13,
-                    ),
-                  ),
-                ),
-              ],
-            ],
-          ),
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: _isExporting ? null : () => Navigator.of(context).pop(),
-          child: const Text('Hủy'),
-        ),
-        ElevatedButton.icon(
-          onPressed: _isExporting ? null : _handleExport,
-          style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFF2563EB),
-            foregroundColor: Colors.white,
-          ),
-          icon: _isExporting
-              ? const SizedBox(
-                  width: 16,
-                  height: 16,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: Colors.white,
-                  ),
-                )
-              : const Icon(Icons.save_alt_rounded, size: 18),
-          label: Text(_isExporting ? 'Đang xuất...' : 'Lưu File'),
-        ),
-      ],
     );
   }
 }

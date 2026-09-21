@@ -30,4 +30,6 @@ Thumbs.db
 
 # Local database storage
 backend/data/*.json
+!backend/data/schedules_local.json
 backend/data/*.tmp
+!backend/data/.gitkeep

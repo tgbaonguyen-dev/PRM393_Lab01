@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:backend/controllers/app_reset_controller.dart';
 
 import 'package:backend/config/local_env.dart';
 import 'package:backend/controllers/attendance_controller.dart';
@@ -7,6 +8,7 @@ import 'package:backend/controllers/session_controller.dart';
 import 'package:backend/repositories/local_first_schedule_repository.dart';
 import 'package:backend/repositories/local_json_schedule_repository.dart';
 import 'package:backend/repositories/sheets_repository.dart';
+import 'package:backend/services/attendance_service.dart';
 import 'package:backend/services/auth_service.dart';
 import 'package:backend/services/qr_service.dart';
 import 'package:backend/services/schedule_service.dart';
@@ -29,42 +31,63 @@ Future<void> main() async {
   );
   final qrSecret = (env['QR_HMAC_SECRET'] ?? '').trim();
   final qrService = QrService(
-    secret: qrSecret.isNotEmpty
-        ? qrSecret
-        : 'dev-secret-key-prm393-attendance',
+    secret: qrSecret.isNotEmpty ? qrSecret : 'dev-secret-key-prm393-attendance',
   );
+  final sessionService = SessionService(repository: sheetsRepo);
   final sessionController = SessionController(
-    sessionService: SessionService(repository: sheetsRepo),
+    sessionService: sessionService,
     qrService: qrService,
     checkInBaseUrl: env['STUDENT_CHECKIN_BASE_URL'],
   );
+  final attendanceService = AttendanceService(sheetsRepository: sheetsRepo);
   final attendanceController = AttendanceController(
+    attendanceService: attendanceService,
     sheetsRepository: sheetsRepo,
     scheduleRepository: hybridRepo,
     authService: AuthService(
-      expectedClientId: env['GOOGLE_CLIENT_ID'] ?? env['NEXT_PUBLIC_GOOGLE_CLIENT_ID'],
+      expectedClientId:
+          env['GOOGLE_CLIENT_ID'] ?? env['NEXT_PUBLIC_GOOGLE_CLIENT_ID'],
       allowMockToken: env['ALLOW_MOCK_GOOGLE_TOKEN'] == 'true',
     ),
     qrService: qrService,
+    sessionService: sessionService,
   );
 
   final router = Router()
-    ..get('/health', (Request req) => Response.ok('{"status":"ok"}', headers: {'content-type': 'application/json'}))
+    ..get(
+        '/health',
+        (Request req) => Response.ok('{"status":"ok"}',
+            headers: {'content-type': 'application/json'}))
     ..mount('/schedule/', scheduleController.router.call)
     ..mount('/attendance/', attendanceController.router.call)
-    ..get('/session/<sessionId>/attendances', (Request req, String sessionId) => attendanceController.handleGetAttendances(req, sessionId))
-    ..post('/session/<sessionId>/attendances/manual-override', (Request req, String sessionId) => attendanceController.handleManualEdit(req))
+    ..get('/attendance/all',
+        (Request req) => attendanceController.handleGetAllAttendance(req))
+    ..get(
+        '/session/<sessionId>/attendances',
+        (Request req, String sessionId) =>
+            attendanceController.handleGetAttendances(req, sessionId))
+    ..post(
+        '/session/<sessionId>/attendances/manual-override',
+        (Request req, String sessionId) =>
+            attendanceController.handleManualEdit(req))
     ..mount('/session/', sessionController.router.call);
+  final resetController = AppResetController(
+    resetKey: (env['APP_RESET_KEY'] ?? '').trim(),
+    reset: (key) async {
+      await hybridRepo.prepareForReset();
+      await sheetsRepo.resetApplicationData(key);
+      await localJsonRepo.resetAll();
+    },
+  );
   final handler = Pipeline()
       .addMiddleware(logRequests())
       .addMiddleware(_cors())
+      .addMiddleware(resetController.middleware)
       .addHandler(router.call);
   final port = int.tryParse(env['PORT'] ?? '') ?? 8080;
-  final server =
-      await shelf_io.serve(handler, InternetAddress.anyIPv4, port);
+  final server = await shelf_io.serve(handler, InternetAddress.anyIPv4, port);
   print(
       'PRM393 backend listening on http://${server.address.host}:${server.port}');
-
 }
 
 Middleware _cors() => (inner) => (request) async {
@@ -78,5 +101,5 @@ Middleware _cors() => (inner) => (request) async {
 const _corsHeaders = {
   'access-control-allow-origin': '*',
   'access-control-allow-methods': 'GET, POST, OPTIONS',
-  'access-control-allow-headers': 'content-type',
+  'access-control-allow-headers': 'content-type, authorization',
 };

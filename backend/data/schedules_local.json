@@ -1,0 +1,4591 @@
+{
+  "updatedAt": "2026-09-19T01:30:23.166968",
+  "classes": {
+    "PRN232_SE1917_FA26": {
+      "classOffering": {
+        "classId": "PRN232_SE1917_FA26",
+        "classCode": "SE1917",
+        "subjectCode": "PRN232",
+        "semester": "FA26",
+        "scheduleCode": "11",
+        "sourceSheetName": "11_PRN232_SE1917",
+        "lessonCount": 22,
+        "active": true
+      },
+      "students": [
+        {
+          "classCode": "SE1917",
+          "rollNumber": "SE193416",
+          "fullName": "Nguyễn Ngọc Bảo Cường",
+          "email": "firephoenix0304@gmail.com",
+          "memberCode": "CuongNNBSE193416"
+        },
+        {
+          "classCode": "SE1917",
+          "rollNumber": "SE190507",
+          "fullName": "Ngô Chí Nam",
+          "email": "zeit.lars2808@gmail.com",
+          "memberCode": "NamNCSE190507"
+        },
+        {
+          "classCode": "SE1917",
+          "rollNumber": "SE193559",
+          "fullName": "Đoàn Nguyễn Trung Nguyên",
+          "email": "trungnguyen14122005@gmail.com",
+          "memberCode": "NguyenDNTSE193559"
+        },
+        {
+          "classCode": "SE1917",
+          "rollNumber": "SE193445",
+          "fullName": "Ngô Tấn Thành",
+          "email": "ngotanthanh125@gmail.com",
+          "memberCode": "ThanhNTSE193445"
+        },
+        {
+          "classCode": "SE1917",
+          "rollNumber": "SE172145",
+          "fullName": "Nguyễn Mai Hào Thiên",
+          "email": "thiennmhse172145@fpt.edu.vn",
+          "memberCode": "ThienNMHSE172145"
+        },
+        {
+          "classCode": "SE1917",
+          "rollNumber": "SE182346",
+          "fullName": "Trần Gia Bảo",
+          "email": "baotgse182346@fpt.edu.vn",
+          "memberCode": "BaoTGSE182346"
+        },
+        {
+          "classCode": "SE1917",
+          "rollNumber": "SE180414",
+          "fullName": "Đoàn Đình Huy",
+          "email": "huyddse180414@fpt.edu.vn",
+          "memberCode": "HuyDDSE180414"
+        },
+        {
+          "classCode": "SE1917",
+          "rollNumber": "SE183365",
+          "fullName": "Phạm Văn Minh",
+          "email": "minhpvse183365@fpt.edu.vn",
+          "memberCode": "MinhPVSE183365"
+        },
+        {
+          "classCode": "SE1917",
+          "rollNumber": "SE193983",
+          "fullName": "Trần Đình Thiện",
+          "email": "babaxauxa123@gmail.com",
+          "memberCode": "ThienTDSE193983"
+        },
+        {
+          "classCode": "SE1917",
+          "rollNumber": "SE182178",
+          "fullName": "Phạm Quang Đức",
+          "email": "ducpqse182178@fpt.edu.vn",
+          "memberCode": "DucPQSE182178"
+        },
+        {
+          "classCode": "SE1917",
+          "rollNumber": "SE180724",
+          "fullName": "Văn Quang Duy",
+          "email": "duyvqse180724@fpt.edu.vn",
+          "memberCode": "DuyVQSE180724"
+        },
+        {
+          "classCode": "SE1917",
+          "rollNumber": "SE180296",
+          "fullName": "Đặng Đình Long",
+          "email": "longddse180296@fpt.edu.vn",
+          "memberCode": "LongDDSE180296"
+        },
+        {
+          "classCode": "SE1917",
+          "rollNumber": "SE180756",
+          "fullName": "Nguyễn Tống Khánh Vĩnh",
+          "email": "vinhntkse180756@fpt.edu.vn",
+          "memberCode": "VinhNTKSE180756"
+        },
+        {
+          "classCode": "SE1917",
+          "rollNumber": "SE172830",
+          "fullName": "Hoàng Lê Bách Khoa",
+          "email": "khoahlbse172830@fpt.edu.vn",
+          "memberCode": "KhoaHLBSE172830"
+        },
+        {
+          "classCode": "SE1917",
+          "rollNumber": "SE182046",
+          "fullName": "Dương Đình Khôi",
+          "email": "khoiddse182046@fpt.edu.vn",
+          "memberCode": "KhoiDDSE182046"
+        },
+        {
+          "classCode": "SE1917",
+          "rollNumber": "SE194832",
+          "fullName": "Trần Anh Kiệt",
+          "email": "anhkiet5501@thptdongdo.edu.vn",
+          "memberCode": "KietTASE194832"
+        },
+        {
+          "classCode": "SE1917",
+          "rollNumber": "SE182112",
+          "fullName": "Trần Phạm Khánh Quốc",
+          "email": "quoctpkse182112@fpt.edu.vn",
+          "memberCode": "QuocTPKSE182112"
+        },
+        {
+          "classCode": "SE1917",
+          "rollNumber": "SE183571",
+          "fullName": "Nguyễn Ngọc Tường Vy",
+          "email": "vynntse183571@fpt.edu.vn",
+          "memberCode": "VyNNTSE183571"
+        },
+        {
+          "classCode": "SE1917",
+          "rollNumber": "SS180069",
+          "fullName": "Đặng Thành Hưng",
+          "email": "hungdtss180069@fpt.edu.vn",
+          "memberCode": "HungDTSS180069"
+        },
+        {
+          "classCode": "SE1917",
+          "rollNumber": "SE182173",
+          "fullName": "Nguyễn Bình Minh",
+          "email": "minhnbse182173@fpt.edu.vn",
+          "memberCode": "MinhNBSE182173"
+        },
+        {
+          "classCode": "SE1917",
+          "rollNumber": "SE182141",
+          "fullName": "Võ Nhật Thiên",
+          "email": "thienvnse182141@fpt.edu.vn",
+          "memberCode": "THIENVNSE182141"
+        },
+        {
+          "classCode": "SE1917",
+          "rollNumber": "SE182422",
+          "fullName": "Văn Châu Trường Thuận",
+          "email": "thuanvctse182422@fpt.edu.vn",
+          "memberCode": "ThuanVCTSE182422"
+        },
+        {
+          "classCode": "SE1917",
+          "rollNumber": "SE183220",
+          "fullName": "Nghiêm Tuấn Anh",
+          "email": "anhntse183220@fpt.edu.vn",
+          "memberCode": "AnhNTSE183220"
+        },
+        {
+          "classCode": "SE1917",
+          "rollNumber": "SE193989",
+          "fullName": "Lê Quốc Khánh",
+          "email": "lqkhanh292005@gmail.com",
+          "memberCode": "KhanhLQSE193989"
+        },
+        {
+          "classCode": "SE1917",
+          "rollNumber": "SE172328",
+          "fullName": "Chu Vương Mạnh",
+          "email": "manhcvse172328@fpt.edu.vn",
+          "memberCode": "ManhCVSE172328"
+        },
+        {
+          "classCode": "SE1917",
+          "rollNumber": "SE183432",
+          "fullName": "Đỗ Anh Minh",
+          "email": "minhdase183432@fpt.edu.vn",
+          "memberCode": "MinhDASE183432"
+        },
+        {
+          "classCode": "SE1917",
+          "rollNumber": "SE190302",
+          "fullName": "Mai Nhật Minh",
+          "email": "nhatmoon71@gmail.com",
+          "memberCode": "MinhMNSE190302"
+        },
+        {
+          "classCode": "SE1917",
+          "rollNumber": "SE183363",
+          "fullName": "Phạm Vạn Phúc",
+          "email": "phucpvse183363@fpt.edu.vn",
+          "memberCode": "PhucPVSE183363"
+        },
+        {
+          "classCode": "SE1917",
+          "rollNumber": "SE196506",
+          "fullName": "Phạm Đinh Gia Phú",
+          "email": "giaphuphamdinh082@gmail.com",
+          "memberCode": "PhuPDGSE196506"
+        },
+        {
+          "classCode": "SE1917",
+          "rollNumber": "SE184739",
+          "fullName": "Vũ Lương Quang Thắng",
+          "email": "thangvlqse184739@fpt.edu.vn",
+          "memberCode": "ThangVLQSE184739"
+        },
+        {
+          "classCode": "SE1917",
+          "rollNumber": "SE180359",
+          "fullName": "Huỳnh Trần Thế Thuật",
+          "email": "thuathttse180359@fpt.edu.vn",
+          "memberCode": "ThuatHTTSE180359"
+        },
+        {
+          "classCode": "SE1917",
+          "rollNumber": "SE185045",
+          "fullName": "Tăng Minh Trọng",
+          "email": "trongtmse185045@fpt.edu.vn",
+          "memberCode": "TrongTMSE185045"
+        },
+        {
+          "classCode": "SE1917",
+          "rollNumber": "SE184480",
+          "fullName": "Phan Thanh Tuấn",
+          "email": "tuanptse184480@fpt.edu.vn",
+          "memberCode": "TuanPTSE184480"
+        },
+        {
+          "classCode": "SE1917",
+          "rollNumber": "SE185102",
+          "fullName": "Lữ Phước Nhật Tú",
+          "email": "tulpnse185102@fpt.edu.vn",
+          "memberCode": "TuLPNSE185102"
+        },
+        {
+          "classCode": "SE1917",
+          "rollNumber": "SA194282",
+          "fullName": "Phan Thị Thảo Vy",
+          "email": "phanthithaovy060406@gmail.com",
+          "memberCode": "VyPTTSA194282"
+        }
+      ],
+      "lessons": [
+        {
+          "lessonId": "PRN232_SE1917_FA26-L01",
+          "sequenceNumber": 1,
+          "date": "2026-09-07",
+          "dailySlot": 1,
+          "startTime": "07:00",
+          "endTime": "09:15",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRN232_SE1917_FA26-L02",
+          "sequenceNumber": 2,
+          "date": "2026-09-10",
+          "dailySlot": 1,
+          "startTime": "07:00",
+          "endTime": "09:15",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRN232_SE1917_FA26-L03",
+          "sequenceNumber": 3,
+          "date": "2026-09-14",
+          "dailySlot": 1,
+          "startTime": "07:00",
+          "endTime": "09:15",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRN232_SE1917_FA26-L04",
+          "sequenceNumber": 4,
+          "date": "2026-09-17",
+          "dailySlot": 1,
+          "startTime": "07:00",
+          "endTime": "09:15",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRN232_SE1917_FA26-L05",
+          "sequenceNumber": 5,
+          "date": "2026-09-21",
+          "dailySlot": 1,
+          "startTime": "07:00",
+          "endTime": "09:15",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRN232_SE1917_FA26-L06",
+          "sequenceNumber": 6,
+          "date": "2026-09-24",
+          "dailySlot": 1,
+          "startTime": "07:00",
+          "endTime": "09:15",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRN232_SE1917_FA26-L07",
+          "sequenceNumber": 7,
+          "date": "2026-09-28",
+          "dailySlot": 1,
+          "startTime": "07:00",
+          "endTime": "09:15",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRN232_SE1917_FA26-L08",
+          "sequenceNumber": 8,
+          "date": "2026-10-01",
+          "dailySlot": 1,
+          "startTime": "07:00",
+          "endTime": "09:15",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRN232_SE1917_FA26-L09",
+          "sequenceNumber": 9,
+          "date": "2026-10-05",
+          "dailySlot": 1,
+          "startTime": "07:00",
+          "endTime": "09:15",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRN232_SE1917_FA26-L10",
+          "sequenceNumber": 10,
+          "date": "2026-10-08",
+          "dailySlot": 1,
+          "startTime": "07:00",
+          "endTime": "09:15",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRN232_SE1917_FA26-L11",
+          "sequenceNumber": 11,
+          "date": "2026-10-12",
+          "dailySlot": 1,
+          "startTime": "07:00",
+          "endTime": "09:15",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRN232_SE1917_FA26-L12",
+          "sequenceNumber": 12,
+          "date": "2026-10-15",
+          "dailySlot": 1,
+          "startTime": "07:00",
+          "endTime": "09:15",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRN232_SE1917_FA26-L13",
+          "sequenceNumber": 13,
+          "date": "2026-10-19",
+          "dailySlot": 1,
+          "startTime": "07:00",
+          "endTime": "09:15",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRN232_SE1917_FA26-L14",
+          "sequenceNumber": 14,
+          "date": "2026-10-22",
+          "dailySlot": 1,
+          "startTime": "07:00",
+          "endTime": "09:15",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRN232_SE1917_FA26-L15",
+          "sequenceNumber": 15,
+          "date": "2026-10-26",
+          "dailySlot": 1,
+          "startTime": "07:00",
+          "endTime": "09:15",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRN232_SE1917_FA26-L16",
+          "sequenceNumber": 16,
+          "date": "2026-10-29",
+          "dailySlot": 1,
+          "startTime": "07:00",
+          "endTime": "09:15",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRN232_SE1917_FA26-L17",
+          "sequenceNumber": 17,
+          "date": "2026-11-02",
+          "dailySlot": 1,
+          "startTime": "07:00",
+          "endTime": "09:15",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRN232_SE1917_FA26-L18",
+          "sequenceNumber": 18,
+          "date": "2026-11-05",
+          "dailySlot": 1,
+          "startTime": "07:00",
+          "endTime": "09:15",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRN232_SE1917_FA26-L19",
+          "sequenceNumber": 19,
+          "date": "2026-11-09",
+          "dailySlot": 1,
+          "startTime": "07:00",
+          "endTime": "09:15",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRN232_SE1917_FA26-L20",
+          "sequenceNumber": 20,
+          "date": "2026-11-12",
+          "dailySlot": 1,
+          "startTime": "07:00",
+          "endTime": "09:15",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRN232_SE1917_FA26-L21",
+          "sequenceNumber": 21,
+          "date": "2026-11-16",
+          "dailySlot": 1,
+          "startTime": "07:00",
+          "endTime": "09:15",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRN232_SE1917_FA26-L22",
+          "sequenceNumber": 22,
+          "date": "2026-11-19",
+          "dailySlot": 1,
+          "startTime": "07:00",
+          "endTime": "09:15",
+          "status": "scheduled",
+          "isAdjusted": false
+        }
+      ]
+    },
+    "PRM393_SE1917_FA26": {
+      "classOffering": {
+        "classId": "PRM393_SE1917_FA26",
+        "classCode": "SE1917",
+        "subjectCode": "PRM393",
+        "semester": "FA26",
+        "scheduleCode": "12",
+        "sourceSheetName": "12_PRM393_SE1917",
+        "lessonCount": 20,
+        "active": true
+      },
+      "students": [
+        {
+          "classCode": "SE1917",
+          "rollNumber": "SE193416",
+          "fullName": "Nguyễn Ngọc Bảo Cường",
+          "email": "firephoenix0304@gmail.com",
+          "memberCode": "CuongNNBSE193416"
+        },
+        {
+          "classCode": "SE1917",
+          "rollNumber": "SE190507",
+          "fullName": "Ngô Chí Nam",
+          "email": "zeit.lars2808@gmail.com",
+          "memberCode": "NamNCSE190507"
+        },
+        {
+          "classCode": "SE1917",
+          "rollNumber": "SE193559",
+          "fullName": "Đoàn Nguyễn Trung Nguyên",
+          "email": "trungnguyen14122005@gmail.com",
+          "memberCode": "NguyenDNTSE193559"
+        },
+        {
+          "classCode": "SE1917",
+          "rollNumber": "SE193445",
+          "fullName": "Ngô Tấn Thành",
+          "email": "ngotanthanh125@gmail.com",
+          "memberCode": "ThanhNTSE193445"
+        },
+        {
+          "classCode": "SE1917",
+          "rollNumber": "SE172145",
+          "fullName": "Nguyễn Mai Hào Thiên",
+          "email": "thiennmhse172145@fpt.edu.vn",
+          "memberCode": "ThienNMHSE172145"
+        },
+        {
+          "classCode": "SE1917",
+          "rollNumber": "SE182178",
+          "fullName": "Phạm Quang Đức",
+          "email": "ducpqse182178@fpt.edu.vn",
+          "memberCode": "DucPQSE182178"
+        },
+        {
+          "classCode": "SE1917",
+          "rollNumber": "SE180724",
+          "fullName": "Văn Quang Duy",
+          "email": "duyvqse180724@fpt.edu.vn",
+          "memberCode": "DuyVQSE180724"
+        },
+        {
+          "classCode": "SE1917",
+          "rollNumber": "SE180296",
+          "fullName": "Đặng Đình Long",
+          "email": "longddse180296@fpt.edu.vn",
+          "memberCode": "LongDDSE180296"
+        },
+        {
+          "classCode": "SE1917",
+          "rollNumber": "SE180756",
+          "fullName": "Nguyễn Tống Khánh Vĩnh",
+          "email": "vinhntkse180756@fpt.edu.vn",
+          "memberCode": "VinhNTKSE180756"
+        },
+        {
+          "classCode": "SE1917",
+          "rollNumber": "SE183201",
+          "fullName": "Nguyễn Phạm Xuân Sơn",
+          "email": "sonnpxse183201@fpt.edu.vn",
+          "memberCode": "SonNPXSE183201"
+        },
+        {
+          "classCode": "SE1917",
+          "rollNumber": "SE192024",
+          "fullName": "Dương Quốc Thái",
+          "email": "duongquocthai368@gmail.com",
+          "memberCode": "ThaiDQSE192024"
+        },
+        {
+          "classCode": "SE1917",
+          "rollNumber": "SE184988",
+          "fullName": "Vũ Đức Tuấn",
+          "email": "tuanvdse184988@fpt.edu.vn",
+          "memberCode": "TuanVDSE184988"
+        },
+        {
+          "classCode": "SE1917",
+          "rollNumber": "SE184141",
+          "fullName": "Chu Anh Quân",
+          "email": "quancase184141@fpt.edu.vn",
+          "memberCode": "QuanCASE184141"
+        },
+        {
+          "classCode": "SE1917",
+          "rollNumber": "SE160343",
+          "fullName": "Nguyễn Ngọc Vệ Sỹ",
+          "email": "synnvse160343@fpt.edu.vn",
+          "memberCode": "synnvse160343"
+        },
+        {
+          "classCode": "SE1917",
+          "rollNumber": "SE183432",
+          "fullName": "Đỗ Anh Minh",
+          "email": "minhdase183432@fpt.edu.vn",
+          "memberCode": "MinhDASE183432"
+        },
+        {
+          "classCode": "SE1917",
+          "rollNumber": "SE185045",
+          "fullName": "Tăng Minh Trọng",
+          "email": "trongtmse185045@fpt.edu.vn",
+          "memberCode": "TrongTMSE185045"
+        },
+        {
+          "classCode": "SE1917",
+          "rollNumber": "SE184480",
+          "fullName": "Phan Thanh Tuấn",
+          "email": "tuanptse184480@fpt.edu.vn",
+          "memberCode": "TuanPTSE184480"
+        },
+        {
+          "classCode": "SE1917",
+          "rollNumber": "SE185102",
+          "fullName": "Lữ Phước Nhật Tú",
+          "email": "tulpnse185102@fpt.edu.vn",
+          "memberCode": "TuLPNSE185102"
+        },
+        {
+          "classCode": "SE1917",
+          "rollNumber": "SE194622",
+          "fullName": "Dương Vũ Thái An",
+          "email": "duongvuthaian@gmail.com",
+          "memberCode": "AnDVTSE194622"
+        },
+        {
+          "classCode": "SE1917",
+          "rollNumber": "SE183095",
+          "fullName": "Đỗ Việt Hoàng",
+          "email": "hoangdvse183095@fpt.edu.vn",
+          "memberCode": "HoangDVSE183095"
+        },
+        {
+          "classCode": "SE1917",
+          "rollNumber": "SE183365",
+          "fullName": "Phạm Văn Minh",
+          "email": "minhpvse183365@fpt.edu.vn",
+          "memberCode": "MinhPVSE183365"
+        },
+        {
+          "classCode": "SE1917",
+          "rollNumber": "SE184739",
+          "fullName": "Vũ Lương Quang Thắng",
+          "email": "thangvlqse184739@fpt.edu.vn",
+          "memberCode": "ThangVLQSE184739"
+        },
+        {
+          "classCode": "SE1917",
+          "rollNumber": "SE182046",
+          "fullName": "Dương Đình Khôi",
+          "email": "khoiddse182046@fpt.edu.vn",
+          "memberCode": "KhoiDDSE182046"
+        },
+        {
+          "classCode": "SE1917",
+          "rollNumber": "SE194126",
+          "fullName": "Nguyễn Anh Khôi",
+          "email": "khoina231@gmail.com",
+          "memberCode": "KhoiNASE194126"
+        },
+        {
+          "classCode": "SE1917",
+          "rollNumber": "SE182112",
+          "fullName": "Trần Phạm Khánh Quốc",
+          "email": "quoctpkse182112@fpt.edu.vn",
+          "memberCode": "QuocTPKSE182112"
+        },
+        {
+          "classCode": "SE1917",
+          "rollNumber": "SE193703",
+          "fullName": "Lê Hưng Thiện",
+          "email": "neihtel1604@gmail.com",
+          "memberCode": "ThienLHSE193703"
+        },
+        {
+          "classCode": "SE1917",
+          "rollNumber": "SE183571",
+          "fullName": "Nguyễn Ngọc Tường Vy",
+          "email": "vynntse183571@fpt.edu.vn",
+          "memberCode": "VyNNTSE183571"
+        },
+        {
+          "classCode": "SE1917",
+          "rollNumber": "SE194044",
+          "fullName": "Nguyễn Quốc Huy",
+          "email": "huynguyen12042005@gmail.com",
+          "memberCode": "HuyNQSE194044"
+        },
+        {
+          "classCode": "SE1917",
+          "rollNumber": "SE192120",
+          "fullName": "Mai Lê Nguyên",
+          "email": "mailenguyen2301@gmail.com",
+          "memberCode": "NguyenMLSE192120"
+        },
+        {
+          "classCode": "SE1917",
+          "rollNumber": "SE194093",
+          "fullName": "Đặng Thuận Phát",
+          "email": "dangthuanphat465@gmail.com",
+          "memberCode": "PhatDTSE194093"
+        },
+        {
+          "classCode": "SE1917",
+          "rollNumber": "SE194160",
+          "fullName": "Nguyễn Duy Trường",
+          "email": "truongnduy1808@gmail.com",
+          "memberCode": "TruongNDSE194160"
+        },
+        {
+          "classCode": "SE1917",
+          "rollNumber": "SS180069",
+          "fullName": "Đặng Thành Hưng",
+          "email": "hungdtss180069@fpt.edu.vn",
+          "memberCode": "HungDTSS180069"
+        },
+        {
+          "classCode": "SE1917",
+          "rollNumber": "SE182173",
+          "fullName": "Nguyễn Bình Minh",
+          "email": "minhnbse182173@fpt.edu.vn",
+          "memberCode": "MinhNBSE182173"
+        },
+        {
+          "classCode": "SE1917",
+          "rollNumber": "SE182141",
+          "fullName": "Võ Nhật Thiên",
+          "email": "thienvnse182141@fpt.edu.vn",
+          "memberCode": "THIENVNSE182141"
+        },
+        {
+          "classCode": "SE1917",
+          "rollNumber": "SE182422",
+          "fullName": "Văn Châu Trường Thuận",
+          "email": "thuanvctse182422@fpt.edu.vn",
+          "memberCode": "ThuanVCTSE182422"
+        }
+      ],
+      "lessons": [
+        {
+          "lessonId": "PRM393_SE1917_FA26-L01",
+          "sequenceNumber": 1,
+          "date": "2026-09-07",
+          "dailySlot": 2,
+          "startTime": "09:30",
+          "endTime": "11:45",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRM393_SE1917_FA26-L02",
+          "sequenceNumber": 2,
+          "date": "2026-09-10",
+          "dailySlot": 2,
+          "startTime": "09:30",
+          "endTime": "11:45",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRM393_SE1917_FA26-L03",
+          "sequenceNumber": 3,
+          "date": "2026-09-14",
+          "dailySlot": 2,
+          "startTime": "09:30",
+          "endTime": "11:45",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRM393_SE1917_FA26-L04",
+          "sequenceNumber": 4,
+          "date": "2026-09-17",
+          "dailySlot": 2,
+          "startTime": "09:30",
+          "endTime": "11:45",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRM393_SE1917_FA26-L05",
+          "sequenceNumber": 5,
+          "date": "2026-09-21",
+          "dailySlot": 2,
+          "startTime": "09:30",
+          "endTime": "11:45",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRM393_SE1917_FA26-L06",
+          "sequenceNumber": 6,
+          "date": "2026-09-24",
+          "dailySlot": 2,
+          "startTime": "09:30",
+          "endTime": "11:45",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRM393_SE1917_FA26-L07",
+          "sequenceNumber": 7,
+          "date": "2026-09-28",
+          "dailySlot": 2,
+          "startTime": "09:30",
+          "endTime": "11:45",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRM393_SE1917_FA26-L08",
+          "sequenceNumber": 8,
+          "date": "2026-10-01",
+          "dailySlot": 2,
+          "startTime": "09:30",
+          "endTime": "11:45",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRM393_SE1917_FA26-L09",
+          "sequenceNumber": 9,
+          "date": "2026-10-05",
+          "dailySlot": 2,
+          "startTime": "09:30",
+          "endTime": "11:45",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRM393_SE1917_FA26-L10",
+          "sequenceNumber": 10,
+          "date": "2026-10-08",
+          "dailySlot": 2,
+          "startTime": "09:30",
+          "endTime": "11:45",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRM393_SE1917_FA26-L11",
+          "sequenceNumber": 11,
+          "date": "2026-10-12",
+          "dailySlot": 2,
+          "startTime": "09:30",
+          "endTime": "11:45",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRM393_SE1917_FA26-L12",
+          "sequenceNumber": 12,
+          "date": "2026-10-15",
+          "dailySlot": 2,
+          "startTime": "09:30",
+          "endTime": "11:45",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRM393_SE1917_FA26-L13",
+          "sequenceNumber": 13,
+          "date": "2026-10-19",
+          "dailySlot": 2,
+          "startTime": "09:30",
+          "endTime": "11:45",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRM393_SE1917_FA26-L14",
+          "sequenceNumber": 14,
+          "date": "2026-10-22",
+          "dailySlot": 2,
+          "startTime": "09:30",
+          "endTime": "11:45",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRM393_SE1917_FA26-L15",
+          "sequenceNumber": 15,
+          "date": "2026-10-26",
+          "dailySlot": 2,
+          "startTime": "09:30",
+          "endTime": "11:45",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRM393_SE1917_FA26-L16",
+          "sequenceNumber": 16,
+          "date": "2026-10-29",
+          "dailySlot": 2,
+          "startTime": "09:30",
+          "endTime": "11:45",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRM393_SE1917_FA26-L17",
+          "sequenceNumber": 17,
+          "date": "2026-11-02",
+          "dailySlot": 2,
+          "startTime": "09:30",
+          "endTime": "11:45",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRM393_SE1917_FA26-L18",
+          "sequenceNumber": 18,
+          "date": "2026-11-05",
+          "dailySlot": 2,
+          "startTime": "09:30",
+          "endTime": "11:45",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRM393_SE1917_FA26-L19",
+          "sequenceNumber": 19,
+          "date": "2026-11-09",
+          "dailySlot": 2,
+          "startTime": "09:30",
+          "endTime": "11:45",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRM393_SE1917_FA26-L20",
+          "sequenceNumber": 20,
+          "date": "2026-11-12",
+          "dailySlot": 2,
+          "startTime": "09:30",
+          "endTime": "11:45",
+          "status": "scheduled",
+          "isAdjusted": false
+        }
+      ]
+    },
+    "PRM392_SE1920_FA26": {
+      "classOffering": {
+        "classId": "PRM392_SE1920_FA26",
+        "classCode": "SE1920",
+        "subjectCode": "PRM392",
+        "semester": "FA26",
+        "scheduleCode": "13",
+        "sourceSheetName": "13_PRM392_SE1920",
+        "lessonCount": 20,
+        "active": false
+      },
+      "students": [
+        {
+          "classCode": "SE1920",
+          "rollNumber": "SE183271",
+          "fullName": "Nguyễn Trần Gia Bảo",
+          "email": "baontgse183271@fpt.edu.vn",
+          "memberCode": "BaoNTGSE183271"
+        },
+        {
+          "classCode": "SE1920",
+          "rollNumber": "SE183201",
+          "fullName": "Nguyễn Phạm Xuân Sơn",
+          "email": "sonnpxse183201@fpt.edu.vn",
+          "memberCode": "SonNPXSE183201"
+        },
+        {
+          "classCode": "SE1920",
+          "rollNumber": "SE192024",
+          "fullName": "Dương Quốc Thái",
+          "email": "duongquocthai368@gmail.com",
+          "memberCode": "ThaiDQSE192024"
+        },
+        {
+          "classCode": "SE1920",
+          "rollNumber": "SE184988",
+          "fullName": "Vũ Đức Tuấn",
+          "email": "tuanvdse184988@fpt.edu.vn",
+          "memberCode": "TuanVDSE184988"
+        },
+        {
+          "classCode": "SE1920",
+          "rollNumber": "SE196327",
+          "fullName": "Hoàng Quốc Bảo",
+          "email": "hoangquocbao011105@gmail.com",
+          "memberCode": "BaoHQSE196327"
+        },
+        {
+          "classCode": "SE1920",
+          "rollNumber": "SE192160",
+          "fullName": "Trang Thuận Đức",
+          "email": "tduc01234@gmail.com",
+          "memberCode": "DucTTSE192160"
+        },
+        {
+          "classCode": "SE1920",
+          "rollNumber": "SE192427",
+          "fullName": "Lê Hoàng Duy",
+          "email": "lehoangduy23092005@gmail.com",
+          "memberCode": "DuyLHSE192427"
+        },
+        {
+          "classCode": "SE1920",
+          "rollNumber": "SE196437",
+          "fullName": "Đỗ Nhất Huy",
+          "email": "dnhuy207@gmail.com",
+          "memberCode": "HuyDNSE196437"
+        },
+        {
+          "classCode": "SE1920",
+          "rollNumber": "SE196296",
+          "fullName": "Nguyễn Bảo Nguyên",
+          "email": "nbn1784@gmail.com",
+          "memberCode": "NguyenNBSE196296"
+        },
+        {
+          "classCode": "SE1920",
+          "rollNumber": "SE194347",
+          "fullName": "Lê Phan Gia Bảo",
+          "email": "lephangiabao9904.1920@gmail.com",
+          "memberCode": "BaoLPGSE194347"
+        },
+        {
+          "classCode": "SE1920",
+          "rollNumber": "SE196250",
+          "fullName": "Trần Nguyễn Nam Khánh",
+          "email": "khanhtrangamer@gmail.com",
+          "memberCode": "KhanhTNNSE196250"
+        },
+        {
+          "classCode": "SE1920",
+          "rollNumber": "SE194466",
+          "fullName": "Nguyễn Hoàng Anh Khôi",
+          "email": "ahkhoinguyen169@gmail.com",
+          "memberCode": "KhoiNHASE194466"
+        },
+        {
+          "classCode": "SE1920",
+          "rollNumber": "SE184265",
+          "fullName": "Lê Trường Phúc",
+          "email": "phucltse184265@fpt.edu.vn",
+          "memberCode": "PhucLTSE184265"
+        },
+        {
+          "classCode": "SE1920",
+          "rollNumber": "SE196401",
+          "fullName": "Trương Quốc Vương",
+          "email": "tqvuong102@gmail.com",
+          "memberCode": "VuongTQSE196401"
+        },
+        {
+          "classCode": "SE1920",
+          "rollNumber": "SE194909",
+          "fullName": "Lâm Thiên Hải Anh",
+          "email": "haianhlam29052005@gmail.com",
+          "memberCode": "AnhLTHSE194909"
+        },
+        {
+          "classCode": "SE1920",
+          "rollNumber": "SE182072",
+          "fullName": "Trần Tiến Đạt",
+          "email": "datttse182072@fpt.edu.vn",
+          "memberCode": "DatTTSE182072"
+        },
+        {
+          "classCode": "SE1920",
+          "rollNumber": "HE170876",
+          "fullName": "Vũ Ngọc Hưng",
+          "email": "hungvnhe170876@fpt.edu.vn",
+          "memberCode": "hungvnhe170876"
+        },
+        {
+          "classCode": "SE1920",
+          "rollNumber": "SE180299",
+          "fullName": "Tô Thiên Phước",
+          "email": "phuocttse180299@fpt.edu.vn",
+          "memberCode": "PhuocTTSE180299"
+        },
+        {
+          "classCode": "SE1920",
+          "rollNumber": "SE190622",
+          "fullName": "Trần Duy Đạt",
+          "email": "megalit2578@gmail.com",
+          "memberCode": "DatTDSE190622"
+        },
+        {
+          "classCode": "SE1920",
+          "rollNumber": "SE196610",
+          "fullName": "Trần Trung Hải",
+          "email": "caubom205@gmail.com",
+          "memberCode": "HaiTTSE196610"
+        },
+        {
+          "classCode": "SE1920",
+          "rollNumber": "SE196624",
+          "fullName": "Đặng Minh Hoàng",
+          "email": "danghoang862@gmail.com",
+          "memberCode": "HoangDMSE196624"
+        },
+        {
+          "classCode": "SE1920",
+          "rollNumber": "SE184144",
+          "fullName": "Trần Hoài Khôi",
+          "email": "khoithse184144@fpt.edu.vn",
+          "memberCode": "KhoiTHSE184144"
+        },
+        {
+          "classCode": "SE1920",
+          "rollNumber": "SE184226",
+          "fullName": "Lâm Hoàng Nhân",
+          "email": "nhanlhse184226@fpt.edu.vn",
+          "memberCode": "NhanLHSE184226"
+        },
+        {
+          "classCode": "SE1920",
+          "rollNumber": "SE180400",
+          "fullName": "Nguyễn Đức Bổn",
+          "email": "bonndse180400@fpt.edu.vn",
+          "memberCode": "BonNDSE180400"
+        },
+        {
+          "classCode": "SE1920",
+          "rollNumber": "SE180629",
+          "fullName": "Nguyễn Thành Minh",
+          "email": "minhntse180629@fpt.edu.vn",
+          "memberCode": "MinhNTSE180629"
+        },
+        {
+          "classCode": "SE1920",
+          "rollNumber": "SE180338",
+          "fullName": "Hoàng Thanh Nguyên",
+          "email": "nguyenhtse180338@fpt.edu.vn",
+          "memberCode": "NguyenHTSE180338"
+        },
+        {
+          "classCode": "SE1920",
+          "rollNumber": "SE180447",
+          "fullName": "Nguyễn Văn Phú Quý",
+          "email": "quynvpse180447@fpt.edu.vn",
+          "memberCode": "QuyNVPSE180447"
+        },
+        {
+          "classCode": "SE1920",
+          "rollNumber": "SE194941",
+          "fullName": "Dương Hạo Cơ",
+          "email": "davidduong1711@gmail.com",
+          "memberCode": "CoDHSE194941"
+        },
+        {
+          "classCode": "SE1920",
+          "rollNumber": "SE194673",
+          "fullName": "Dương Thành Thanh Duy",
+          "email": "duongduy12314@gmail.com",
+          "memberCode": "DuyDTTSE194673"
+        },
+        {
+          "classCode": "SE1920",
+          "rollNumber": "SE193324",
+          "fullName": "Vũ Đức Hùng",
+          "email": "vuduchung060905@gmail.com",
+          "memberCode": "HungVDSE193324"
+        },
+        {
+          "classCode": "SE1920",
+          "rollNumber": "SE194001",
+          "fullName": "Nguyễn Huỳnh Nhật Thịnh",
+          "email": "victornhatthinh@gmail.com",
+          "memberCode": "ThinhNHNSE194001"
+        },
+        {
+          "classCode": "SE1920",
+          "rollNumber": "SE180374",
+          "fullName": "Bùi Quang Hiếu",
+          "email": "hieubqse180374@fpt.edu.vn",
+          "memberCode": "HieuBQSE180374"
+        },
+        {
+          "classCode": "SE1920",
+          "rollNumber": "SE183095",
+          "fullName": "Đỗ Việt Hoàng",
+          "email": "hoangdvse183095@fpt.edu.vn",
+          "memberCode": "HoangDVSE183095"
+        },
+        {
+          "classCode": "SE1920",
+          "rollNumber": "SE183051",
+          "fullName": "Thân Lê Thành Vinh",
+          "email": "vinhtltse183051@fpt.edu.vn",
+          "memberCode": "VinhTLTSE183051"
+        },
+        {
+          "classCode": "SE1920",
+          "rollNumber": "SE183011",
+          "fullName": "Dương Hòa Bình",
+          "email": "binhdhse183011@fpt.edu.vn",
+          "memberCode": "BinhDHSE183011"
+        },
+        {
+          "classCode": "SE1920",
+          "rollNumber": "SE161632",
+          "fullName": "Nguyễn Đức Huy",
+          "email": "huyndse161632@fpt.edu.vn",
+          "memberCode": "huyndse161632"
+        }
+      ],
+      "lessons": [
+        {
+          "lessonId": "PRM392_SE1920_FA26-L01",
+          "sequenceNumber": 1,
+          "date": "2026-09-07",
+          "dailySlot": 3,
+          "startTime": "12:30",
+          "endTime": "14:45",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRM392_SE1920_FA26-L02",
+          "sequenceNumber": 2,
+          "date": "2026-09-10",
+          "dailySlot": 3,
+          "startTime": "12:30",
+          "endTime": "14:45",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRM392_SE1920_FA26-L03",
+          "sequenceNumber": 3,
+          "date": "2026-09-14",
+          "dailySlot": 3,
+          "startTime": "12:30",
+          "endTime": "14:45",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRM392_SE1920_FA26-L04",
+          "sequenceNumber": 4,
+          "date": "2026-09-17",
+          "dailySlot": 3,
+          "startTime": "12:30",
+          "endTime": "14:45",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRM392_SE1920_FA26-L05",
+          "sequenceNumber": 5,
+          "date": "2026-09-21",
+          "dailySlot": 3,
+          "startTime": "12:30",
+          "endTime": "14:45",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRM392_SE1920_FA26-L06",
+          "sequenceNumber": 6,
+          "date": "2026-09-24",
+          "dailySlot": 3,
+          "startTime": "12:30",
+          "endTime": "14:45",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRM392_SE1920_FA26-L07",
+          "sequenceNumber": 7,
+          "date": "2026-09-28",
+          "dailySlot": 3,
+          "startTime": "12:30",
+          "endTime": "14:45",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRM392_SE1920_FA26-L08",
+          "sequenceNumber": 8,
+          "date": "2026-10-01",
+          "dailySlot": 3,
+          "startTime": "12:30",
+          "endTime": "14:45",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRM392_SE1920_FA26-L09",
+          "sequenceNumber": 9,
+          "date": "2026-10-05",
+          "dailySlot": 3,
+          "startTime": "12:30",
+          "endTime": "14:45",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRM392_SE1920_FA26-L10",
+          "sequenceNumber": 10,
+          "date": "2026-10-08",
+          "dailySlot": 3,
+          "startTime": "12:30",
+          "endTime": "14:45",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRM392_SE1920_FA26-L11",
+          "sequenceNumber": 11,
+          "date": "2026-10-12",
+          "dailySlot": 3,
+          "startTime": "12:30",
+          "endTime": "14:45",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRM392_SE1920_FA26-L12",
+          "sequenceNumber": 12,
+          "date": "2026-10-15",
+          "dailySlot": 3,
+          "startTime": "12:30",
+          "endTime": "14:45",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRM392_SE1920_FA26-L13",
+          "sequenceNumber": 13,
+          "date": "2026-10-19",
+          "dailySlot": 3,
+          "startTime": "12:30",
+          "endTime": "14:45",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRM392_SE1920_FA26-L14",
+          "sequenceNumber": 14,
+          "date": "2026-10-22",
+          "dailySlot": 3,
+          "startTime": "12:30",
+          "endTime": "14:45",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRM392_SE1920_FA26-L15",
+          "sequenceNumber": 15,
+          "date": "2026-10-26",
+          "dailySlot": 3,
+          "startTime": "12:30",
+          "endTime": "14:45",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRM392_SE1920_FA26-L16",
+          "sequenceNumber": 16,
+          "date": "2026-10-29",
+          "dailySlot": 3,
+          "startTime": "12:30",
+          "endTime": "14:45",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRM392_SE1920_FA26-L17",
+          "sequenceNumber": 17,
+          "date": "2026-11-02",
+          "dailySlot": 3,
+          "startTime": "12:30",
+          "endTime": "14:45",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRM392_SE1920_FA26-L18",
+          "sequenceNumber": 18,
+          "date": "2026-11-05",
+          "dailySlot": 3,
+          "startTime": "12:30",
+          "endTime": "14:45",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRM392_SE1920_FA26-L19",
+          "sequenceNumber": 19,
+          "date": "2026-11-09",
+          "dailySlot": 3,
+          "startTime": "12:30",
+          "endTime": "14:45",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRM392_SE1920_FA26-L20",
+          "sequenceNumber": 20,
+          "date": "2026-11-12",
+          "dailySlot": 3,
+          "startTime": "12:30",
+          "endTime": "14:45",
+          "status": "scheduled",
+          "isAdjusted": false
+        }
+      ]
+    },
+    "PRM393_SE1920_FA26": {
+      "classOffering": {
+        "classId": "PRM393_SE1920_FA26",
+        "classCode": "SE1920",
+        "subjectCode": "PRM393",
+        "semester": "FA26",
+        "scheduleCode": "14",
+        "sourceSheetName": "14_PRM393_SE1920",
+        "lessonCount": 20,
+        "active": true
+      },
+      "students": [
+        {
+          "classCode": "SE1920",
+          "rollNumber": "SE194909",
+          "fullName": "Lâm Thiên Hải Anh",
+          "email": "haianhlam29052005@gmail.com",
+          "memberCode": "AnhLTHSE194909"
+        },
+        {
+          "classCode": "SE1920",
+          "rollNumber": "SE196327",
+          "fullName": "Hoàng Quốc Bảo",
+          "email": "hoangquocbao011105@gmail.com",
+          "memberCode": "BaoHQSE196327"
+        },
+        {
+          "classCode": "SE1920",
+          "rollNumber": "SE194347",
+          "fullName": "Lê Phan Gia Bảo",
+          "email": "lephangiabao9904.1920@gmail.com",
+          "memberCode": "BaoLPGSE194347"
+        },
+        {
+          "classCode": "SE1920",
+          "rollNumber": "SE183271",
+          "fullName": "Nguyễn Trần Gia Bảo",
+          "email": "baontgse183271@fpt.edu.vn",
+          "memberCode": "BaoNTGSE183271"
+        },
+        {
+          "classCode": "SE1920",
+          "rollNumber": "SE183011",
+          "fullName": "Dương Hòa Bình",
+          "email": "binhdhse183011@fpt.edu.vn",
+          "memberCode": "BinhDHSE183011"
+        },
+        {
+          "classCode": "SE1920",
+          "rollNumber": "SE180400",
+          "fullName": "Nguyễn Đức Bổn",
+          "email": "bonndse180400@fpt.edu.vn",
+          "memberCode": "BonNDSE180400"
+        },
+        {
+          "classCode": "SE1920",
+          "rollNumber": "SE194941",
+          "fullName": "Dương Hạo Cơ",
+          "email": "davidduong1711@gmail.com",
+          "memberCode": "CoDHSE194941"
+        },
+        {
+          "classCode": "SE1920",
+          "rollNumber": "SE190622",
+          "fullName": "Trần Duy Đạt",
+          "email": "megalit2578@gmail.com",
+          "memberCode": "DatTDSE190622"
+        },
+        {
+          "classCode": "SE1920",
+          "rollNumber": "SE182072",
+          "fullName": "Trần Tiến Đạt",
+          "email": "datttse182072@fpt.edu.vn",
+          "memberCode": "DatTTSE182072"
+        },
+        {
+          "classCode": "SE1920",
+          "rollNumber": "SE192160",
+          "fullName": "Trang Thuận Đức",
+          "email": "tduc01234@gmail.com",
+          "memberCode": "DucTTSE192160"
+        },
+        {
+          "classCode": "SE1920",
+          "rollNumber": "SE194673",
+          "fullName": "Dương Thành Thanh Duy",
+          "email": "duongduy12314@gmail.com",
+          "memberCode": "DuyDTTSE194673"
+        },
+        {
+          "classCode": "SE1920",
+          "rollNumber": "SE192427",
+          "fullName": "Lê Hoàng Duy",
+          "email": "lehoangduy23092005@gmail.com",
+          "memberCode": "DuyLHSE192427"
+        },
+        {
+          "classCode": "SE1920",
+          "rollNumber": "SE196610",
+          "fullName": "Trần Trung Hải",
+          "email": "caubom205@gmail.com",
+          "memberCode": "HaiTTSE196610"
+        },
+        {
+          "classCode": "SE1920",
+          "rollNumber": "SE180374",
+          "fullName": "Bùi Quang Hiếu",
+          "email": "hieubqse180374@fpt.edu.vn",
+          "memberCode": "HieuBQSE180374"
+        },
+        {
+          "classCode": "SE1920",
+          "rollNumber": "SE196624",
+          "fullName": "Đặng Minh Hoàng",
+          "email": "danghoang862@gmail.com",
+          "memberCode": "HoangDMSE196624"
+        },
+        {
+          "classCode": "SE1920",
+          "rollNumber": "SE183095",
+          "fullName": "Đỗ Việt Hoàng",
+          "email": "hoangdvse183095@fpt.edu.vn",
+          "memberCode": "HoangDVSE183095"
+        },
+        {
+          "classCode": "SE1920",
+          "rollNumber": "SE193324",
+          "fullName": "Vũ Đức Hùng",
+          "email": "vuduchung060905@gmail.com",
+          "memberCode": "HungVDSE193324"
+        },
+        {
+          "classCode": "SE1920",
+          "rollNumber": "HE170876",
+          "fullName": "Vũ Ngọc Hưng",
+          "email": "hungvnhe170876@fpt.edu.vn",
+          "memberCode": "hungvnhe170876"
+        },
+        {
+          "classCode": "SE1920",
+          "rollNumber": "SE196437",
+          "fullName": "Đỗ Nhất Huy",
+          "email": "dnhuy207@gmail.com",
+          "memberCode": "HuyDNSE196437"
+        },
+        {
+          "classCode": "SE1920",
+          "rollNumber": "SE161632",
+          "fullName": "Nguyễn Đức Huy",
+          "email": "huyndse161632@fpt.edu.vn",
+          "memberCode": "huyndse161632"
+        },
+        {
+          "classCode": "SE1920",
+          "rollNumber": "SE196250",
+          "fullName": "Trần Nguyễn Nam Khánh",
+          "email": "khanhtrangamer@gmail.com",
+          "memberCode": "KhanhTNNSE196250"
+        },
+        {
+          "classCode": "SE1920",
+          "rollNumber": "SE194466",
+          "fullName": "Nguyễn Hoàng Anh Khôi",
+          "email": "ahkhoinguyen169@gmail.com",
+          "memberCode": "KhoiNHASE194466"
+        },
+        {
+          "classCode": "SE1920",
+          "rollNumber": "SE184144",
+          "fullName": "Trần Hoài Khôi",
+          "email": "khoithse184144@fpt.edu.vn",
+          "memberCode": "KhoiTHSE184144"
+        },
+        {
+          "classCode": "SE1920",
+          "rollNumber": "SE180629",
+          "fullName": "Nguyễn Thành Minh",
+          "email": "minhntse180629@fpt.edu.vn",
+          "memberCode": "MinhNTSE180629"
+        },
+        {
+          "classCode": "SE1920",
+          "rollNumber": "SE180338",
+          "fullName": "Hoàng Thanh Nguyên",
+          "email": "nguyenhtse180338@fpt.edu.vn",
+          "memberCode": "NguyenHTSE180338"
+        },
+        {
+          "classCode": "SE1920",
+          "rollNumber": "SE196296",
+          "fullName": "Nguyễn Bảo Nguyên",
+          "email": "nbn1784@gmail.com",
+          "memberCode": "NguyenNBSE196296"
+        },
+        {
+          "classCode": "SE1920",
+          "rollNumber": "SE184226",
+          "fullName": "Lâm Hoàng Nhân",
+          "email": "nhanlhse184226@fpt.edu.vn",
+          "memberCode": "NhanLHSE184226"
+        },
+        {
+          "classCode": "SE1920",
+          "rollNumber": "SE184265",
+          "fullName": "Lê Trường Phúc",
+          "email": "phucltse184265@fpt.edu.vn",
+          "memberCode": "PhucLTSE184265"
+        },
+        {
+          "classCode": "SE1920",
+          "rollNumber": "SE180299",
+          "fullName": "Tô Thiên Phước",
+          "email": "phuocttse180299@fpt.edu.vn",
+          "memberCode": "PhuocTTSE180299"
+        },
+        {
+          "classCode": "SE1920",
+          "rollNumber": "SE180447",
+          "fullName": "Nguyễn Văn Phú Quý",
+          "email": "quynvpse180447@fpt.edu.vn",
+          "memberCode": "QuyNVPSE180447"
+        },
+        {
+          "classCode": "SE1920",
+          "rollNumber": "SE183201",
+          "fullName": "Nguyễn Phạm Xuân Sơn",
+          "email": "sonnpxse183201@fpt.edu.vn",
+          "memberCode": "SonNPXSE183201"
+        },
+        {
+          "classCode": "SE1920",
+          "rollNumber": "SE192024",
+          "fullName": "Dương Quốc Thái",
+          "email": "duongquocthai368@gmail.com",
+          "memberCode": "ThaiDQSE192024"
+        },
+        {
+          "classCode": "SE1920",
+          "rollNumber": "SE194001",
+          "fullName": "Nguyễn Huỳnh Nhật Thịnh",
+          "email": "victornhatthinh@gmail.com",
+          "memberCode": "ThinhNHNSE194001"
+        },
+        {
+          "classCode": "SE1920",
+          "rollNumber": "SE184988",
+          "fullName": "Vũ Đức Tuấn",
+          "email": "tuanvdse184988@fpt.edu.vn",
+          "memberCode": "TuanVDSE184988"
+        },
+        {
+          "classCode": "SE1920",
+          "rollNumber": "SE183051",
+          "fullName": "Thân Lê Thành Vinh",
+          "email": "vinhtltse183051@fpt.edu.vn",
+          "memberCode": "VinhTLTSE183051"
+        },
+        {
+          "classCode": "SE1920",
+          "rollNumber": "SE196401",
+          "fullName": "Trương Quốc Vương",
+          "email": "tqvuong102@gmail.com",
+          "memberCode": "VuongTQSE196401"
+        },
+        {
+          "classCode": "SE1920",
+          "rollNumber": "SE111111",
+          "fullName": "Nguyễn Thượng Hào",
+          "email": "haophong660@gmail.com",
+          "memberCode": "haontse111111"
+        }
+      ],
+      "lessons": [
+        {
+          "lessonId": "PRM393_SE1920_FA26-L01",
+          "sequenceNumber": 1,
+          "date": "2026-09-07",
+          "dailySlot": 4,
+          "startTime": "15:00",
+          "endTime": "17:15",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRM393_SE1920_FA26-L02",
+          "sequenceNumber": 2,
+          "date": "2026-09-10",
+          "dailySlot": 4,
+          "startTime": "15:00",
+          "endTime": "17:15",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRM393_SE1920_FA26-L03",
+          "sequenceNumber": 3,
+          "date": "2026-09-14",
+          "dailySlot": 4,
+          "startTime": "15:00",
+          "endTime": "17:15",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRM393_SE1920_FA26-L04",
+          "sequenceNumber": 4,
+          "date": "2026-09-17",
+          "dailySlot": 4,
+          "startTime": "15:00",
+          "endTime": "17:15",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRM393_SE1920_FA26-L05",
+          "sequenceNumber": 5,
+          "date": "2026-09-21",
+          "dailySlot": 4,
+          "startTime": "15:00",
+          "endTime": "17:15",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRM393_SE1920_FA26-L06",
+          "sequenceNumber": 6,
+          "date": "2026-09-24",
+          "dailySlot": 4,
+          "startTime": "15:00",
+          "endTime": "17:15",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRM393_SE1920_FA26-L07",
+          "sequenceNumber": 7,
+          "date": "2026-09-28",
+          "dailySlot": 4,
+          "startTime": "15:00",
+          "endTime": "17:15",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRM393_SE1920_FA26-L08",
+          "sequenceNumber": 8,
+          "date": "2026-10-01",
+          "dailySlot": 4,
+          "startTime": "15:00",
+          "endTime": "17:15",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRM393_SE1920_FA26-L09",
+          "sequenceNumber": 9,
+          "date": "2026-10-05",
+          "dailySlot": 4,
+          "startTime": "15:00",
+          "endTime": "17:15",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRM393_SE1920_FA26-L10",
+          "sequenceNumber": 10,
+          "date": "2026-10-08",
+          "dailySlot": 4,
+          "startTime": "15:00",
+          "endTime": "17:15",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRM393_SE1920_FA26-L11",
+          "sequenceNumber": 11,
+          "date": "2026-10-12",
+          "dailySlot": 4,
+          "startTime": "15:00",
+          "endTime": "17:15",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRM393_SE1920_FA26-L12",
+          "sequenceNumber": 12,
+          "date": "2026-10-15",
+          "dailySlot": 4,
+          "startTime": "15:00",
+          "endTime": "17:15",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRM393_SE1920_FA26-L13",
+          "sequenceNumber": 13,
+          "date": "2026-10-19",
+          "dailySlot": 4,
+          "startTime": "15:00",
+          "endTime": "17:15",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRM393_SE1920_FA26-L14",
+          "sequenceNumber": 14,
+          "date": "2026-10-22",
+          "dailySlot": 4,
+          "startTime": "15:00",
+          "endTime": "17:15",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRM393_SE1920_FA26-L15",
+          "sequenceNumber": 15,
+          "date": "2026-10-26",
+          "dailySlot": 4,
+          "startTime": "15:00",
+          "endTime": "17:15",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRM393_SE1920_FA26-L16",
+          "sequenceNumber": 16,
+          "date": "2026-10-29",
+          "dailySlot": 4,
+          "startTime": "15:00",
+          "endTime": "17:15",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRM393_SE1920_FA26-L17",
+          "sequenceNumber": 17,
+          "date": "2026-11-02",
+          "dailySlot": 4,
+          "startTime": "15:00",
+          "endTime": "17:15",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRM393_SE1920_FA26-L18",
+          "sequenceNumber": 18,
+          "date": "2026-11-05",
+          "dailySlot": 4,
+          "startTime": "15:00",
+          "endTime": "17:15",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRM393_SE1920_FA26-L19",
+          "sequenceNumber": 19,
+          "date": "2026-11-09",
+          "dailySlot": 4,
+          "startTime": "15:00",
+          "endTime": "17:15",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRM393_SE1920_FA26-L20",
+          "sequenceNumber": 20,
+          "date": "2026-11-12",
+          "dailySlot": 4,
+          "startTime": "15:00",
+          "endTime": "17:15",
+          "status": "scheduled",
+          "isAdjusted": false
+        }
+      ]
+    },
+    "SWD392_SE1927_FA26": {
+      "classOffering": {
+        "classId": "SWD392_SE1927_FA26",
+        "classCode": "SE1927",
+        "subjectCode": "SWD392",
+        "semester": "FA26",
+        "scheduleCode": "22",
+        "sourceSheetName": "22_SWD392_SE1927",
+        "lessonCount": 20,
+        "active": true
+      },
+      "students": [
+        {
+          "classCode": "SE1927",
+          "rollNumber": "SE180739",
+          "fullName": "Nguyễn Văn Bắc",
+          "email": "bacnvse180739@fpt.edu.vn",
+          "memberCode": "BacNVSE180739"
+        },
+        {
+          "classCode": "SE1927",
+          "rollNumber": "SE180775",
+          "fullName": "Nguyễn Đỗ Bảo Hưng",
+          "email": "hungndbse180775@fpt.edu.vn",
+          "memberCode": "HungNDBSE180775"
+        },
+        {
+          "classCode": "SE1927",
+          "rollNumber": "SE196276",
+          "fullName": "Võ Trần Ngọc Hữu",
+          "email": "votranngochuu@gmail.com",
+          "memberCode": "HuuVTNSE196276"
+        },
+        {
+          "classCode": "SE1927",
+          "rollNumber": "SE182418",
+          "fullName": "Nguyễn Thị Thu Huyền",
+          "email": "huyennttse182418@fpt.edu.vn",
+          "memberCode": "HuyenNTTSE182418"
+        },
+        {
+          "classCode": "SE1927",
+          "rollNumber": "SE181653",
+          "fullName": "Nguyễn Lê Ngọc Trí",
+          "email": "trinlnse181653@fpt.edu.vn",
+          "memberCode": "TriNLNSE181653"
+        },
+        {
+          "classCode": "SE1927",
+          "rollNumber": "SE183175",
+          "fullName": "Nguyễn Phan Huy Bách",
+          "email": "bachnphse183175@fpt.edu.vn",
+          "memberCode": "BachNPHSE183175"
+        },
+        {
+          "classCode": "SE1927",
+          "rollNumber": "SE183237",
+          "fullName": "Vũ Tiến Đơn",
+          "email": "donvtse183237@fpt.edu.vn",
+          "memberCode": "DonVTSE183237"
+        },
+        {
+          "classCode": "SE1927",
+          "rollNumber": "SE190124",
+          "fullName": "Lê Tuấn Kiệt",
+          "email": "lekiet2442005@gmail.com",
+          "memberCode": "KietLTSE190124"
+        },
+        {
+          "classCode": "SE1927",
+          "rollNumber": "SE190769",
+          "fullName": "Đặng Hồng Phước",
+          "email": "dangp2660@gmail.com",
+          "memberCode": "PhuocDHSE190769"
+        },
+        {
+          "classCode": "SE1927",
+          "rollNumber": "SE173283",
+          "fullName": "Đoàn Trần Quang Nhựt",
+          "email": "nhutdtqse173283@fpt.edu.vn",
+          "memberCode": "NhutDTQSE173283"
+        },
+        {
+          "classCode": "SE1927",
+          "rollNumber": "SE180133",
+          "fullName": "Phạm Hưng Thịnh",
+          "email": "thinhphse180133@fpt.edu.vn",
+          "memberCode": "ThinhPHSE180133"
+        },
+        {
+          "classCode": "SE1927",
+          "rollNumber": "SE160368",
+          "fullName": "Nguyễn Đức Đại",
+          "email": "daindse160368@fpt.edu.vn",
+          "memberCode": "daindse160368"
+        },
+        {
+          "classCode": "SE1927",
+          "rollNumber": "SE193051",
+          "fullName": "Hồ Minh Hiếu",
+          "email": "hominhieu27072005@gmail.com",
+          "memberCode": "HieuHMSE193051"
+        },
+        {
+          "classCode": "SE1927",
+          "rollNumber": "SE193042",
+          "fullName": "Tưởng Hiếu Kiên",
+          "email": "kientuong707@gmail.com",
+          "memberCode": "KienTHSE193042"
+        },
+        {
+          "classCode": "SE1927",
+          "rollNumber": "SE194165",
+          "fullName": "Trương Trần Anh Minh",
+          "email": "minhtruong300605@gmail.com",
+          "memberCode": "MinhTTASE194165"
+        },
+        {
+          "classCode": "SE1927",
+          "rollNumber": "SE192786",
+          "fullName": "Trần Quốc Thái",
+          "email": "tqt12342018s@gmail.com",
+          "memberCode": "ThaiTQSE192786"
+        },
+        {
+          "classCode": "SE1927",
+          "rollNumber": "SE192635",
+          "fullName": "Đặng Hoàng Trúc Vy",
+          "email": "danghoangtrucvy090105@gmail.com",
+          "memberCode": "VyDHTSE192635"
+        },
+        {
+          "classCode": "SE1927",
+          "rollNumber": "SE192324",
+          "fullName": "Nguyễn Châu Nhật Anh",
+          "email": "nguyenchaunhatanh1008@gmail.com",
+          "memberCode": "AnhNCNSE192324"
+        },
+        {
+          "classCode": "SE1927",
+          "rollNumber": "SE196427",
+          "fullName": "Lê Đình Duy",
+          "email": "duy1632005@gmail.com",
+          "memberCode": "DuyLDSE196427"
+        },
+        {
+          "classCode": "SE1927",
+          "rollNumber": "SE181785",
+          "fullName": "Lưu Vũ Hưng",
+          "email": "hunglvse181785@fpt.edu.vn",
+          "memberCode": "HungLVSE181785"
+        },
+        {
+          "classCode": "SE1927",
+          "rollNumber": "SE183526",
+          "fullName": "Trần Tuấn Hưng",
+          "email": "hungttse183526@fpt.edu.vn",
+          "memberCode": "HungTTSE183526"
+        },
+        {
+          "classCode": "SE1927",
+          "rollNumber": "DE190260",
+          "fullName": "Trần Ngọc Trung Kiên",
+          "email": "trankienqt02@gmail.com",
+          "memberCode": "KienTNTDE190260"
+        },
+        {
+          "classCode": "SE1927",
+          "rollNumber": "SE182479",
+          "fullName": "Chiêm Hoàng Long",
+          "email": "longchse182479@fpt.edu.vn",
+          "memberCode": "LongCHSE182479"
+        },
+        {
+          "classCode": "SE1927",
+          "rollNumber": "SE192270",
+          "fullName": "Lê Hoàng Anh",
+          "email": "hoanganhle552005@gmail.com",
+          "memberCode": "AnhLHSE192270"
+        },
+        {
+          "classCode": "SE1927",
+          "rollNumber": "SE184648",
+          "fullName": "Phạm Nguyễn Thế Anh",
+          "email": "anhpntse184648@fpt.edu.vn",
+          "memberCode": "AnhPNTSE184648"
+        },
+        {
+          "classCode": "SE1927",
+          "rollNumber": "SE194539",
+          "fullName": "Nguyễn Thành Đạt",
+          "email": "datn100705@gmail.com",
+          "memberCode": "DatNTSE194539"
+        },
+        {
+          "classCode": "SE1927",
+          "rollNumber": "SE184419",
+          "fullName": "Nguyễn Trần Duy Khang",
+          "email": "khangntdse184419@fpt.edu.vn",
+          "memberCode": "KhangNTDSE184419"
+        },
+        {
+          "classCode": "SE1927",
+          "rollNumber": "SE184435",
+          "fullName": "Lê Nguyễn Anh Kiệt",
+          "email": "kietlnase184435@fpt.edu.vn",
+          "memberCode": "KietLNASE184435"
+        },
+        {
+          "classCode": "SE1927",
+          "rollNumber": "SE184535",
+          "fullName": "Trương Hoàng Quốc Triệu",
+          "email": "trieuthqse184535@fpt.edu.vn",
+          "memberCode": "TrieuTHQSE184535"
+        },
+        {
+          "classCode": "SE1927",
+          "rollNumber": "SE180549",
+          "fullName": "Nguyễn Bình Phương Huy",
+          "email": "huynbpse180549@fpt.edu.vn",
+          "memberCode": "HuyNBPSE180549"
+        },
+        {
+          "classCode": "SE1927",
+          "rollNumber": "SE182208",
+          "fullName": "Lê Thị Hồng Loan",
+          "email": "loanlthse182208@fpt.edu.vn",
+          "memberCode": "LoanLTHSE182208"
+        },
+        {
+          "classCode": "SE1927",
+          "rollNumber": "SE180644",
+          "fullName": "Trần Minh Quân",
+          "email": "quantmse180644@fpt.edu.vn",
+          "memberCode": "QuanTMSE180644"
+        },
+        {
+          "classCode": "SE1927",
+          "rollNumber": "SE183061",
+          "fullName": "Võ Thành Tấn",
+          "email": "tanvtse183061@fpt.edu.vn",
+          "memberCode": "TanVTSE183061"
+        },
+        {
+          "classCode": "SE1927",
+          "rollNumber": "SE180488",
+          "fullName": "Lê Quốc Thông",
+          "email": "thonglqse180488@fpt.edu.vn",
+          "memberCode": "ThongLQSE180488"
+        },
+        {
+          "classCode": "SE1927",
+          "rollNumber": "SE184104",
+          "fullName": "Nguyễn Quang Vinh",
+          "email": "vinhnqse184104@fpt.edu.vn",
+          "memberCode": "VinhNQSE184104"
+        }
+      ],
+      "lessons": [
+        {
+          "lessonId": "SWD392_SE1927_FA26-L01",
+          "sequenceNumber": 1,
+          "date": "2026-09-08",
+          "dailySlot": 2,
+          "startTime": "09:30",
+          "endTime": "11:45",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "SWD392_SE1927_FA26-L02",
+          "sequenceNumber": 2,
+          "date": "2026-09-11",
+          "dailySlot": 2,
+          "startTime": "09:30",
+          "endTime": "11:45",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "SWD392_SE1927_FA26-L03",
+          "sequenceNumber": 3,
+          "date": "2026-09-15",
+          "dailySlot": 2,
+          "startTime": "09:30",
+          "endTime": "11:45",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "SWD392_SE1927_FA26-L04",
+          "sequenceNumber": 4,
+          "date": "2026-09-18",
+          "dailySlot": 2,
+          "startTime": "09:30",
+          "endTime": "11:45",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "SWD392_SE1927_FA26-L05",
+          "sequenceNumber": 5,
+          "date": "2026-09-22",
+          "dailySlot": 2,
+          "startTime": "09:30",
+          "endTime": "11:45",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "SWD392_SE1927_FA26-L06",
+          "sequenceNumber": 6,
+          "date": "2026-09-25",
+          "dailySlot": 2,
+          "startTime": "09:30",
+          "endTime": "11:45",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "SWD392_SE1927_FA26-L07",
+          "sequenceNumber": 7,
+          "date": "2026-09-29",
+          "dailySlot": 2,
+          "startTime": "09:30",
+          "endTime": "11:45",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "SWD392_SE1927_FA26-L08",
+          "sequenceNumber": 8,
+          "date": "2026-10-02",
+          "dailySlot": 2,
+          "startTime": "09:30",
+          "endTime": "11:45",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "SWD392_SE1927_FA26-L09",
+          "sequenceNumber": 9,
+          "date": "2026-10-06",
+          "dailySlot": 2,
+          "startTime": "09:30",
+          "endTime": "11:45",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "SWD392_SE1927_FA26-L10",
+          "sequenceNumber": 10,
+          "date": "2026-10-09",
+          "dailySlot": 2,
+          "startTime": "09:30",
+          "endTime": "11:45",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "SWD392_SE1927_FA26-L11",
+          "sequenceNumber": 11,
+          "date": "2026-10-13",
+          "dailySlot": 2,
+          "startTime": "09:30",
+          "endTime": "11:45",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "SWD392_SE1927_FA26-L12",
+          "sequenceNumber": 12,
+          "date": "2026-10-16",
+          "dailySlot": 2,
+          "startTime": "09:30",
+          "endTime": "11:45",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "SWD392_SE1927_FA26-L13",
+          "sequenceNumber": 13,
+          "date": "2026-10-20",
+          "dailySlot": 2,
+          "startTime": "09:30",
+          "endTime": "11:45",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "SWD392_SE1927_FA26-L14",
+          "sequenceNumber": 14,
+          "date": "2026-10-23",
+          "dailySlot": 2,
+          "startTime": "09:30",
+          "endTime": "11:45",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "SWD392_SE1927_FA26-L15",
+          "sequenceNumber": 15,
+          "date": "2026-10-27",
+          "dailySlot": 2,
+          "startTime": "09:30",
+          "endTime": "11:45",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "SWD392_SE1927_FA26-L16",
+          "sequenceNumber": 16,
+          "date": "2026-10-30",
+          "dailySlot": 2,
+          "startTime": "09:30",
+          "endTime": "11:45",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "SWD392_SE1927_FA26-L17",
+          "sequenceNumber": 17,
+          "date": "2026-11-03",
+          "dailySlot": 2,
+          "startTime": "09:30",
+          "endTime": "11:45",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "SWD392_SE1927_FA26-L18",
+          "sequenceNumber": 18,
+          "date": "2026-11-06",
+          "dailySlot": 2,
+          "startTime": "09:30",
+          "endTime": "11:45",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "SWD392_SE1927_FA26-L19",
+          "sequenceNumber": 19,
+          "date": "2026-11-10",
+          "dailySlot": 2,
+          "startTime": "09:30",
+          "endTime": "11:45",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "SWD392_SE1927_FA26-L20",
+          "sequenceNumber": 20,
+          "date": "2026-11-13",
+          "dailySlot": 2,
+          "startTime": "09:30",
+          "endTime": "11:45",
+          "status": "scheduled",
+          "isAdjusted": false
+        }
+      ]
+    },
+    "PRM232_SE1922_FA26": {
+      "classOffering": {
+        "classId": "PRM232_SE1922_FA26",
+        "classCode": "SE1922",
+        "subjectCode": "PRM232",
+        "semester": "FA26",
+        "scheduleCode": "23",
+        "sourceSheetName": "23_PRM232",
+        "lessonCount": 20,
+        "active": true
+      },
+      "students": [
+        {
+          "classCode": "SE1922",
+          "rollNumber": "SE182699",
+          "fullName": "Nguyễn Ngọc Duy",
+          "email": "duynnse182699@fpt.edu.vn",
+          "memberCode": "DuyNNSE182699"
+        },
+        {
+          "classCode": "SE1922",
+          "rollNumber": "SE184297",
+          "fullName": "Ôn Triệu Luân",
+          "email": "luanotse184297@fpt.edu.vn",
+          "memberCode": "LuanOTSE184297"
+        },
+        {
+          "classCode": "SE1922",
+          "rollNumber": "SE183277",
+          "fullName": "Nguyễn Trường Phúc",
+          "email": "phucntse183277@fpt.edu.vn",
+          "memberCode": "PhucNTSE183277"
+        },
+        {
+          "classCode": "SE1922",
+          "rollNumber": "SE181848",
+          "fullName": "Nguyễn Văn Toàn",
+          "email": "toannvse181848@fpt.edu.vn",
+          "memberCode": "ToanNVSE181848"
+        },
+        {
+          "classCode": "SE1922",
+          "rollNumber": "SE180065",
+          "fullName": "Lê Trần Minh Đức",
+          "email": "ducltmse180065@fpt.edu.vn",
+          "memberCode": "DucLTMSE180065"
+        },
+        {
+          "classCode": "SE1922",
+          "rollNumber": "SE161147",
+          "fullName": "Võ Ngọc Duy",
+          "email": "duyvnse161147@fpt.edu.vn",
+          "memberCode": "duyvnse161147"
+        },
+        {
+          "classCode": "SE1922",
+          "rollNumber": "SE190247",
+          "fullName": "Tống Trần Lê Khoa",
+          "email": "noodle.professor@gmail.com",
+          "memberCode": "KhoaTTLSE190247"
+        },
+        {
+          "classCode": "SE1922",
+          "rollNumber": "SE180584",
+          "fullName": "Nguyễn Anh Khôi",
+          "email": "khoinase180584@fpt.edu.vn",
+          "memberCode": "KhoiNASE180584"
+        },
+        {
+          "classCode": "SE1922",
+          "rollNumber": "SE184800",
+          "fullName": "Nguyễn Nam Minh Trí",
+          "email": "trinnmse184800@fpt.edu.vn",
+          "memberCode": "TriNNMSE184800"
+        },
+        {
+          "classCode": "SE1922",
+          "rollNumber": "SE193656",
+          "fullName": "Phạm Nguyễn Hoàng Anh",
+          "email": "pnhoanganhh@gmail.com",
+          "memberCode": "AnhPNHSE193656"
+        },
+        {
+          "classCode": "SE1922",
+          "rollNumber": "SE193938",
+          "fullName": "Nguyễn Tấn Kim Hảo",
+          "email": "kimhao25052005@gmail.com",
+          "memberCode": "HaoNTKSE193938"
+        },
+        {
+          "classCode": "SE1922",
+          "rollNumber": "SE193778",
+          "fullName": "Mai Duy Lập",
+          "email": "nekor210@gmail.com",
+          "memberCode": "LapMDSE193778"
+        },
+        {
+          "classCode": "SE1922",
+          "rollNumber": "SE193679",
+          "fullName": "Lâm Tài Lợi",
+          "email": "lamtailoi11141@gmail.com",
+          "memberCode": "LoiLTSE193679"
+        },
+        {
+          "classCode": "SE1922",
+          "rollNumber": "SE193851",
+          "fullName": "Nguyễn Minh Tú",
+          "email": "tunguyen04105@gmail.com",
+          "memberCode": "TuNMSE193851"
+        },
+        {
+          "classCode": "SE1922",
+          "rollNumber": "SE180504",
+          "fullName": "Nguyễn Trọng Hiếu",
+          "email": "hieuntse180504@fpt.edu.vn",
+          "memberCode": "HieuNTSE180504"
+        },
+        {
+          "classCode": "SE1922",
+          "rollNumber": "SE150512",
+          "fullName": "Đặng Nhật Huy",
+          "email": "huydnse150512@fpt.edu.vn",
+          "memberCode": "huydnse150512"
+        },
+        {
+          "classCode": "SE1922",
+          "rollNumber": "SE180429",
+          "fullName": "Nguyễn Hoàng Huy",
+          "email": "huynhse180429@fpt.edu.vn",
+          "memberCode": "HuyNHSE180429"
+        },
+        {
+          "classCode": "SE1922",
+          "rollNumber": "SE184057",
+          "fullName": "Hồ Xuân Anh Nam",
+          "email": "namhxase184057@fpt.edu.vn",
+          "memberCode": "NamHXASE184057"
+        },
+        {
+          "classCode": "SE1922",
+          "rollNumber": "SE190185",
+          "fullName": "Lê Nhựt Anh",
+          "email": "nhoxluachop@gmail.com",
+          "memberCode": "AnhLNSE190185"
+        },
+        {
+          "classCode": "SE1922",
+          "rollNumber": "SE190126",
+          "fullName": "Dương Trung Kiên",
+          "email": "duongkien.090905@gmail.com",
+          "memberCode": "KienDTSE190126"
+        },
+        {
+          "classCode": "SE1922",
+          "rollNumber": "SE190187",
+          "fullName": "Võ Lâm Nguyên",
+          "email": "nguyenvo9102005@gmail.com",
+          "memberCode": "NguyenVLSE190187"
+        },
+        {
+          "classCode": "SE1922",
+          "rollNumber": "SE180289",
+          "fullName": "Nguyễn Công Thức",
+          "email": "thucncse180289@fpt.edu.vn",
+          "memberCode": "ThucNCSE180289"
+        },
+        {
+          "classCode": "SE1922",
+          "rollNumber": "SE180187",
+          "fullName": "Ninh Quốc Bảo",
+          "email": "baonqse180187@fpt.edu.vn",
+          "memberCode": "BaoNQSE180187"
+        },
+        {
+          "classCode": "SE1922",
+          "rollNumber": "SE182024",
+          "fullName": "Lưu Đình Duy",
+          "email": "duyldse182024@fpt.edu.vn",
+          "memberCode": "DuyLDSE182024"
+        },
+        {
+          "classCode": "SE1922",
+          "rollNumber": "SE172822",
+          "fullName": "Lê Chí Hiếu",
+          "email": "hieulcse172822@fpt.edu.vn",
+          "memberCode": "HieuLCSE172822"
+        },
+        {
+          "classCode": "SE1922",
+          "rollNumber": "SE180728",
+          "fullName": "Phạm Trương Long",
+          "email": "longptse180728@fpt.edu.vn",
+          "memberCode": "LongPTSE180728"
+        },
+        {
+          "classCode": "SE1922",
+          "rollNumber": "SE183606",
+          "fullName": "Nguyễn Minh Tiến",
+          "email": "tiennmse183606@fpt.edu.vn",
+          "memberCode": "TienNMSE183606"
+        },
+        {
+          "classCode": "SE1922",
+          "rollNumber": "SE190572",
+          "fullName": "Nguyễn Thị Tú Anh",
+          "email": "tuanhbinglongbp@gmail.com",
+          "memberCode": "AnhNTTSE190572"
+        },
+        {
+          "classCode": "SE1922",
+          "rollNumber": "SE190503",
+          "fullName": "Nguyễn Ngọc Phương Đông",
+          "email": "phuongdongbinhlong@gmail.com",
+          "memberCode": "DongNNPSE190503"
+        },
+        {
+          "classCode": "SE1922",
+          "rollNumber": "SE190581",
+          "fullName": "Dương Minh Kiệt",
+          "email": "toilakiet24@gmail.com",
+          "memberCode": "KietDMSE190581"
+        },
+        {
+          "classCode": "SE1922",
+          "rollNumber": "SE190585",
+          "fullName": "Trần Đình Phúc",
+          "email": "phuc250805@gmail.com",
+          "memberCode": "PhucTDSE190585"
+        },
+        {
+          "classCode": "SE1922",
+          "rollNumber": "SE193591",
+          "fullName": "Phan Đức Duy",
+          "email": "iwakeupwhen@gmail.com",
+          "memberCode": "DuyPDSE193591"
+        },
+        {
+          "classCode": "SE1922",
+          "rollNumber": "SE161951",
+          "fullName": "Phan Hữu Phước",
+          "email": "phuocphse161951@fpt.edu.vn",
+          "memberCode": "phuocphse161951"
+        },
+        {
+          "classCode": "SE1922",
+          "rollNumber": "SE193519",
+          "fullName": "Phùng Thế Quân",
+          "email": "phungthequan030@gmail.com",
+          "memberCode": "QuanPTSE193519"
+        },
+        {
+          "classCode": "SE1922",
+          "rollNumber": "SE190992",
+          "fullName": "Đoàn Thị Kim Thúy",
+          "email": "kimthuydoan22082005@gmail.com",
+          "memberCode": "ThuyDTKSE190992"
+        }
+      ],
+      "lessons": [
+        {
+          "lessonId": "PRM232_SE1922_FA26-L01",
+          "sequenceNumber": 1,
+          "date": "2026-09-08",
+          "dailySlot": 3,
+          "startTime": "12:30",
+          "endTime": "14:45",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRM232_SE1922_FA26-L02",
+          "sequenceNumber": 2,
+          "date": "2026-09-11",
+          "dailySlot": 3,
+          "startTime": "12:30",
+          "endTime": "14:45",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRM232_SE1922_FA26-L03",
+          "sequenceNumber": 3,
+          "date": "2026-09-15",
+          "dailySlot": 3,
+          "startTime": "12:30",
+          "endTime": "14:45",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRM232_SE1922_FA26-L04",
+          "sequenceNumber": 4,
+          "date": "2026-09-18",
+          "dailySlot": 3,
+          "startTime": "12:30",
+          "endTime": "14:45",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRM232_SE1922_FA26-L05",
+          "sequenceNumber": 5,
+          "date": "2026-09-22",
+          "dailySlot": 3,
+          "startTime": "12:30",
+          "endTime": "14:45",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRM232_SE1922_FA26-L06",
+          "sequenceNumber": 6,
+          "date": "2026-09-25",
+          "dailySlot": 3,
+          "startTime": "12:30",
+          "endTime": "14:45",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRM232_SE1922_FA26-L07",
+          "sequenceNumber": 7,
+          "date": "2026-09-29",
+          "dailySlot": 3,
+          "startTime": "12:30",
+          "endTime": "14:45",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRM232_SE1922_FA26-L08",
+          "sequenceNumber": 8,
+          "date": "2026-10-02",
+          "dailySlot": 3,
+          "startTime": "12:30",
+          "endTime": "14:45",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRM232_SE1922_FA26-L09",
+          "sequenceNumber": 9,
+          "date": "2026-10-06",
+          "dailySlot": 3,
+          "startTime": "12:30",
+          "endTime": "14:45",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRM232_SE1922_FA26-L10",
+          "sequenceNumber": 10,
+          "date": "2026-10-09",
+          "dailySlot": 3,
+          "startTime": "12:30",
+          "endTime": "14:45",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRM232_SE1922_FA26-L11",
+          "sequenceNumber": 11,
+          "date": "2026-10-13",
+          "dailySlot": 3,
+          "startTime": "12:30",
+          "endTime": "14:45",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRM232_SE1922_FA26-L12",
+          "sequenceNumber": 12,
+          "date": "2026-10-16",
+          "dailySlot": 3,
+          "startTime": "12:30",
+          "endTime": "14:45",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRM232_SE1922_FA26-L13",
+          "sequenceNumber": 13,
+          "date": "2026-10-20",
+          "dailySlot": 3,
+          "startTime": "12:30",
+          "endTime": "14:45",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRM232_SE1922_FA26-L14",
+          "sequenceNumber": 14,
+          "date": "2026-10-23",
+          "dailySlot": 3,
+          "startTime": "12:30",
+          "endTime": "14:45",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRM232_SE1922_FA26-L15",
+          "sequenceNumber": 15,
+          "date": "2026-10-27",
+          "dailySlot": 3,
+          "startTime": "12:30",
+          "endTime": "14:45",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRM232_SE1922_FA26-L16",
+          "sequenceNumber": 16,
+          "date": "2026-10-30",
+          "dailySlot": 3,
+          "startTime": "12:30",
+          "endTime": "14:45",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRM232_SE1922_FA26-L17",
+          "sequenceNumber": 17,
+          "date": "2026-11-03",
+          "dailySlot": 3,
+          "startTime": "12:30",
+          "endTime": "14:45",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRM232_SE1922_FA26-L18",
+          "sequenceNumber": 18,
+          "date": "2026-11-06",
+          "dailySlot": 3,
+          "startTime": "12:30",
+          "endTime": "14:45",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRM232_SE1922_FA26-L19",
+          "sequenceNumber": 19,
+          "date": "2026-11-10",
+          "dailySlot": 3,
+          "startTime": "12:30",
+          "endTime": "14:45",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRM232_SE1922_FA26-L20",
+          "sequenceNumber": 20,
+          "date": "2026-11-13",
+          "dailySlot": 3,
+          "startTime": "12:30",
+          "endTime": "14:45",
+          "status": "scheduled",
+          "isAdjusted": false
+        }
+      ]
+    },
+    "PRM323_SE1928_FA26": {
+      "classOffering": {
+        "classId": "PRM323_SE1928_FA26",
+        "classCode": "SE1928",
+        "subjectCode": "PRM323",
+        "semester": "FA26",
+        "scheduleCode": "24",
+        "sourceSheetName": "24_PRM323_SE1928",
+        "lessonCount": 20,
+        "active": true
+      },
+      "students": [
+        {
+          "classCode": "SE1928",
+          "rollNumber": "SE160978",
+          "fullName": "Nguyễn Anh Khoa",
+          "email": "khoanase160978@fpt.edu.vn",
+          "memberCode": "khoanase160978"
+        },
+        {
+          "classCode": "SE1928",
+          "rollNumber": "SE193911",
+          "fullName": "Nguyễn Thắng",
+          "email": "gg993704@gmail.com",
+          "memberCode": "ThangNSE193911"
+        },
+        {
+          "classCode": "SE1928",
+          "rollNumber": "SE184164",
+          "fullName": "Nguyễn Thu Thảo",
+          "email": "thaontse184164@fpt.edu.vn",
+          "memberCode": "ThaoNTSE184164"
+        },
+        {
+          "classCode": "SE1928",
+          "rollNumber": "SE184250",
+          "fullName": "Hoàng Minh Vũ",
+          "email": "vuhmse184250@fpt.edu.vn",
+          "memberCode": "VuHMSE184250"
+        },
+        {
+          "classCode": "SE1928",
+          "rollNumber": "SE192251",
+          "fullName": "Lê Quang Hiếu",
+          "email": "lequanghieu2504@gmail.com",
+          "memberCode": "HieuLQSE192251"
+        },
+        {
+          "classCode": "SE1928",
+          "rollNumber": "SE192523",
+          "fullName": "Đặng Sông Hương",
+          "email": "dangsonghuong010405@gmail.com",
+          "memberCode": "HuongDSSE192523"
+        },
+        {
+          "classCode": "SE1928",
+          "rollNumber": "SE192250",
+          "fullName": "Nguyễn Minh Khang",
+          "email": "nguyenmkhang1712@gmail.com",
+          "memberCode": "KhangNMSE192250"
+        },
+        {
+          "classCode": "SE1928",
+          "rollNumber": "SE192410",
+          "fullName": "Nguyễn Phúc Sanh",
+          "email": "npsdn1906@gmail.com",
+          "memberCode": "SanhNPSE192410"
+        },
+        {
+          "classCode": "SE1928",
+          "rollNumber": "SE194606",
+          "fullName": "Vũ Anh Khôi",
+          "email": "khoivureal@gmail.com",
+          "memberCode": "KhoiVASE194606"
+        },
+        {
+          "classCode": "SE1928",
+          "rollNumber": "SE182702",
+          "fullName": "Lê Thành Lộc",
+          "email": "locltse182702@fpt.edu.vn",
+          "memberCode": "LocLTSE182702"
+        },
+        {
+          "classCode": "SE1928",
+          "rollNumber": "SE190533",
+          "fullName": "Trần Ngọc Thiên",
+          "email": "tranngocthien628@gmail.com",
+          "memberCode": "ThienTNSE190533"
+        },
+        {
+          "classCode": "SE1928",
+          "rollNumber": "SE190742",
+          "fullName": "Vũ Huy Phương",
+          "email": "bosskenlly5@gmail.com",
+          "memberCode": "PhuongVHSE190742"
+        },
+        {
+          "classCode": "SE1928",
+          "rollNumber": "SE194909",
+          "fullName": "Lâm Thiên Hải Anh",
+          "email": "haianhlam29052005@gmail.com",
+          "memberCode": "AnhLTHSE194909"
+        },
+        {
+          "classCode": "SE1928",
+          "rollNumber": "SE194898",
+          "fullName": "Dương Khôi Minh",
+          "email": "hominhlanhat@gmail.com",
+          "memberCode": "MinhDKSE194898"
+        },
+        {
+          "classCode": "SE1928",
+          "rollNumber": "SE182671",
+          "fullName": "Nguyễn Phùng Anh Tuấn",
+          "email": "tuannpase182671@fpt.edu.vn",
+          "memberCode": "TuanNPASE182671"
+        },
+        {
+          "classCode": "SE1928",
+          "rollNumber": "SE184785",
+          "fullName": "Nguyễn Xuân Việt",
+          "email": "vietnxse184785@fpt.edu.vn",
+          "memberCode": "VietNXSE184785"
+        },
+        {
+          "classCode": "SE1928",
+          "rollNumber": "SE194918",
+          "fullName": "Bùi Nguyễn Khải Vinh",
+          "email": "vbui3168@gmail.com",
+          "memberCode": "VinhBNKSE194918"
+        },
+        {
+          "classCode": "SE1928",
+          "rollNumber": "SE182656",
+          "fullName": "Nguyễn Tiến Đạt",
+          "email": "datntse182656@fpt.edu.vn",
+          "memberCode": "DatNTSE182656"
+        },
+        {
+          "classCode": "SE1928",
+          "rollNumber": "SE184612",
+          "fullName": "Lại Anh Đức",
+          "email": "duclase184612@fpt.edu.vn",
+          "memberCode": "DucLASE184612"
+        },
+        {
+          "classCode": "SE1928",
+          "rollNumber": "SE170487",
+          "fullName": "Phan Trọng Tiến",
+          "email": "tienptse170487@fpt.edu.vn",
+          "memberCode": "TienPTSE170487"
+        },
+        {
+          "classCode": "SE1928",
+          "rollNumber": "SE180787",
+          "fullName": "Lâm Quốc Cường",
+          "email": "cuonglqse180787@fpt.edu.vn",
+          "memberCode": "CuongLQSE180787"
+        },
+        {
+          "classCode": "SE1928",
+          "rollNumber": "SE171772",
+          "fullName": "Phạm Tiến Đạt",
+          "email": "datptse171772@fpt.edu.vn",
+          "memberCode": "DatPTSE171772"
+        },
+        {
+          "classCode": "SE1928",
+          "rollNumber": "SE192083",
+          "fullName": "Đoàn Đức Duy",
+          "email": "kenn0679@gmail.com",
+          "memberCode": "DuyDDSE192083"
+        },
+        {
+          "classCode": "SE1928",
+          "rollNumber": "SE180776",
+          "fullName": "Nguyễn Tấn Khang",
+          "email": "khangntse180776@fpt.edu.vn",
+          "memberCode": "KhangNTSE180776"
+        },
+        {
+          "classCode": "SE1928",
+          "rollNumber": "SE196654",
+          "fullName": "Nguyễn Đình Ngọc Ân",
+          "email": "dinhngocannguyen@gmail.com",
+          "memberCode": "AnNDNSE196654"
+        },
+        {
+          "classCode": "SE1928",
+          "rollNumber": "SE194103",
+          "fullName": "Đào Tâm Hoàng",
+          "email": "daotamhoang2005@gmail.com",
+          "memberCode": "HoangDTSE194103"
+        },
+        {
+          "classCode": "SE1928",
+          "rollNumber": "SE192248",
+          "fullName": "Hồ Hữu Hoàng Huân",
+          "email": "hoanghuan2005uh@gmail.com",
+          "memberCode": "HuanHHHSE192248"
+        },
+        {
+          "classCode": "SE1928",
+          "rollNumber": "SE193040",
+          "fullName": "Huỳnh Đăng Khoa",
+          "email": "huynhdangkhoaj7@gmail.com",
+          "memberCode": "KhoaHDSE193040"
+        },
+        {
+          "classCode": "SE1928",
+          "rollNumber": "SE183268",
+          "fullName": "Ngô Gia Kiệt",
+          "email": "kietngse183268@fpt.edu.vn",
+          "memberCode": "KietNGSE183268"
+        },
+        {
+          "classCode": "SE1928",
+          "rollNumber": "SE180029",
+          "fullName": "Nguyễn Vũ Đức Phương",
+          "email": "phuongnvdse180029@fpt.edu.vn",
+          "memberCode": "PhuongNVDSE180029"
+        },
+        {
+          "classCode": "SE1928",
+          "rollNumber": "SE171835",
+          "fullName": "Bùi Lê Huy Hoàng",
+          "email": "hoangblhse171835@fpt.edu.vn",
+          "memberCode": "HoangBLHSE171835"
+        },
+        {
+          "classCode": "SE1928",
+          "rollNumber": "SE180372",
+          "fullName": "Nguyễn Hòa Anh Kiệt",
+          "email": "kietnhase180372@fpt.edu.vn",
+          "memberCode": "KietNHASE180372"
+        },
+        {
+          "classCode": "SE1928",
+          "rollNumber": "SE181869",
+          "fullName": "Trương Kiến Minh",
+          "email": "minhtkse181869@fpt.edu.vn",
+          "memberCode": "MinhTKSE181869"
+        }
+      ],
+      "lessons": [
+        {
+          "lessonId": "PRM323_SE1928_FA26-L01",
+          "sequenceNumber": 1,
+          "date": "2026-09-08",
+          "dailySlot": 4,
+          "startTime": "15:00",
+          "endTime": "17:15",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRM323_SE1928_FA26-L02",
+          "sequenceNumber": 2,
+          "date": "2026-09-11",
+          "dailySlot": 4,
+          "startTime": "15:00",
+          "endTime": "17:15",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRM323_SE1928_FA26-L03",
+          "sequenceNumber": 3,
+          "date": "2026-09-15",
+          "dailySlot": 4,
+          "startTime": "15:00",
+          "endTime": "17:15",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRM323_SE1928_FA26-L04",
+          "sequenceNumber": 4,
+          "date": "2026-09-18",
+          "dailySlot": 4,
+          "startTime": "15:00",
+          "endTime": "17:15",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRM323_SE1928_FA26-L05",
+          "sequenceNumber": 5,
+          "date": "2026-09-22",
+          "dailySlot": 4,
+          "startTime": "15:00",
+          "endTime": "17:15",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRM323_SE1928_FA26-L06",
+          "sequenceNumber": 6,
+          "date": "2026-09-25",
+          "dailySlot": 4,
+          "startTime": "15:00",
+          "endTime": "17:15",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRM323_SE1928_FA26-L07",
+          "sequenceNumber": 7,
+          "date": "2026-09-29",
+          "dailySlot": 4,
+          "startTime": "15:00",
+          "endTime": "17:15",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRM323_SE1928_FA26-L08",
+          "sequenceNumber": 8,
+          "date": "2026-10-02",
+          "dailySlot": 4,
+          "startTime": "15:00",
+          "endTime": "17:15",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRM323_SE1928_FA26-L09",
+          "sequenceNumber": 9,
+          "date": "2026-10-06",
+          "dailySlot": 4,
+          "startTime": "15:00",
+          "endTime": "17:15",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRM323_SE1928_FA26-L10",
+          "sequenceNumber": 10,
+          "date": "2026-10-09",
+          "dailySlot": 4,
+          "startTime": "15:00",
+          "endTime": "17:15",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRM323_SE1928_FA26-L11",
+          "sequenceNumber": 11,
+          "date": "2026-10-13",
+          "dailySlot": 4,
+          "startTime": "15:00",
+          "endTime": "17:15",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRM323_SE1928_FA26-L12",
+          "sequenceNumber": 12,
+          "date": "2026-10-16",
+          "dailySlot": 4,
+          "startTime": "15:00",
+          "endTime": "17:15",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRM323_SE1928_FA26-L13",
+          "sequenceNumber": 13,
+          "date": "2026-10-20",
+          "dailySlot": 4,
+          "startTime": "15:00",
+          "endTime": "17:15",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRM323_SE1928_FA26-L14",
+          "sequenceNumber": 14,
+          "date": "2026-10-23",
+          "dailySlot": 4,
+          "startTime": "15:00",
+          "endTime": "17:15",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRM323_SE1928_FA26-L15",
+          "sequenceNumber": 15,
+          "date": "2026-10-27",
+          "dailySlot": 4,
+          "startTime": "15:00",
+          "endTime": "17:15",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRM323_SE1928_FA26-L16",
+          "sequenceNumber": 16,
+          "date": "2026-10-30",
+          "dailySlot": 4,
+          "startTime": "15:00",
+          "endTime": "17:15",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRM323_SE1928_FA26-L17",
+          "sequenceNumber": 17,
+          "date": "2026-11-03",
+          "dailySlot": 4,
+          "startTime": "15:00",
+          "endTime": "17:15",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRM323_SE1928_FA26-L18",
+          "sequenceNumber": 18,
+          "date": "2026-11-06",
+          "dailySlot": 4,
+          "startTime": "15:00",
+          "endTime": "17:15",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRM323_SE1928_FA26-L19",
+          "sequenceNumber": 19,
+          "date": "2026-11-10",
+          "dailySlot": 4,
+          "startTime": "15:00",
+          "endTime": "17:15",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRM323_SE1928_FA26-L20",
+          "sequenceNumber": 20,
+          "date": "2026-11-13",
+          "dailySlot": 4,
+          "startTime": "15:00",
+          "endTime": "17:15",
+          "status": "scheduled",
+          "isAdjusted": false
+        }
+      ]
+    },
+    "PRN232_SE1919_FA26": {
+      "classOffering": {
+        "classId": "PRN232_SE1919_FA26",
+        "classCode": "SE1919",
+        "subjectCode": "PRN232",
+        "semester": "FA26",
+        "scheduleCode": "33",
+        "sourceSheetName": "33_PRN232_SE1919",
+        "lessonCount": 22,
+        "active": true
+      },
+      "students": [
+        {
+          "classCode": "SE1919",
+          "rollNumber": "SE190112",
+          "fullName": "Hồ Minh Dũng",
+          "email": "hominhdung499@gmail.com",
+          "memberCode": "DungHMSE190112"
+        },
+        {
+          "classCode": "SE1919",
+          "rollNumber": "SE161484",
+          "fullName": "Vũ Huy Hoàng",
+          "email": "hoangvhse161484@fpt.edu.vn",
+          "memberCode": "hoangvhse161484"
+        },
+        {
+          "classCode": "SE1919",
+          "rollNumber": "SE194177",
+          "fullName": "Nguyễn Quang Huy",
+          "email": "huycungbaobinh@gmail.com",
+          "memberCode": "HuyNQSE194177"
+        },
+        {
+          "classCode": "SE1919",
+          "rollNumber": "SE190005",
+          "fullName": "Lâm Hồng Phúc",
+          "email": "phuclamhong05@gmail.com",
+          "memberCode": "PhucLHSE190005"
+        },
+        {
+          "classCode": "SE1919",
+          "rollNumber": "SE193905",
+          "fullName": "Nguyễn Hoàng An",
+          "email": "annguyen382310@gmail.com",
+          "memberCode": "AnNHSE193905"
+        },
+        {
+          "classCode": "SE1919",
+          "rollNumber": "SE193119",
+          "fullName": "Đỗ Hoàng Gia Bảo",
+          "email": "dhgb2k5@gmail.com",
+          "memberCode": "BaoDHGSE193119"
+        },
+        {
+          "classCode": "SE1919",
+          "rollNumber": "SE180707",
+          "fullName": "Nguyễn Viết Chính",
+          "email": "chinhnvse180707@fpt.edu.vn",
+          "memberCode": "ChinhNVSE180707"
+        },
+        {
+          "classCode": "SE1919",
+          "rollNumber": "SE193274",
+          "fullName": "Nguyễn Thành Danh",
+          "email": "danhnguyenthanh260@gmail.com",
+          "memberCode": "DanhNTSE193274"
+        },
+        {
+          "classCode": "SE1919",
+          "rollNumber": "SE182754",
+          "fullName": "Phan Quốc Lâm",
+          "email": "lampqse182754@fpt.edu.vn",
+          "memberCode": "LamPQSE182754"
+        },
+        {
+          "classCode": "SE1919",
+          "rollNumber": "SE194174",
+          "fullName": "Nguyễn Như Đại",
+          "email": "nguyennhudai05@gmail.com",
+          "memberCode": "DaiNNSE194174"
+        },
+        {
+          "classCode": "SE1919",
+          "rollNumber": "SE193293",
+          "fullName": "Đặng Châu Bảo Minh",
+          "email": "dangminh0806@gmail.com",
+          "memberCode": "MinhDCBSE193293"
+        },
+        {
+          "classCode": "SE1919",
+          "rollNumber": "SE194226",
+          "fullName": "Phạm Nguyên Vũ",
+          "email": "phamnguyenvu110905@gmail.com",
+          "memberCode": "VuPNSE194226"
+        },
+        {
+          "classCode": "SE1919",
+          "rollNumber": "SE193625",
+          "fullName": "Lâm Hoàng Hải Đăng",
+          "email": "justinbiahoi123@gmail.com",
+          "memberCode": "DangLHHSE193625"
+        },
+        {
+          "classCode": "SE1919",
+          "rollNumber": "SE182218",
+          "fullName": "Dương Hữu Đức",
+          "email": "ducdhse182218@fpt.edu.vn",
+          "memberCode": "DucDHSE182218"
+        },
+        {
+          "classCode": "SE1919",
+          "rollNumber": "SE191090",
+          "fullName": "Vũ Thanh Hải",
+          "email": "haithanhvu0501@gmail.com",
+          "memberCode": "HaiVTSE191090"
+        },
+        {
+          "classCode": "SE1919",
+          "rollNumber": "SE182600",
+          "fullName": "Lê Anh Khoa",
+          "email": "khoalase182600@fpt.edu.vn",
+          "memberCode": "KhoaLASE182600"
+        },
+        {
+          "classCode": "SE1919",
+          "rollNumber": "SE193458",
+          "fullName": "Nguyễn Quang Trường",
+          "email": "truong0345218921@gmail.com",
+          "memberCode": "TruongNQSE193458"
+        },
+        {
+          "classCode": "SE1919",
+          "rollNumber": "SE181563",
+          "fullName": "Nguyễn Quang Huy",
+          "email": "huynqse181563@fpt.edu.vn",
+          "memberCode": "HuyNQSE181563"
+        },
+        {
+          "classCode": "SE1919",
+          "rollNumber": "SE192321",
+          "fullName": "Nguyễn Thành Kiên",
+          "email": "thanhkiennk@gmail.com",
+          "memberCode": "KienNTSE192321"
+        },
+        {
+          "classCode": "SE1919",
+          "rollNumber": "SE192047",
+          "fullName": "Dương Hồng Quang",
+          "email": "quanglikecookie@gmail.com",
+          "memberCode": "QuangDHSE192047"
+        },
+        {
+          "classCode": "SE1919",
+          "rollNumber": "SE192867",
+          "fullName": "Phạm Gia Huy",
+          "email": "chickenhuy2005@gmail.com",
+          "memberCode": "HuyPGSE192867"
+        },
+        {
+          "classCode": "SE1919",
+          "rollNumber": "SE192837",
+          "fullName": "Nguyễn Tuấn Kiệt",
+          "email": "kietnguyen14022005@gmail.com",
+          "memberCode": "KietNTSE192837"
+        },
+        {
+          "classCode": "SE1919",
+          "rollNumber": "SE192969",
+          "fullName": "Nguyễn Duy Phong",
+          "email": "nguyenduyphong2120005@gmail.com",
+          "memberCode": "PhongNDSE192969"
+        },
+        {
+          "classCode": "SE1919",
+          "rollNumber": "SE194261",
+          "fullName": "Mai Tuấn Vỹ",
+          "email": "maituanvyst@gmail.com",
+          "memberCode": "VyMTSE194261"
+        },
+        {
+          "classCode": "SE1919",
+          "rollNumber": "SE183590",
+          "fullName": "Nguyễn Phương Khải",
+          "email": "khainpse183590@fpt.edu.vn",
+          "memberCode": "KhaiNPSE183590"
+        },
+        {
+          "classCode": "SE1919",
+          "rollNumber": "SE192621",
+          "fullName": "Võ Quang Tâm",
+          "email": "quangtam2005.lttg@gmail.com",
+          "memberCode": "TamVQSE192621"
+        },
+        {
+          "classCode": "SE1919",
+          "rollNumber": "SE190218",
+          "fullName": "Đỗ Trọng Tín",
+          "email": "tindo39851@gmail.com",
+          "memberCode": "TinDTSE190218"
+        },
+        {
+          "classCode": "SE1919",
+          "rollNumber": "SE193059",
+          "fullName": "Trương Chí Trung",
+          "email": "truongchitrung05@gmail.com",
+          "memberCode": "TrungTCSE193059"
+        },
+        {
+          "classCode": "SE1919",
+          "rollNumber": "SE180031",
+          "fullName": "Mai Tuấn Vinh",
+          "email": "vinhmtse180031@fpt.edu.vn",
+          "memberCode": "VinhMTSE180031"
+        },
+        {
+          "classCode": "SE1919",
+          "rollNumber": "SE182748",
+          "fullName": "Nguyễn Anh Khoa",
+          "email": "khoanase182748@fpt.edu.vn",
+          "memberCode": "KhoaNASE182748"
+        },
+        {
+          "classCode": "SE1919",
+          "rollNumber": "SE184163",
+          "fullName": "Nguyễn Thanh Liêm",
+          "email": "liemntse184163@fpt.edu.vn",
+          "memberCode": "LiemNTSE184163"
+        },
+        {
+          "classCode": "SE1919",
+          "rollNumber": "SE170309",
+          "fullName": "Nguyễn Minh Tuấn",
+          "email": "tuannmse170309@fpt.edu.vn",
+          "memberCode": "TuanNMSE170309"
+        },
+        {
+          "classCode": "SE1919",
+          "rollNumber": "SE170300",
+          "fullName": "Trần Anh Tuấn",
+          "email": "tuantase170300@fpt.edu.vn",
+          "memberCode": "TuanTASE170300"
+        },
+        {
+          "classCode": "SE1919",
+          "rollNumber": "SE182823",
+          "fullName": "Mai Anh Duy",
+          "email": "duymase182823@fpt.edu.vn",
+          "memberCode": "DuyMASE182823"
+        },
+        {
+          "classCode": "SE1919",
+          "rollNumber": "SE170554",
+          "fullName": "Trần Tấn Minh",
+          "email": "minhttse170554@fpt.edu.vn",
+          "memberCode": "MinhTTSE170554"
+        },
+        {
+          "classCode": "SE1919",
+          "rollNumber": "SE183408",
+          "fullName": "Lê Văn Nguyên",
+          "email": "nguyenlvse183408@fpt.edu.vn",
+          "memberCode": "NguyenLVSE183408"
+        },
+        {
+          "classCode": "SE1919",
+          "rollNumber": "SE192336",
+          "fullName": "Huỳnh Thiện Nhân",
+          "email": "nhanhuynh7115@gmail.com",
+          "memberCode": "NhanHTSE192336"
+        }
+      ],
+      "lessons": [
+        {
+          "lessonId": "PRN232_SE1919_FA26-L01",
+          "sequenceNumber": 1,
+          "date": "2026-09-09",
+          "dailySlot": 3,
+          "startTime": "12:30",
+          "endTime": "14:45",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRN232_SE1919_FA26-L02",
+          "sequenceNumber": 2,
+          "date": "2026-09-12",
+          "dailySlot": 3,
+          "startTime": "12:30",
+          "endTime": "14:45",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRN232_SE1919_FA26-L03",
+          "sequenceNumber": 3,
+          "date": "2026-09-16",
+          "dailySlot": 3,
+          "startTime": "12:30",
+          "endTime": "14:45",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRN232_SE1919_FA26-L04",
+          "sequenceNumber": 4,
+          "date": "2026-09-19",
+          "dailySlot": 3,
+          "startTime": "12:30",
+          "endTime": "14:45",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRN232_SE1919_FA26-L05",
+          "sequenceNumber": 5,
+          "date": "2026-09-23",
+          "dailySlot": 3,
+          "startTime": "12:30",
+          "endTime": "14:45",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRN232_SE1919_FA26-L06",
+          "sequenceNumber": 6,
+          "date": "2026-09-26",
+          "dailySlot": 3,
+          "startTime": "12:30",
+          "endTime": "14:45",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRN232_SE1919_FA26-L07",
+          "sequenceNumber": 7,
+          "date": "2026-09-30",
+          "dailySlot": 3,
+          "startTime": "12:30",
+          "endTime": "14:45",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRN232_SE1919_FA26-L08",
+          "sequenceNumber": 8,
+          "date": "2026-10-03",
+          "dailySlot": 3,
+          "startTime": "12:30",
+          "endTime": "14:45",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRN232_SE1919_FA26-L09",
+          "sequenceNumber": 9,
+          "date": "2026-10-07",
+          "dailySlot": 3,
+          "startTime": "12:30",
+          "endTime": "14:45",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRN232_SE1919_FA26-L10",
+          "sequenceNumber": 10,
+          "date": "2026-10-10",
+          "dailySlot": 3,
+          "startTime": "12:30",
+          "endTime": "14:45",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRN232_SE1919_FA26-L11",
+          "sequenceNumber": 11,
+          "date": "2026-10-14",
+          "dailySlot": 3,
+          "startTime": "12:30",
+          "endTime": "14:45",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRN232_SE1919_FA26-L12",
+          "sequenceNumber": 12,
+          "date": "2026-10-17",
+          "dailySlot": 3,
+          "startTime": "12:30",
+          "endTime": "14:45",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRN232_SE1919_FA26-L13",
+          "sequenceNumber": 13,
+          "date": "2026-10-21",
+          "dailySlot": 3,
+          "startTime": "12:30",
+          "endTime": "14:45",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRN232_SE1919_FA26-L14",
+          "sequenceNumber": 14,
+          "date": "2026-10-24",
+          "dailySlot": 3,
+          "startTime": "12:30",
+          "endTime": "14:45",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRN232_SE1919_FA26-L15",
+          "sequenceNumber": 15,
+          "date": "2026-10-28",
+          "dailySlot": 3,
+          "startTime": "12:30",
+          "endTime": "14:45",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRN232_SE1919_FA26-L16",
+          "sequenceNumber": 16,
+          "date": "2026-10-31",
+          "dailySlot": 3,
+          "startTime": "12:30",
+          "endTime": "14:45",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRN232_SE1919_FA26-L17",
+          "sequenceNumber": 17,
+          "date": "2026-11-04",
+          "dailySlot": 3,
+          "startTime": "12:30",
+          "endTime": "14:45",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRN232_SE1919_FA26-L18",
+          "sequenceNumber": 18,
+          "date": "2026-11-07",
+          "dailySlot": 3,
+          "startTime": "12:30",
+          "endTime": "14:45",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRN232_SE1919_FA26-L19",
+          "sequenceNumber": 19,
+          "date": "2026-11-11",
+          "dailySlot": 3,
+          "startTime": "12:30",
+          "endTime": "14:45",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRN232_SE1919_FA26-L20",
+          "sequenceNumber": 20,
+          "date": "2026-11-14",
+          "dailySlot": 3,
+          "startTime": "12:30",
+          "endTime": "14:45",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRN232_SE1919_FA26-L21",
+          "sequenceNumber": 21,
+          "date": "2026-11-18",
+          "dailySlot": 3,
+          "startTime": "12:30",
+          "endTime": "14:45",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRN232_SE1919_FA26-L22",
+          "sequenceNumber": 22,
+          "date": "2026-11-21",
+          "dailySlot": 3,
+          "startTime": "12:30",
+          "endTime": "14:45",
+          "status": "scheduled",
+          "isAdjusted": false
+        }
+      ]
+    },
+    "DEMO_DEMO_FA26": {
+      "classOffering": {
+        "classId": "DEMO_DEMO_FA26",
+        "classCode": "DEMO",
+        "subjectCode": "DEMO",
+        "semester": "FA26",
+        "scheduleCode": "34",
+        "sourceSheetName": "34_DEMO_DEMO",
+        "lessonCount": 20,
+        "active": false
+      },
+      "students": [
+        {
+          "classCode": "DEMO",
+          "rollNumber": "RN00001",
+          "fullName": "DemoEmail_1",
+          "email": "emaildemo1@mail.com",
+          "memberCode": "DemoCode_1"
+        },
+        {
+          "classCode": "DEMO",
+          "rollNumber": "RN00002",
+          "fullName": "DemoEmail_2",
+          "email": "emaildemo2@mail.com",
+          "memberCode": "DemoCode_2"
+        },
+        {
+          "classCode": "DEMO",
+          "rollNumber": "RN00003",
+          "fullName": "DemoEmail_3",
+          "email": "emaildemo3@mail.com",
+          "memberCode": "DemoCode_3"
+        },
+        {
+          "classCode": "DEMO",
+          "rollNumber": "RN00004",
+          "fullName": "DemoEmail_4",
+          "email": "emaildemo4@mail.com",
+          "memberCode": "DemoCode_4"
+        },
+        {
+          "classCode": "DEMO",
+          "rollNumber": "RN00005",
+          "fullName": "DemoEmail_5",
+          "email": "emaildemo5@mail.com",
+          "memberCode": "DemoCode_5"
+        },
+        {
+          "classCode": "DEMO",
+          "rollNumber": "RN00006",
+          "fullName": "DemoEmail_6",
+          "email": "emaildemo6@mail.com",
+          "memberCode": "DemoCode_6"
+        },
+        {
+          "classCode": "DEMO",
+          "rollNumber": "RN00007",
+          "fullName": "DemoEmail_7",
+          "email": "emaildemo7@mail.com",
+          "memberCode": "DemoCode_7"
+        },
+        {
+          "classCode": "DEMO",
+          "rollNumber": "RN00008",
+          "fullName": "DemoEmail_8",
+          "email": "emaildemo8@mail.com",
+          "memberCode": "DemoCode_8"
+        },
+        {
+          "classCode": "DEMO",
+          "rollNumber": "RN00009",
+          "fullName": "DemoEmail_9",
+          "email": "emaildemo9@mail.com",
+          "memberCode": "DemoCode_9"
+        },
+        {
+          "classCode": "DEMO",
+          "rollNumber": "RN00010",
+          "fullName": "DemoEmail_10",
+          "email": "emaildemo10@mail.com",
+          "memberCode": "DemoCode_10"
+        },
+        {
+          "classCode": "DEMO",
+          "rollNumber": "RN00011",
+          "fullName": "DemoEmail_11",
+          "email": "emaildemo11@mail.com",
+          "memberCode": "DemoCode_11"
+        },
+        {
+          "classCode": "DEMO",
+          "rollNumber": "RN00012",
+          "fullName": "DemoEmail_12",
+          "email": "emaildemo12@mail.com",
+          "memberCode": "DemoCode_12"
+        },
+        {
+          "classCode": "DEMO",
+          "rollNumber": "RN00013",
+          "fullName": "DemoEmail_13",
+          "email": "emaildemo13@mail.com",
+          "memberCode": "DemoCode_13"
+        },
+        {
+          "classCode": "DEMO",
+          "rollNumber": "RN00014",
+          "fullName": "DemoEmail_14",
+          "email": "emaildemo14@mail.com",
+          "memberCode": "DemoCode_14"
+        },
+        {
+          "classCode": "DEMO",
+          "rollNumber": "RN00015",
+          "fullName": "DemoEmail_15",
+          "email": "emaildemo15@mail.com",
+          "memberCode": "DemoCode_15"
+        },
+        {
+          "classCode": "DEMO",
+          "rollNumber": "RN00016",
+          "fullName": "DemoEmail_16",
+          "email": "emaildemo16@mail.com",
+          "memberCode": "DemoCode_16"
+        },
+        {
+          "classCode": "DEMO",
+          "rollNumber": "RN00017",
+          "fullName": "DemoEmail_17",
+          "email": "emaildemo17@mail.com",
+          "memberCode": "DemoCode_17"
+        },
+        {
+          "classCode": "DEMO",
+          "rollNumber": "RN00018",
+          "fullName": "DemoEmail_18",
+          "email": "emaildemo18@mail.com",
+          "memberCode": "DemoCode_18"
+        },
+        {
+          "classCode": "DEMO",
+          "rollNumber": "RN00019",
+          "fullName": "DemoEmail_19",
+          "email": "emaildemo19@mail.com",
+          "memberCode": "DemoCode_19"
+        }
+      ],
+      "lessons": [
+        {
+          "lessonId": "DEMO_DEMO_FA26-L01",
+          "sequenceNumber": 1,
+          "date": "2026-09-09",
+          "dailySlot": 4,
+          "startTime": "15:00",
+          "endTime": "17:15",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "DEMO_DEMO_FA26-L02",
+          "sequenceNumber": 2,
+          "date": "2026-09-12",
+          "dailySlot": 4,
+          "startTime": "15:00",
+          "endTime": "17:15",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "DEMO_DEMO_FA26-L03",
+          "sequenceNumber": 3,
+          "date": "2026-09-16",
+          "dailySlot": 4,
+          "startTime": "15:00",
+          "endTime": "17:15",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "DEMO_DEMO_FA26-L04",
+          "sequenceNumber": 4,
+          "date": "2026-09-19",
+          "dailySlot": 4,
+          "startTime": "15:00",
+          "endTime": "17:15",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "DEMO_DEMO_FA26-L05",
+          "sequenceNumber": 5,
+          "date": "2026-09-23",
+          "dailySlot": 4,
+          "startTime": "15:00",
+          "endTime": "17:15",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "DEMO_DEMO_FA26-L06",
+          "sequenceNumber": 6,
+          "date": "2026-09-26",
+          "dailySlot": 4,
+          "startTime": "15:00",
+          "endTime": "17:15",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "DEMO_DEMO_FA26-L07",
+          "sequenceNumber": 7,
+          "date": "2026-09-30",
+          "dailySlot": 4,
+          "startTime": "15:00",
+          "endTime": "17:15",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "DEMO_DEMO_FA26-L08",
+          "sequenceNumber": 8,
+          "date": "2026-10-03",
+          "dailySlot": 4,
+          "startTime": "15:00",
+          "endTime": "17:15",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "DEMO_DEMO_FA26-L09",
+          "sequenceNumber": 9,
+          "date": "2026-10-07",
+          "dailySlot": 4,
+          "startTime": "15:00",
+          "endTime": "17:15",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "DEMO_DEMO_FA26-L10",
+          "sequenceNumber": 10,
+          "date": "2026-10-10",
+          "dailySlot": 4,
+          "startTime": "15:00",
+          "endTime": "17:15",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "DEMO_DEMO_FA26-L11",
+          "sequenceNumber": 11,
+          "date": "2026-10-14",
+          "dailySlot": 4,
+          "startTime": "15:00",
+          "endTime": "17:15",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "DEMO_DEMO_FA26-L12",
+          "sequenceNumber": 12,
+          "date": "2026-10-17",
+          "dailySlot": 4,
+          "startTime": "15:00",
+          "endTime": "17:15",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "DEMO_DEMO_FA26-L13",
+          "sequenceNumber": 13,
+          "date": "2026-10-21",
+          "dailySlot": 4,
+          "startTime": "15:00",
+          "endTime": "17:15",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "DEMO_DEMO_FA26-L14",
+          "sequenceNumber": 14,
+          "date": "2026-10-24",
+          "dailySlot": 4,
+          "startTime": "15:00",
+          "endTime": "17:15",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "DEMO_DEMO_FA26-L15",
+          "sequenceNumber": 15,
+          "date": "2026-10-28",
+          "dailySlot": 4,
+          "startTime": "15:00",
+          "endTime": "17:15",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "DEMO_DEMO_FA26-L16",
+          "sequenceNumber": 16,
+          "date": "2026-10-31",
+          "dailySlot": 4,
+          "startTime": "15:00",
+          "endTime": "17:15",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "DEMO_DEMO_FA26-L17",
+          "sequenceNumber": 17,
+          "date": "2026-11-04",
+          "dailySlot": 4,
+          "startTime": "15:00",
+          "endTime": "17:15",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "DEMO_DEMO_FA26-L18",
+          "sequenceNumber": 18,
+          "date": "2026-11-07",
+          "dailySlot": 4,
+          "startTime": "15:00",
+          "endTime": "17:15",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "DEMO_DEMO_FA26-L19",
+          "sequenceNumber": 19,
+          "date": "2026-11-11",
+          "dailySlot": 4,
+          "startTime": "15:00",
+          "endTime": "17:15",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "DEMO_DEMO_FA26-L20",
+          "sequenceNumber": 20,
+          "date": "2026-11-14",
+          "dailySlot": 4,
+          "startTime": "15:00",
+          "endTime": "17:15",
+          "status": "scheduled",
+          "isAdjusted": false
+        }
+      ]
+    },
+    "PRN232_SE1920_FA26": {
+      "classOffering": {
+        "classId": "PRN232_SE1920_FA26",
+        "classCode": "SE1920",
+        "subjectCode": "PRN232",
+        "semester": "FA26",
+        "scheduleCode": "13",
+        "sourceSheetName": "13_PRN232_SE1920",
+        "lessonCount": 22,
+        "active": true
+      },
+      "students": [
+        {
+          "classCode": "SE1920",
+          "rollNumber": "SE183271",
+          "fullName": "Nguyễn Trần Gia Bảo",
+          "email": "baontgse183271@fpt.edu.vn",
+          "memberCode": "BaoNTGSE183271"
+        },
+        {
+          "classCode": "SE1920",
+          "rollNumber": "SE183201",
+          "fullName": "Nguyễn Phạm Xuân Sơn",
+          "email": "sonnpxse183201@fpt.edu.vn",
+          "memberCode": "SonNPXSE183201"
+        },
+        {
+          "classCode": "SE1920",
+          "rollNumber": "SE192024",
+          "fullName": "Dương Quốc Thái",
+          "email": "duongquocthai368@gmail.com",
+          "memberCode": "ThaiDQSE192024"
+        },
+        {
+          "classCode": "SE1920",
+          "rollNumber": "SE184988",
+          "fullName": "Vũ Đức Tuấn",
+          "email": "tuanvdse184988@fpt.edu.vn",
+          "memberCode": "TuanVDSE184988"
+        },
+        {
+          "classCode": "SE1920",
+          "rollNumber": "SE196327",
+          "fullName": "Hoàng Quốc Bảo",
+          "email": "hoangquocbao011105@gmail.com",
+          "memberCode": "BaoHQSE196327"
+        },
+        {
+          "classCode": "SE1920",
+          "rollNumber": "SE192160",
+          "fullName": "Trang Thuận Đức",
+          "email": "tduc01234@gmail.com",
+          "memberCode": "DucTTSE192160"
+        },
+        {
+          "classCode": "SE1920",
+          "rollNumber": "SE192427",
+          "fullName": "Lê Hoàng Duy",
+          "email": "lehoangduy23092005@gmail.com",
+          "memberCode": "DuyLHSE192427"
+        },
+        {
+          "classCode": "SE1920",
+          "rollNumber": "SE196437",
+          "fullName": "Đỗ Nhất Huy",
+          "email": "dnhuy207@gmail.com",
+          "memberCode": "HuyDNSE196437"
+        },
+        {
+          "classCode": "SE1920",
+          "rollNumber": "SE196296",
+          "fullName": "Nguyễn Bảo Nguyên",
+          "email": "nbn1784@gmail.com",
+          "memberCode": "NguyenNBSE196296"
+        },
+        {
+          "classCode": "SE1920",
+          "rollNumber": "SE194347",
+          "fullName": "Lê Phan Gia Bảo",
+          "email": "lephangiabao9904.1920@gmail.com",
+          "memberCode": "BaoLPGSE194347"
+        },
+        {
+          "classCode": "SE1920",
+          "rollNumber": "SE196250",
+          "fullName": "Trần Nguyễn Nam Khánh",
+          "email": "khanhtrangamer@gmail.com",
+          "memberCode": "KhanhTNNSE196250"
+        },
+        {
+          "classCode": "SE1920",
+          "rollNumber": "SE194466",
+          "fullName": "Nguyễn Hoàng Anh Khôi",
+          "email": "ahkhoinguyen169@gmail.com",
+          "memberCode": "KhoiNHASE194466"
+        },
+        {
+          "classCode": "SE1920",
+          "rollNumber": "SE184265",
+          "fullName": "Lê Trường Phúc",
+          "email": "phucltse184265@fpt.edu.vn",
+          "memberCode": "PhucLTSE184265"
+        },
+        {
+          "classCode": "SE1920",
+          "rollNumber": "SE196401",
+          "fullName": "Trương Quốc Vương",
+          "email": "tqvuong102@gmail.com",
+          "memberCode": "VuongTQSE196401"
+        },
+        {
+          "classCode": "SE1920",
+          "rollNumber": "SE194909",
+          "fullName": "Lâm Thiên Hải Anh",
+          "email": "haianhlam29052005@gmail.com",
+          "memberCode": "AnhLTHSE194909"
+        },
+        {
+          "classCode": "SE1920",
+          "rollNumber": "SE182072",
+          "fullName": "Trần Tiến Đạt",
+          "email": "datttse182072@fpt.edu.vn",
+          "memberCode": "DatTTSE182072"
+        },
+        {
+          "classCode": "SE1920",
+          "rollNumber": "HE170876",
+          "fullName": "Vũ Ngọc Hưng",
+          "email": "hungvnhe170876@fpt.edu.vn",
+          "memberCode": "hungvnhe170876"
+        },
+        {
+          "classCode": "SE1920",
+          "rollNumber": "SE180299",
+          "fullName": "Tô Thiên Phước",
+          "email": "phuocttse180299@fpt.edu.vn",
+          "memberCode": "PhuocTTSE180299"
+        },
+        {
+          "classCode": "SE1920",
+          "rollNumber": "SE190622",
+          "fullName": "Trần Duy Đạt",
+          "email": "megalit2578@gmail.com",
+          "memberCode": "DatTDSE190622"
+        },
+        {
+          "classCode": "SE1920",
+          "rollNumber": "SE196610",
+          "fullName": "Trần Trung Hải",
+          "email": "caubom205@gmail.com",
+          "memberCode": "HaiTTSE196610"
+        },
+        {
+          "classCode": "SE1920",
+          "rollNumber": "SE196624",
+          "fullName": "Đặng Minh Hoàng",
+          "email": "danghoang862@gmail.com",
+          "memberCode": "HoangDMSE196624"
+        },
+        {
+          "classCode": "SE1920",
+          "rollNumber": "SE184144",
+          "fullName": "Trần Hoài Khôi",
+          "email": "khoithse184144@fpt.edu.vn",
+          "memberCode": "KhoiTHSE184144"
+        },
+        {
+          "classCode": "SE1920",
+          "rollNumber": "SE184226",
+          "fullName": "Lâm Hoàng Nhân",
+          "email": "nhanlhse184226@fpt.edu.vn",
+          "memberCode": "NhanLHSE184226"
+        },
+        {
+          "classCode": "SE1920",
+          "rollNumber": "SE180400",
+          "fullName": "Nguyễn Đức Bổn",
+          "email": "bonndse180400@fpt.edu.vn",
+          "memberCode": "BonNDSE180400"
+        },
+        {
+          "classCode": "SE1920",
+          "rollNumber": "SE180629",
+          "fullName": "Nguyễn Thành Minh",
+          "email": "minhntse180629@fpt.edu.vn",
+          "memberCode": "MinhNTSE180629"
+        },
+        {
+          "classCode": "SE1920",
+          "rollNumber": "SE180338",
+          "fullName": "Hoàng Thanh Nguyên",
+          "email": "nguyenhtse180338@fpt.edu.vn",
+          "memberCode": "NguyenHTSE180338"
+        },
+        {
+          "classCode": "SE1920",
+          "rollNumber": "SE180447",
+          "fullName": "Nguyễn Văn Phú Quý",
+          "email": "quynvpse180447@fpt.edu.vn",
+          "memberCode": "QuyNVPSE180447"
+        },
+        {
+          "classCode": "SE1920",
+          "rollNumber": "SE194941",
+          "fullName": "Dương Hạo Cơ",
+          "email": "davidduong1711@gmail.com",
+          "memberCode": "CoDHSE194941"
+        },
+        {
+          "classCode": "SE1920",
+          "rollNumber": "SE194673",
+          "fullName": "Dương Thành Thanh Duy",
+          "email": "duongduy12314@gmail.com",
+          "memberCode": "DuyDTTSE194673"
+        },
+        {
+          "classCode": "SE1920",
+          "rollNumber": "SE193324",
+          "fullName": "Vũ Đức Hùng",
+          "email": "vuduchung060905@gmail.com",
+          "memberCode": "HungVDSE193324"
+        },
+        {
+          "classCode": "SE1920",
+          "rollNumber": "SE194001",
+          "fullName": "Nguyễn Huỳnh Nhật Thịnh",
+          "email": "victornhatthinh@gmail.com",
+          "memberCode": "ThinhNHNSE194001"
+        },
+        {
+          "classCode": "SE1920",
+          "rollNumber": "SE180374",
+          "fullName": "Bùi Quang Hiếu",
+          "email": "hieubqse180374@fpt.edu.vn",
+          "memberCode": "HieuBQSE180374"
+        },
+        {
+          "classCode": "SE1920",
+          "rollNumber": "SE183095",
+          "fullName": "Đỗ Việt Hoàng",
+          "email": "hoangdvse183095@fpt.edu.vn",
+          "memberCode": "HoangDVSE183095"
+        },
+        {
+          "classCode": "SE1920",
+          "rollNumber": "SE183051",
+          "fullName": "Thân Lê Thành Vinh",
+          "email": "vinhtltse183051@fpt.edu.vn",
+          "memberCode": "VinhTLTSE183051"
+        },
+        {
+          "classCode": "SE1920",
+          "rollNumber": "SE183011",
+          "fullName": "Dương Hòa Bình",
+          "email": "binhdhse183011@fpt.edu.vn",
+          "memberCode": "BinhDHSE183011"
+        },
+        {
+          "classCode": "SE1920",
+          "rollNumber": "SE161632",
+          "fullName": "Nguyễn Đức Huy",
+          "email": "huyndse161632@fpt.edu.vn",
+          "memberCode": "huyndse161632"
+        }
+      ],
+      "lessons": [
+        {
+          "lessonId": "PRN232_SE1920_FA26-L01",
+          "sequenceNumber": 1,
+          "date": "2026-09-07",
+          "dailySlot": 3,
+          "startTime": "12:30",
+          "endTime": "14:45",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRN232_SE1920_FA26-L02",
+          "sequenceNumber": 2,
+          "date": "2026-09-10",
+          "dailySlot": 3,
+          "startTime": "12:30",
+          "endTime": "14:45",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRN232_SE1920_FA26-L03",
+          "sequenceNumber": 3,
+          "date": "2026-09-14",
+          "dailySlot": 3,
+          "startTime": "12:30",
+          "endTime": "14:45",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRN232_SE1920_FA26-L04",
+          "sequenceNumber": 4,
+          "date": "2026-09-17",
+          "dailySlot": 3,
+          "startTime": "12:30",
+          "endTime": "14:45",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRN232_SE1920_FA26-L05",
+          "sequenceNumber": 5,
+          "date": "2026-09-21",
+          "dailySlot": 3,
+          "startTime": "12:30",
+          "endTime": "14:45",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRN232_SE1920_FA26-L06",
+          "sequenceNumber": 6,
+          "date": "2026-09-24",
+          "dailySlot": 3,
+          "startTime": "12:30",
+          "endTime": "14:45",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRN232_SE1920_FA26-L07",
+          "sequenceNumber": 7,
+          "date": "2026-09-28",
+          "dailySlot": 3,
+          "startTime": "12:30",
+          "endTime": "14:45",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRN232_SE1920_FA26-L08",
+          "sequenceNumber": 8,
+          "date": "2026-10-01",
+          "dailySlot": 3,
+          "startTime": "12:30",
+          "endTime": "14:45",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRN232_SE1920_FA26-L09",
+          "sequenceNumber": 9,
+          "date": "2026-10-05",
+          "dailySlot": 3,
+          "startTime": "12:30",
+          "endTime": "14:45",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRN232_SE1920_FA26-L10",
+          "sequenceNumber": 10,
+          "date": "2026-10-08",
+          "dailySlot": 3,
+          "startTime": "12:30",
+          "endTime": "14:45",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRN232_SE1920_FA26-L11",
+          "sequenceNumber": 11,
+          "date": "2026-10-12",
+          "dailySlot": 3,
+          "startTime": "12:30",
+          "endTime": "14:45",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRN232_SE1920_FA26-L12",
+          "sequenceNumber": 12,
+          "date": "2026-10-15",
+          "dailySlot": 3,
+          "startTime": "12:30",
+          "endTime": "14:45",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRN232_SE1920_FA26-L13",
+          "sequenceNumber": 13,
+          "date": "2026-10-19",
+          "dailySlot": 3,
+          "startTime": "12:30",
+          "endTime": "14:45",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRN232_SE1920_FA26-L14",
+          "sequenceNumber": 14,
+          "date": "2026-10-22",
+          "dailySlot": 3,
+          "startTime": "12:30",
+          "endTime": "14:45",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRN232_SE1920_FA26-L15",
+          "sequenceNumber": 15,
+          "date": "2026-10-26",
+          "dailySlot": 3,
+          "startTime": "12:30",
+          "endTime": "14:45",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRN232_SE1920_FA26-L16",
+          "sequenceNumber": 16,
+          "date": "2026-10-29",
+          "dailySlot": 3,
+          "startTime": "12:30",
+          "endTime": "14:45",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRN232_SE1920_FA26-L17",
+          "sequenceNumber": 17,
+          "date": "2026-11-02",
+          "dailySlot": 3,
+          "startTime": "12:30",
+          "endTime": "14:45",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRN232_SE1920_FA26-L18",
+          "sequenceNumber": 18,
+          "date": "2026-11-05",
+          "dailySlot": 3,
+          "startTime": "12:30",
+          "endTime": "14:45",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRN232_SE1920_FA26-L19",
+          "sequenceNumber": 19,
+          "date": "2026-11-09",
+          "dailySlot": 3,
+          "startTime": "12:30",
+          "endTime": "14:45",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRN232_SE1920_FA26-L20",
+          "sequenceNumber": 20,
+          "date": "2026-11-12",
+          "dailySlot": 3,
+          "startTime": "12:30",
+          "endTime": "14:45",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRN232_SE1920_FA26-L21",
+          "sequenceNumber": 21,
+          "date": "2026-11-16",
+          "dailySlot": 3,
+          "startTime": "12:30",
+          "endTime": "14:45",
+          "status": "scheduled",
+          "isAdjusted": false
+        },
+        {
+          "lessonId": "PRN232_SE1920_FA26-L22",
+          "sequenceNumber": 22,
+          "date": "2026-11-19",
+          "dailySlot": 3,
+          "startTime": "12:30",
+          "endTime": "14:45",
+          "status": "scheduled",
+          "isAdjusted": false
+        }
+      ]
+    }
+  }
+}

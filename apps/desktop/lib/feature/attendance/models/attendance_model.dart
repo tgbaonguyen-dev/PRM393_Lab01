@@ -18,7 +18,12 @@ class StudentAttendanceRecord {
     return StudentAttendanceRecord(
       rollNumber: json['rollNumber'] ?? json['RollNumber'] ?? '',
       fullName: json['fullName'] ?? json['FullName'] ?? '',
-      email: json['email'] ?? json['Email'] ?? '',
+      email:
+          json['studentEmail'] ??
+          json['StudentEmail'] ??
+          json['email'] ??
+          json['Email'] ??
+          '',
       status: (json['status'] ?? json['Status'] ?? '').toString().toUpperCase(),
       isManualEdited:
           json['isManualEdited'] == true || json['is_manual_edited'] == true,

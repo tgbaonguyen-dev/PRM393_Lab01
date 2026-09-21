@@ -152,13 +152,19 @@ class _FakeScheduleRepository implements ScheduleRepository {
   }
 
   @override
-  Future<bool> saveAll(List<Map<String, dynamic>> schedules) async {
+  Future<bool> saveAll(
+    List<Map<String, dynamic>> schedules, {
+    bool clearPrevious = false,
+  }) async {
     saveCount += schedules.length;
     return shouldSave;
   }
 
   @override
-  Future<bool> syncActiveClassIds(Set<String> activeClassIds) async {
+  Future<bool> syncActiveClassIds(
+    Set<String> activeClassIds, {
+    bool clearPrevious = false,
+  }) async {
     syncCount++;
     syncedActiveClassIds
       ..clear()

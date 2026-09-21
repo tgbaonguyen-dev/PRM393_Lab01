@@ -14,9 +14,11 @@ services:
       - key: QR_HMAC_SECRET
         value: dev-secret-key-prm393-attendance
       - key: NEXT_PUBLIC_GOOGLE_CLIENT_ID
-        value: 270940891066-15h1hrnt25mlaa8u667gooeptev6vhq6.apps.googleusercontent.com
+        value: 753745645173-jasggc9k2vbq4vgio6eda7bg8ki2ddci.apps.googleusercontent.com
       - key: ALLOW_MOCK_GOOGLE_TOKEN
         value: "true"
+      - key: STUDENT_CHECKIN_BASE_URL
+        value: https://prm393-web.onrender.com/checkin
 
   # 2. Student Web Check-in (Next.js)
   - type: web
@@ -28,11 +30,8 @@ services:
     startCommand: npm start
     envVars:
       - key: NEXT_PUBLIC_GOOGLE_CLIENT_ID
-        value: 270940891066-15h1hrnt25mlaa8u667gooeptev6vhq6.apps.googleusercontent.com
+        value: 753745645173-jasggc9k2vbq4vgio6eda7bg8ki2ddci.apps.googleusercontent.com
       - key: NEXT_PUBLIC_DEMO_GOOGLE
         value: "false"
       - key: NEXT_PUBLIC_API_BASE_URL
-        fromService:
-          type: web
-          name: prm393-backend
-          property: host
+        value: https://prm393-backend-7vis.onrender.com

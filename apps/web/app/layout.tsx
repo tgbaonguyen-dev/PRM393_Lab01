@@ -1,15 +1,21 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import './globals.css';
 
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  themeColor: '#ffffff',
+};
+
 export const metadata: Metadata = {
-  title: 'PRM393 | Điểm danh',
-  description: 'Cổng điểm danh QR dành cho sinh viên',
+  title: 'iPresent · Điểm danh sinh viên',
+  description: 'Cổng điểm danh sinh viên iPresent',
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="vi">
-      <body>{children}</body>
+      <body className="antialiased">{children}</body>
     </html>
   );
 }

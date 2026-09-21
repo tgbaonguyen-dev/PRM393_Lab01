@@ -98,10 +98,12 @@ class SheetsRepository {
   Future<Map<String, dynamic>> syncAllClasses({
     required List<dynamic> classes,
     required String startDate,
+    bool clearPrevious = false,
   }) async {
     final res = await _postToGateway('syncAllClasses', {
       'classes': classes,
       'startDate': startDate,
+      'clearPrevious': clearPrevious,
     });
     return {
       'success': res['success'] == true,
@@ -109,6 +111,16 @@ class SheetsRepository {
       'classCount': res['data']?['classCount'] ?? classes.length,
       'message': 'Đã đồng bộ toàn bộ các lớp học lên Google Sheet thành công.',
     };
+  }
+
+  Future<void> resetApplicationData(String key) async {
+    final result = await _postToGateway('resetApplicationData',
+        {'resetKey': key, 'confirmation': 'DELETE_ALL_APP_DATA'});
+    if (result['success'] != true ||
+        result['data'] is! Map ||
+        result['data']['reset'] != true) {
+      throw StateError('Gateway chưa xác nhận xóa dữ liệu.');
+    }
   }
 
   /// Khởi tạo bảng mẫu mặc định
@@ -308,6 +320,18 @@ class SheetsRepository {
     return [];
   }
 
+  /// Lấy toàn bộ ma trận điểm danh của tất cả các lớp trên Google Sheets
+  Future<Map<String, dynamic>> getAllAttendance() async {
+    final res = await _postToGateway('getAllAttendance', {});
+    final dynamic data = res['data'];
+    if (data is Map<String, dynamic>) {
+      return data;
+    } else if (data is Map) {
+      return Map<String, dynamic>.from(data);
+    }
+    return {};
+  }
+
   /// Lấy thông tin ca điểm danh đang mở
   Future<Map<String, dynamic>?> getActiveWindow(String sessionId) async {
     final res = await _postToGateway('getActiveWindow', {
@@ -337,7 +361,6 @@ class SheetsRepository {
       return null;
     }
   }
-
 
   /// Nạp dữ liệu mẫu 5 sinh viên để test (M5)
   Future<bool> seedSampleData(List<Map<String, dynamic>> students) async {
